@@ -5,4 +5,4 @@ authors = ["Christopher Lord <christopher@lord.ac>"]
 edition = "2018"
 
 [dependencies]
-rppal = "0.9"
+rppal = "0.11.3"

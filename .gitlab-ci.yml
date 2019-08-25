@@ -1,0 +1,5 @@
+image: clord/restedpi-ci
+
+build:
+  script: cargo build --target=armv7-unknown-linux-gnueabihf --release
+
