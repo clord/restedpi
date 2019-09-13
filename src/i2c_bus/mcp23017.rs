@@ -1,13 +1,6 @@
 use crate::i2c_bus::error::Error;
-use crate::i2c_bus::i2c_io::{
-    I2cAction::{Read, Write},
-    I2cMessage,
-};
-use crate::i2c_bus::Result;
-
-use std::vec::Vec;
-
-use std::sync::mpsc::{channel, Sender};
+use crate::i2c_bus::{I2cBus, Result};
+use crate::i2c_bus::i2c_io::{Address, Command};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -17,7 +10,7 @@ const READ_GPIOA_ADDR: u8 = 0x12;
 const READ_GPIOB_ADDR: u8 = 0x13;
 const WRITE_GPIOA_ADDR: u8 = 0x14;
 const WRITE_GPIOB_ADDR: u8 = 0x15;
-const BASE_ADDRESS: u16 = 0x0020; // if the mcp has all adress lines pulled low
+const BASE_ADDRESS: Address = 0x0020; // if the mcp has all adress lines pulled low
 
 #[derive(PartialEq, Copy, Clone, PartialOrd)]
 pub enum Pin {
@@ -149,9 +142,9 @@ const INITIAL_STATE: BankState<State> = BankState {
 
 #[derive(Clone)]
 pub struct Device {
-    address: u16,
+    address: Address,
     state: BankState<State>,
-    i2c: Sender<I2cMessage>,
+    i2c: I2cBus,
 }
 
 impl Device {
@@ -176,35 +169,8 @@ impl Device {
             Bank::B => WRITE_GPIOB_ADDR,
         };
 
-        self._write_blocking(register, vec![as_word(values)])
-    }
-
-    fn _write_blocking(&self, command: u8, parameters: Vec<u8>) -> Result<()> {
-        let (chan, port) = channel();
-        self.i2c.send(I2cMessage {
-            action: Write {
-                parameters,
-                response: chan,
-            },
-            address: self.address,
-            command,
-        })?;
-
-        port.recv()?
-    }
-
-    fn _read(&self, command: u8, size: usize) -> Result<Vec<u8>> {
-        let (chan, port) = channel();
-        self.i2c.send(I2cMessage {
-            action: Read {
-                size,
-                response: chan,
-            },
-            address: self.address,
-            command,
-        })?;
-
-        port.recv()?
+        self.i2c
+            .write(self.address, register, vec![as_word(values)])
     }
 
     // Unconditionally reads values from the device and stores in device state
@@ -215,7 +181,7 @@ impl Device {
             Bank::B => READ_GPIOB_ADDR,
         };
 
-        let result = self._read(register, 1)?;
+        let result = self.i2c.read(self.address, register, 1)?;
         Ok(read_word(result[0]))
     }
 
@@ -226,13 +192,18 @@ impl Device {
             Bank::A => (REGISTER_GPIOA, REGISTER_GPIOA_PULLUP),
             Bank::B => (REGISTER_GPIOB, REGISTER_GPIOB_PULLUP),
         };
-        self._write_blocking(dir_reg, vec![direction_as_inout_word(dir)])?;
-        self._write_blocking(pullup_reg, vec![direction_as_pullup_word(dir)])?;
+        self.i2c
+            .write(self.address, dir_reg, vec![direction_as_inout_word(dir)])?;
+        self.i2c.write(
+            self.address,
+            pullup_reg,
+            vec![direction_as_pullup_word(dir)],
+        )?;
 
         Ok(())
     }
 
-    pub fn configure(address_offset: u16, i2c: Sender<I2cMessage>) -> Result<Device> {
+    pub fn configure(address_offset: u16, i2c: I2cBus) -> Result<Device> {
         let mut device = Device {
             address: address_offset + BASE_ADDRESS,
             state: INITIAL_STATE,

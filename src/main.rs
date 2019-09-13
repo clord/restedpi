@@ -1,4 +1,4 @@
-use i2c_bus::{i2c_io, mcp23017};
+use i2c_bus::{i2c_io, bmp085, mcp23017};
 use rppal::system::DeviceInfo;
 use serde_json::json;
 use std::error::Error;
@@ -11,6 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let server_name = DeviceInfo::new()?.model();
     let i2c = i2c_io::start();
     let d_mcp23017 = Arc::new(Mutex::new(mcp23017::Device::configure(0, i2c.clone())?));
+    let d_bmp085 = Arc::new(Mutex::new(bmp085::Device::configure(i2c.clone(), bmp085::SamplingMode::HighRes)?));
     println!("** Running on {}", server_name);
 
     let r_greeting = warp::get2().and(warp::path::end()).map(move || {
@@ -39,9 +40,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .body(json!({ "value": value }).to_string())
         });
 
-    let r_bmp085 = warp::get2().and(path!("bmp085" / String)).map(|index| {
-        // TODO: load data from bmp085 device at specified address
-        "Hello World"
+    let r_bmp085 = warp::get2().and(path!("bmp085" / usize)).map(move |index| {
+        let device = d_bmp085.lock().unwrap();
+        let pressure: f32 = device.pressure_kpa().expect("failed to fetch kpa");
+        let temperature: f32 = device.temperature_in_c().expect("failed to fetch temp");
+        Response::builder()
+            .header("content-type", "application/json")
+            .body(json!({ "temperature": 0.0f32, "pressure": pressure }).to_string())
     });
 
     let routes = r_greeting.or(r_bmp085).or(r_mcp23017);
