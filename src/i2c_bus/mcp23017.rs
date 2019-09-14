@@ -1,6 +1,6 @@
 use crate::i2c_bus::error::Error;
 use crate::i2c_bus::{I2cBus, Result};
-use crate::i2c_bus::i2c_io::{Address, Command};
+use crate::i2c_bus::i2c_io::Address;
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -10,7 +10,6 @@ const READ_GPIOA_ADDR: u8 = 0x12;
 const READ_GPIOB_ADDR: u8 = 0x13;
 const WRITE_GPIOA_ADDR: u8 = 0x14;
 const WRITE_GPIOB_ADDR: u8 = 0x15;
-const BASE_ADDRESS: Address = 0x0020; // if the mcp has all adress lines pulled low
 
 #[derive(PartialEq, Copy, Clone, PartialOrd)]
 pub enum Pin {
@@ -95,10 +94,6 @@ pub fn ordinal_pin(p: usize) -> Option<Pin> {
     }
 }
 
-fn pin_mask(p: Pin) -> u8 {
-    1u8 >> pin_ordinal(p)
-}
-
 #[derive(PartialEq, Copy, Clone, PartialOrd)]
 pub enum Bank {
     A,
@@ -169,13 +164,11 @@ impl Device {
             Bank::B => WRITE_GPIOB_ADDR,
         };
 
-        self.i2c
-            .write(self.address, register, vec![as_word(values)])
+        self.i2c.write(self.address, register, vec![as_word(values)])
     }
 
     // Unconditionally reads values from the device and stores in device state
     fn read_gpio_value(&self, bank: Bank) -> Result<[bool; 8]> {
-        let state = self.state_for_bank(bank);
         let register = match bank {
             Bank::A => READ_GPIOA_ADDR,
             Bank::B => READ_GPIOB_ADDR,
@@ -203,9 +196,9 @@ impl Device {
         Ok(())
     }
 
-    pub fn configure(address_offset: u16, i2c: I2cBus) -> Result<Device> {
+    pub fn new(address: u16, i2c: I2cBus) -> Result<Self> {
         let mut device = Device {
-            address: address_offset + BASE_ADDRESS,
+            address,
             state: INITIAL_STATE,
             i2c,
         };
@@ -260,7 +253,7 @@ impl Device {
         return Ok(());
     }
 
-    pub fn read_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> Result<bool> {
+    pub fn get_pin(&mut self, bank: Bank, pin: Pin) -> Result<bool> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         if let Direction::Output = bank_state.direction[pdex] {

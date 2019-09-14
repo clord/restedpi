@@ -1,10 +1,8 @@
-use crate::i2c_bus::{I2cBus, Result};
+use crate::i2c_bus::{I2cBus, Result, i2c_io::Address};
+use crate::i2c_bus::util::{iv2be, uv2be, i2be, u2be};
 use std::thread;
-use crate::i2c_bus::i2c_io::{Address, Command};
 use std::time::Duration;
-use std::vec::Vec;
 
-const ADDRESS: Address = 0x77;
 
 /// How long should we accumulate before returning a result?
 #[derive(Clone, Debug)]
@@ -52,28 +50,9 @@ struct Coefficients {
     md: i16,
 }
 
- fn iv2be(r: &[u8]) -> i16 {
-    let rs = ((r[1] as u16) << 8) + (r[0] as u16);
-    i2be(rs)
-}
-
-fn uv2be(r: &[u8]) -> u16 {
-    let rs = ((r[1] as u16) << 8) + (r[0] as u16);
-    rs.to_be()
-}
-
- fn i2be(r: u16) -> i16 {
-    let a = r as i16;
-    a.to_be()
-}
-
-fn u2be(r: u16) -> u16 {
-    r.to_be()
-}
-
 
 impl Coefficients {
-    pub fn new(address : Address, bus: &I2cBus) -> Result<Coefficients> {
+    pub fn new(address : Address, bus: &I2cBus) -> Result<Self> {
         let ac1 = bus.read(address, Register::AC1 as u8, 2)?;
         let ac2 = bus.read(address, Register::AC2 as u8, 2)?;
         let ac3 = bus.read(address, Register::AC3 as u8, 2)?;
@@ -104,7 +83,7 @@ impl Coefficients {
 
 /// Represent access to a BMP085 device at 0x77
 pub struct Device {
-    address: u16,
+    address: Address,
     accuracy: SamplingMode,
     coefficients: Coefficients,
     i2c: I2cBus,
@@ -112,8 +91,7 @@ pub struct Device {
 
 impl Device {
     /// Construct a device with a given sampling mode on a given bus
-    pub fn configure(i2c: I2cBus, accuracy: SamplingMode) -> Result<Device>{
-       let address: Address = 0x77u16;
+    pub fn new(address: Address, i2c: I2cBus, accuracy: SamplingMode) -> Result<Self>{
        let coefficients = Coefficients::new(address, &i2c)?;
        let device = Device {
         address, accuracy, coefficients, i2c

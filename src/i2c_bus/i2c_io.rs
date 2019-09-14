@@ -62,7 +62,7 @@ impl I2cBus {
         port.recv()?
     }
 
-    pub fn delay(&self, address: u16, duration: Duration) -> Result<()> {
+    pub fn delay(&self, duration: Duration) -> Result<()> {
         let (response, port) = channel();
         self.sender.send(I2cMessage::Delay { duration, response })?;
 
@@ -88,13 +88,15 @@ fn next_message(
                     .expect("failed to set slave address");
                 *current_address = Some(address);
             }
-            let result = i2c.block_write(command, &parameters);
+            let _result = i2c.block_write(command, &parameters);
             response.send(Ok(())).expect("failed to send");
         }
+
         I2cMessage::Delay { duration, response } => {
             thread::sleep(duration);
             response.send(Ok(())).expect("failed to send");
         }
+
         I2cMessage::Read {
             address,
             command,
@@ -130,7 +132,7 @@ pub fn start() -> I2cBus {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },
-        Err(err) => {
+        Err(_err) => {
             println!("ERROR: The I2C bus connected to pins 3 and 5 is disabled by default.");
             println!("       You can enable it through `sudo raspi-config`, or by manually adding `dtparam=i2c_arm=on` to `/boot/config.txt`. ");
             println!("       Remember to reboot the Raspberry Pi afterwards.");
