@@ -1,6 +1,6 @@
+use crate::i2c::bus::{Address, I2cBus};
 use crate::i2c::error::Error;
 use crate::i2c::Result;
-use crate::i2c::bus::{Address, I2cBus};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -164,7 +164,8 @@ impl Device {
             Bank::B => WRITE_GPIOB_ADDR,
         };
 
-        self.i2c.write(self.address, register, vec![as_word(values)])
+        self.i2c
+            .write(self.address, register, vec![as_word(values)])
     }
 
     // Unconditionally reads values from the device and stores in device state

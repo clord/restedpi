@@ -83,18 +83,19 @@ fn next_message(
             response,
             parameters,
         } => {
+            println!("write");
             if *current_address != Some(address) {
-                i2c.set_slave_address(address)
-                    .expect("failed to set slave address");
+                i2c.set_slave_address(address);
                 *current_address = Some(address);
             }
             let _result = i2c.block_write(command, &parameters);
-            response.send(Ok(())).expect("failed to send");
+            response.send(Ok(()));
         }
 
         I2cMessage::Delay { duration, response } => {
+            println!("delay");
             thread::sleep(duration);
-            response.send(Ok(())).expect("failed to send");
+            response.send(Ok(()));
         }
 
         I2cMessage::Read {
@@ -103,21 +104,19 @@ fn next_message(
             size,
             response,
         } => {
+            println!("read");
             if *current_address != Some(address) {
-                i2c.set_slave_address(address)
-                    .expect("failed to set slave address");
+                i2c.set_slave_address(address);
                 *current_address = Some(address);
             }
             let mut vec = Vec::new();
             vec.resize(size, 0u8);
             match i2c.block_read(command, &mut vec) {
                 Ok(()) => {
-                    response.send(Ok(vec)).expect("failed to send");
+                    response.send(Ok(vec));
                 }
                 Err(e) => {
-                    response
-                        .send(Err(crate::i2c::error::Error::I2cError(e)))
-                        .expect("failed to send error");
+                    response.send(Err(crate::i2c::error::Error::I2cError(e)));
                 }
             };
         }
