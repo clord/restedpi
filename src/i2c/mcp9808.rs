@@ -1,4 +1,4 @@
-use crate::i2c_bus::{I2cBus, Result, i2c_io::Address, util::uv2be};
+use crate::i2c::{bus::I2cBus, Result, bus::Address, util::uv2be};
 
 
 /// MCP 9808

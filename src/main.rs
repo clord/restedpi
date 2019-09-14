@@ -1,15 +1,15 @@
-use i2c_bus::{i2c_io, bmp085, mcp9808, mcp23017};
+use i2c::{bus, bmp085, mcp9808, mcp23017};
 use rppal::system::DeviceInfo;
 use serde_json::json;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use warp::{self, http::Response, path, Filter};
 
-mod i2c_bus;
+mod i2c;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let server_name = DeviceInfo::new()?.model();
-    let i2c = i2c_io::start();
+    let i2c = bus::start();
 
     let d_mcp9808_0 = Arc::new(Mutex::new(mcp9808::Device::new(0x18u16, i2c.clone())?));
     let d_mcp9808_1 = Arc::new(Mutex::new(mcp9808::Device::new(0x19u16, i2c.clone())?));

@@ -10,7 +10,7 @@ pub enum Error {
     InvalidPinDirection,
     I2cError(i2c::Error),
     RecvError(mpsc::RecvError),
-    SendError(mpsc::SendError<crate::i2c_bus::i2c_io::I2cMessage>),
+    SendError(mpsc::SendError<crate::i2c::bus::I2cMessage>),
 }
 
 impl fmt::Display for Error {
@@ -38,8 +38,8 @@ impl From<std::sync::mpsc::RecvError> for Error {
         Error::RecvError(err)
     }
 }
-impl From<std::sync::mpsc::SendError<crate::i2c_bus::i2c_io::I2cMessage>> for Error {
-    fn from(err: std::sync::mpsc::SendError<crate::i2c_bus::i2c_io::I2cMessage>) -> Error {
+impl From<std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>> for Error {
+    fn from(err: std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>) -> Error {
         Error::SendError(err)
     }
 }

@@ -1,5 +1,5 @@
-use crate::i2c_bus::{I2cBus, Result, i2c_io::Address};
-use crate::i2c_bus::util::{iv2be, uv2be, i2be, u2be};
+use crate::i2c::{Result, bus::I2cBus, bus::Address};
+use crate::i2c::util::{iv2be, uv2be, i2be, u2be};
 use std::thread;
 use std::time::Duration;
 

@@ -1,6 +1,6 @@
-use crate::i2c_bus::error::Error;
-use crate::i2c_bus::{I2cBus, Result};
-use crate::i2c_bus::i2c_io::Address;
+use crate::i2c::error::Error;
+use crate::i2c::Result;
+use crate::i2c::bus::{Address, I2cBus};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;

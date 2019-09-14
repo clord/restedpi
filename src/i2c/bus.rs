@@ -1,4 +1,4 @@
-use crate::i2c_bus::Result;
+use crate::i2c::Result;
 use rppal::i2c::I2c;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
@@ -116,7 +116,7 @@ fn next_message(
                 }
                 Err(e) => {
                     response
-                        .send(Err(crate::i2c_bus::error::Error::I2cError(e)))
+                        .send(Err(crate::i2c::error::Error::I2cError(e)))
                         .expect("failed to send error");
                 }
             };
