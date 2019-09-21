@@ -1,6 +1,5 @@
 use crate::i2c::bus::{Address, I2cBus};
-use crate::i2c::error::Error;
-use crate::i2c::Result;
+use crate::i2c::{error::Error, Direction, Pullup, Result, Switch};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -69,56 +68,44 @@ fn as_word(ps: [bool; 8]) -> u8 {
 
 fn pin_ordinal(p: Pin) -> usize {
     match p {
-        Pin::Pin0 => 0usize,
-        Pin::Pin1 => 1usize,
-        Pin::Pin2 => 2usize,
-        Pin::Pin3 => 3usize,
-        Pin::Pin4 => 4usize,
-        Pin::Pin5 => 5usize,
-        Pin::Pin6 => 6usize,
-        Pin::Pin7 => 7usize,
+        Pin::Pin0 => 0,
+        Pin::Pin1 => 1,
+        Pin::Pin2 => 2,
+        Pin::Pin3 => 3,
+        Pin::Pin4 => 4,
+        Pin::Pin5 => 5,
+        Pin::Pin6 => 6,
+        Pin::Pin7 => 7,
     }
 }
 
 pub fn ordinal_pin(p: usize) -> Option<Pin> {
     match p {
-        0usize => Some(Pin::Pin0),
-        1usize => Some(Pin::Pin1),
-        2usize => Some(Pin::Pin2),
-        3usize => Some(Pin::Pin3),
-        4usize => Some(Pin::Pin4),
-        5usize => Some(Pin::Pin5),
-        6usize => Some(Pin::Pin6),
-        7usize => Some(Pin::Pin7),
+        0 => Some(Pin::Pin0),
+        1 => Some(Pin::Pin1),
+        2 => Some(Pin::Pin2),
+        3 => Some(Pin::Pin3),
+        4 => Some(Pin::Pin4),
+        5 => Some(Pin::Pin5),
+        6 => Some(Pin::Pin6),
+        7 => Some(Pin::Pin7),
         _ => None,
     }
 }
 
-#[derive(PartialEq, Copy, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]
 pub enum Bank {
     A,
     B,
 }
 
-#[derive(PartialEq, Copy, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]
 struct BankState<T> {
     a: T,
     b: T,
 }
 
-#[derive(PartialEq, Copy, Clone, PartialOrd)]
-pub enum Pullup {
-    On,
-    Off,
-}
-
-#[derive(PartialEq, Copy, Clone, PartialOrd)]
-pub enum Direction {
-    Output,
-    Input(Pullup),
-}
-
-#[derive(PartialEq, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Clone, PartialOrd)]
 struct State {
     direction: [Direction; 8],
     value: [bool; 8],
@@ -135,7 +122,7 @@ const INITIAL_STATE: BankState<State> = BankState {
     },
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Device {
     address: Address,
     state: BankState<State>,
@@ -267,5 +254,50 @@ impl Device {
         };
         self.set_state_for_bank(bank, new_state);
         return Ok(value[pin_ordinal(pin)]);
+    }
+}
+
+impl Switch for Device {
+    fn reset(&mut self) -> Result<()> {
+        self.reset()
+    }
+    fn pin_count(&self) -> usize {
+        16
+    }
+
+    fn set_direction(&mut self, index: usize, dir: Direction) -> Result<()> {
+        let bank = if (index >> 3) & 1 == 0 {
+            Bank::A
+        } else {
+            Bank::B
+        };
+        match ordinal_pin(index) {
+            Some(pin) => self.set_pin_direction(bank, pin, dir),
+            None => Err(Error::InvalidPinIndex),
+        }
+    }
+
+    fn write_switch(&mut self, index: usize, value: bool) -> Result<()> {
+        let bank = if (index >> 3) & 1 == 0 {
+            Bank::A
+        } else {
+            Bank::B
+        };
+        match ordinal_pin(index) {
+            Some(pin) => self.set_pin(bank, pin, value),
+            None => Err(Error::InvalidPinIndex),
+        }
+    }
+
+    fn read_switch(&mut self, index: usize) -> Result<bool> {
+        let bank = if (index >> 3) & 1 == 0 {
+            Bank::A
+        } else {
+            Bank::B
+        };
+        match ordinal_pin(index) {
+            Some(pin) => self.get_pin(bank, pin),
+            None => Err(Error::InvalidPinIndex),
+        }
     }
 }

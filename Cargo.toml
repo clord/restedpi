@@ -1,3 +1,4 @@
+# Instructions on cross-compiling for armv6: https://github.com/japaric/rust-cross/issues/42
 [package]
 name = "restedpi-rust"
 version = "0.1.0"
@@ -9,4 +10,5 @@ rppal = "0.11.3"
 rust-crypto = "^0.2"
 warp = "0.1.19"
 serde_json = "1.0"
+chrono = "0.4"
 

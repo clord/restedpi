@@ -8,6 +8,7 @@ use std::vec::Vec;
 pub type Address = u16;
 pub type Command = u8;
 
+#[derive(Clone, Debug)]
 pub enum I2cMessage {
     Write {
         address: Address,
@@ -32,7 +33,7 @@ pub enum I2cMessage {
  * actions are atomically performed, including any address change.
  * Delay command blocks the bus and prevents other actions.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct I2cBus {
     sender: Sender<I2cMessage>,
 }
@@ -83,7 +84,6 @@ fn next_message(
             response,
             parameters,
         } => {
-            println!("write");
             if *current_address != Some(address) {
                 i2c.set_slave_address(address);
                 *current_address = Some(address);
@@ -93,7 +93,6 @@ fn next_message(
         }
 
         I2cMessage::Delay { duration, response } => {
-            println!("delay");
             thread::sleep(duration);
             response.send(Ok(()));
         }
@@ -104,11 +103,11 @@ fn next_message(
             size,
             response,
         } => {
-            println!("read");
             if *current_address != Some(address) {
                 i2c.set_slave_address(address);
                 *current_address = Some(address);
             }
+            println!("read: {}, {}, {}", address, command, size);
             let mut vec = Vec::new();
             vec.resize(size, 0u8);
             match i2c.block_read(command, &mut vec) {
@@ -131,10 +130,11 @@ pub fn start() -> I2cBus {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },
-        Err(_err) => {
+        Err(err) => {
             println!("ERROR: The I2C bus connected to pins 3 and 5 is disabled by default.");
             println!("       You can enable it through `sudo raspi-config`, or by manually adding `dtparam=i2c_arm=on` to `/boot/config.txt`. ");
             println!("       Remember to reboot the Raspberry Pi afterwards.");
+            println!("Error: {} ", err);
             panic!("Aborting")
         }
     });

@@ -1,3 +1,4 @@
+use crate::i2c::Unit;
 use rppal::i2c;
 use std::error;
 use std::fmt;
@@ -8,6 +9,8 @@ use std::sync::mpsc;
 pub enum Error {
     Io(io::Error),
     InvalidPinDirection,
+    InvalidPinIndex,
+    UnsupportedUnit(Unit),
     I2cError(i2c::Error),
     RecvError(mpsc::RecvError),
     SendError(mpsc::SendError<crate::i2c::bus::I2cMessage>),
@@ -18,6 +21,10 @@ impl fmt::Display for Error {
         match *self {
             Error::Io(ref err) => write!(f, "I/O error: {}", err),
             Error::InvalidPinDirection => write!(f, "Can't set pin to direction"),
+            Error::InvalidPinIndex => write!(f, "Pin index is invalid for device"),
+            Error::UnsupportedUnit(ref unit) => {
+                write!(f, "Device does not support unit {:#?}", unit)
+            }
             Error::I2cError(ref err) => write!(f, "I2C Error: {}", err),
             Error::RecvError(ref err) => write!(f, "Recv Error: {}", err),
             Error::SendError(ref err) => write!(f, "Send Error: {}", err),

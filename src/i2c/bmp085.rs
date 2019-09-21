@@ -1,5 +1,5 @@
-use crate::i2c::util::{i2be, iv2be, u2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, Result};
+use crate::i2c::util::{iv2be, uv2be};
+use crate::i2c::{bus::Address, bus::I2cBus, error::Error, Result, Sensor, Unit};
 use std::thread;
 use std::time::Duration;
 
@@ -34,6 +34,7 @@ enum Register {
     Data = 0xF6, // Pressure & Temp
 }
 
+#[derive(Clone, Debug)]
 struct Coefficients {
     ac1: i16,
     ac2: i16,
@@ -79,6 +80,7 @@ impl Coefficients {
 }
 
 /// Represent access to a BMP085 device at 0x77
+#[derive(Clone, Debug)]
 pub struct Device {
     address: Address,
     accuracy: SamplingMode,
@@ -148,6 +150,7 @@ impl Device {
 
     /// Reads the raw temperature data and associated register
     fn read_raw_temp(&self) -> Result<(i32, i32)> {
+        println!("b");
         self.i2c.write(
             self.address,
             Register::Control as u8,
@@ -175,6 +178,7 @@ impl Device {
     fn read_raw_pressure(&self) -> Result<i32> {
         let pressure_cmd = Control::ReadPressure as u8;
         let sampling = self.accuracy.clone() as u8;
+        println!("a");
         self.i2c.write(
             self.address,
             Register::Control as u8,
@@ -200,5 +204,24 @@ impl Device {
         let up: i32 = ((msb << 16) + (lsb << 8) + xlsb >> (8 - sampling)) as i32;
 
         Ok(up)
+    }
+}
+
+impl Sensor for Device {
+    fn reset(&self) -> Result<()> {
+        Ok(())
+    }
+    fn read_sensor(&self, unit: Unit) -> Result<(f64, Unit)> {
+        match unit {
+            Unit::DegC => {
+                let v = self.temperature_in_c()?;
+                Ok((v as f64, unit))
+            }
+            Unit::KPa => {
+                let v = self.pressure_kpa()?;
+                Ok((v as f64, unit))
+            }
+            _ => Err(Error::UnsupportedUnit(unit)),
+        }
     }
 }

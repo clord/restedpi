@@ -1,4 +1,3 @@
-
 pub fn iv2be(r: &[u8]) -> i16 {
     let rs = ((r[1] as u16) << 8) + (r[0] as u16);
     i2be(rs)
