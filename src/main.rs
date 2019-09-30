@@ -1,24 +1,148 @@
+#[macro_use]
+extern crate pretty_env_logger;
+#[macro_use]
+extern crate log;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate warp;
+
+use crate::config::{BoolExpr, Config, Sensor, SensorType, Switch, SwitchPin, SwitchType, Value};
 use i2c::{bus, error::Error};
 use rppal::system::DeviceInfo;
-use serde_json::json;
-use warp::{self, http::Response, http::StatusCode, path, Filter, Rejection, Reply};
+use serde_json::{from_str, json};
+use std::fs;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::env;
+use warp::{http::Response, http::StatusCode, path, Filter, Rejection, Reply};
 
 mod app;
+mod config;
 mod i2c;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server_name = DeviceInfo::new()?.model();
-    println!("** starting up on {}", server_name);
+// We have to share the app state since warp uses a thread pool
+type SharedAppState = std::sync::Arc<std::sync::Mutex<app::AppState>>;
 
-    let app = app::start();
 
-    println!("** Running");
-
-    let r_greeting = warp::get2().and(warp::path::end()).map(move || {
-        Response::builder()
-            .header("content-type", "application/json")
-            .body(json!({ "server": format!("{}", server_name) }).to_string())
+// GET /
+fn greeting(app: SharedAppState, server_name: String) -> impl warp::Reply {
+    let reply = json!({
+        "server": format!("restedpi on {}", server_name)
     });
+    warp::reply::json(&reply)
+}
+
+// GET /config/checker
+fn config_checker(app: SharedAppState, config : config::Config) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("config evaluate: {:?}", config);
+    let reply : i32 = 0;
+    Ok(warp::reply::json(&reply))
+}
+
+// GET /sensor/:name
+fn read_sensor(app: SharedAppState, sensor: String) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("sensor evaluate: {}",  sensor);
+    let reply : i32 = 0;
+    Ok(warp::reply::json(&reply))
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if env::var_os("RUST_LOG").is_none() {
+        // Set `RUST_LOG=restedpi=debug` to see debug logs,
+        env::set_var("RUST_LOG", "restedpi=info");
+        info!("defaulting to info level logging");
+    }
+    pretty_env_logger::init();
+    let server_name = match DeviceInfo::new() {
+        Ok(model) => model.model().to_string(),
+        Err(e) => {
+            warn!("reading model: {}", e);
+            "Unknown".to_string()
+        }
+    };
+    let contents =
+        match fs::read_to_string("config.json") {
+        Ok(cfg) => cfg,
+        Err(e) => { warn!("error reading config: {}", e); "".to_string() }
+    };
+
+    let config: config::Config = match serde_json::from_str(&contents) {
+        Ok(cfg) => cfg,
+        Err(e) => { warn!("error parsing config: {}", e); Config {
+            listen: "127.0.0.1".to_string(),
+            port: None,
+            sensors: HashMap::new(),
+            switches: HashMap::new()
+        }}
+    };
+
+    info!("starting up... device: '{}'; port {:?}", server_name, config.port);
+
+    let app_raw = app::start()?;
+    let app_m = Arc::new(Mutex::new(app_raw));
+    let app = warp::any().map(move || app_m.clone());
+
+    let json_body =
+        warp::body::content_length_limit(1024 * 16)
+        .and(warp::body::json());
+
+    let r_greeting =
+        warp::get2()
+        .and(app.clone())
+        .and(warp::any().map(move || server_name.clone()))
+        .and(warp::path::end())
+        .map(greeting);
+
+    let r_check =
+        warp::post2()
+        .and(app.clone())
+        .and(path!("api" / "config" / "check"))
+        .and(json_body)
+        .and_then(config_checker);
+
+    let r_sensors = warp::get2()
+        .and(app.clone())
+        .and(path!("api" / "sensors" / String))
+        .and_then(read_sensor);
+
+    let api = r_greeting
+        .or(r_sensors)
+        .or(r_check)
+        .with(warp::log("restedpi"));
+
+    warp::serve(api)
+        .run(([0, 0, 0, 0],
+            match config.port { Some(p) => p, None => 3030} ));
+
+    Ok(())
+}
+
+fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(err) = err.find_cause::<Error>() {
+        let code = match err {
+            Error::Io(_) => 1001,
+            Error::InvalidPinIndex => 1004,
+            Error::InvalidPinDirection => 1008,
+            Error::I2cError(_) => 1016,
+            Error::UnsupportedUnit(_) => 1019,
+            Error::RecvError(_) => 1020,
+            Error::SendError(_) => 1024,
+        };
+        let message = err.to_string();
+
+        let json = json!({ "code": code, "message": message });
+
+        Ok(warp::reply::with_status(
+            json.to_string(),
+            StatusCode::BAD_REQUEST,
+        ))
+    } else {
+        // Could be a NOT_FOUND, or any other internal error... here we just
+        // let warp use its default rendering.
+        Err(err)
+    }
+}
 
     // let r_mcp23017_get =
     //     warp::get2()
@@ -99,43 +223,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //         .body(json!({ "temperature": temperature, "pressure": pressure }).to_string())
     // });
 
-    let sensors_route = warp::get2()
-        .and(path!("sensors" / String))
-        .map(move |index| Ok("hi"));
-
-    let routes = r_greeting.or(sensors_route);
-    //.or(r_bmp085)
-    //.or(r_mcp9808)
-    //.or(r_mcp23017_get)
-    //.or(r_mcp23017_put);
-
-    warp::serve(routes).run(([0, 0, 0, 0], 3030));
-
-    Ok(())
-}
-
-fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(err) = err.find_cause::<Error>() {
-        let code = match err {
-            Error::Io(_) => 1001,
-            Error::InvalidPinIndex => 1004,
-            Error::InvalidPinDirection => 1008,
-            Error::I2cError(_) => 1016,
-            Error::UnsupportedUnit(_) => 1019,
-            Error::RecvError(_) => 1020,
-            Error::SendError(_) => 1024,
-        };
-        let message = err.to_string();
-
-        let json = json!({ "code": code, "message": message });
-
-        Ok(warp::reply::with_status(
-            json.to_string(),
-            StatusCode::BAD_REQUEST,
-        ))
-    } else {
-        // Could be a NOT_FOUND, or any other internal error... here we just
-        // let warp use its default rendering.
-        Err(err)
-    }
-}

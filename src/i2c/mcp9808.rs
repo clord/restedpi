@@ -34,11 +34,11 @@ impl Sensor for Device {
         Ok(())
     }
 
-    fn read_sensor(&self, unit: Unit) -> Result<(f64, Unit)> {
+    fn read_sensor(&self, unit: Unit) -> Result<f64> {
         match unit {
-            DegC => {
+            Unit::DegC => {
                 let v = self.read_temp()?;
-                Ok((v as f64, Unit::DegC))
+                Ok(v as f64)
             }
             _ => Err(Error::UnsupportedUnit(unit)),
         }

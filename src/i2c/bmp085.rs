@@ -150,7 +150,6 @@ impl Device {
 
     /// Reads the raw temperature data and associated register
     fn read_raw_temp(&self) -> Result<(i32, i32)> {
-        println!("b");
         self.i2c.write(
             self.address,
             Register::Control as u8,
@@ -178,7 +177,6 @@ impl Device {
     fn read_raw_pressure(&self) -> Result<i32> {
         let pressure_cmd = Control::ReadPressure as u8;
         let sampling = self.accuracy.clone() as u8;
-        println!("a");
         self.i2c.write(
             self.address,
             Register::Control as u8,
@@ -211,15 +209,15 @@ impl Sensor for Device {
     fn reset(&self) -> Result<()> {
         Ok(())
     }
-    fn read_sensor(&self, unit: Unit) -> Result<(f64, Unit)> {
+    fn read_sensor(&self, unit: Unit) -> Result<f64> {
         match unit {
             Unit::DegC => {
                 let v = self.temperature_in_c()?;
-                Ok((v as f64, unit))
+                Ok(v as f64)
             }
             Unit::KPa => {
                 let v = self.pressure_kpa()?;
-                Ok((v as f64, unit))
+                Ok(v as f64)
             }
             _ => Err(Error::UnsupportedUnit(unit)),
         }

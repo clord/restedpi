@@ -107,15 +107,19 @@ fn next_message(
                 i2c.set_slave_address(address);
                 *current_address = Some(address);
             }
-            println!("read: {}, {}, {}", address, command, size);
+            debug!("read: {}, {}, {}", address, command, size);
             let mut vec = Vec::new();
             vec.resize(size, 0u8);
             match i2c.block_read(command, &mut vec) {
                 Ok(()) => {
-                    response.send(Ok(vec));
+                    match response.send(Ok(vec)) {
+                        Ok(()) => (), Err(e) => error!("Failed to send response: {:?}", e)
+                    }
                 }
                 Err(e) => {
-                    response.send(Err(crate::i2c::error::Error::I2cError(e)));
+                    match response.send(Err(crate::i2c::error::Error::I2cError(e))) {
+                        Ok(()) => (), Err(e) => error!("Failed to send response: {:?}", e)
+                    }
                 }
             };
         }
@@ -130,12 +134,14 @@ pub fn start() -> I2cBus {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },
+        Err(UnknownModel) => {
+            error!("Unsupported Raspberry PI; I2C bus not available");
+        }
         Err(err) => {
-            println!("ERROR: The I2C bus connected to pins 3 and 5 is disabled by default.");
-            println!("       You can enable it through `sudo raspi-config`, or by manually adding `dtparam=i2c_arm=on` to `/boot/config.txt`. ");
-            println!("       Remember to reboot the Raspberry Pi afterwards.");
-            println!("Error: {} ", err);
-            panic!("Aborting")
+            error!("There was a problem connecting to the I2C bus: {:?}", err);
+            info!("The I2C bus connected to pins 3 and 5 is disabled by default");
+            info!("Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`");
+            info!("(Remember to reboot the Raspberry Pi afterwards)");
         }
     });
     I2cBus { sender }
