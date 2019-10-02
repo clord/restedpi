@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let port = match config.port { Some(p) => p, None => 3030} ;
 
-    info!("starting up... device: '{}'; port {:?}", server_name, port);
+    info!("starting up... device: '{}'; port {}", server_name, port);
 
     let app_raw = app::start()?;
     let app_m = Arc::new(Mutex::new(app_raw));
