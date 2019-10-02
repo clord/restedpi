@@ -219,7 +219,6 @@ impl Sensor for Device {
                 let v = self.pressure_kpa()?;
                 Ok(v as f64)
             }
-            _ => Err(Error::UnsupportedUnit(unit)),
         }
     }
 }

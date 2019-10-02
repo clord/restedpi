@@ -8,9 +8,7 @@ use crate::i2c::{
 };
 use chrono::prelude::*;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
@@ -57,18 +55,18 @@ impl State {
             Action::Time(t) => {
                 // TODO: If time satisfies certain constraints, do things
                 self.dt = Local::now();
-            },
+            }
             Action::SwitchSet(name, pin, value) => {
                 if let Some(m) = self.switches.get_mut(&name) {
-                    m.write_switch(pin, value);
+                    m.write_switch(pin, value).expect("send write switch");
                 }
-            },
+            }
             Action::ReadSensor(name, unit, resp) => {
                 if let Some(m) = self.sensors.get(&name) {
                     let result = m.read_sensor(unit);
-                    resp.send(result);
+                    resp.send(result).expect("send read sensor");
                 }
-            },
+            }
             Action::SwitchToggle(name, pin) => {
                 if let Some(m) = self.switches.get_mut(&name) {
                     match m.read_switch(pin) {
@@ -100,30 +98,31 @@ pub struct AppState {
 
 impl AppState {
     pub fn set_switch(&self, name: String, pin: usize, value: bool) {
-        self.action_sender.send(Action::SwitchSet(name, pin, value));
+        self.action_sender.send(Action::SwitchSet(name, pin, value)).expect("send set");
     }
 
     pub fn read_sensor(&self, name: String, unit: Unit) -> Result<f64> {
         let (response, port) = channel();
-        self.action_sender.send(Action::ReadSensor(name, unit, response));
+        self.action_sender
+            .send(Action::ReadSensor(name, unit, response)).expect("send read");
         port.recv()?
     }
 
     pub fn set_toggle(&self, name: String, pin: usize) {
-        self.action_sender.send(Action::SwitchToggle(name, pin));
+        self.action_sender.send(Action::SwitchToggle(name, pin)).expect("send add");
     }
 
     pub fn add_bmp085(&self, name: String, address: Address, res: bmp085::SamplingMode) {
         self.action_sender
-            .send(Action::AddBmp085(name, address, res));
+            .send(Action::AddBmp085(name, address, res)).expect("send add");
     }
 
     pub fn add_mcp9808(&self, name: String, address: Address) {
-        self.action_sender.send(Action::AddMcp9808(name, address));
+        self.action_sender.send(Action::AddMcp9808(name, address)).expect("send add");
     }
 
     pub fn add_mcp23017(&self, name: String, address: Address) {
-        self.action_sender.send(Action::AddMcp23017(name, address));
+        self.action_sender.send(Action::AddMcp23017(name, address)).expect("send add");
     }
 }
 
@@ -160,7 +159,7 @@ pub fn start() -> Result<AppState> {
 
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(10));
-        thread_sender.send(Action::Time(Local::now()));
+        thread_sender.send(Action::Time(Local::now())).expect("send");
     });
 
     Ok(AppState { action_sender })

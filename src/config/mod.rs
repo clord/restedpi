@@ -1,5 +1,8 @@
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
+
+pub mod eval;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Unit {
@@ -50,8 +53,7 @@ pub enum Value {
     Linear(Box<Value>, Box<Value>, Box<Value>),
 
     // y = 1/x, x != 0
-    Inverse(Box<Value>)
-
+    Inverse(Box<Value>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -76,7 +78,7 @@ pub enum SensorType {
 pub struct SwitchPin {
     pub direction: String,
     pub active_low: bool,
-    pub schedule: Option<BoolExpr>,
+    pub schedule: Option<BoolExpr>, // TODO: String, then parse
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -101,4 +103,20 @@ pub struct Config {
     pub port: Option<u16>,
     pub sensors: HashMap<String, Sensor>,
     pub switches: HashMap<String, Switch>,
+}
+
+pub enum ParseUnitError {
+    NotKnown,
+}
+
+impl FromStr for Unit {
+    type Err = ParseUnitError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "degc" => Ok(Unit::DegC),
+            "kpa" => Ok(Unit::KPa),
+            _ => Err(ParseUnitError::NotKnown),
+        }
+    }
 }

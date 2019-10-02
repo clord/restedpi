@@ -8,7 +8,6 @@ pub mod util;
 use crate::config::Unit;
 use std::result;
 
-
 #[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]
 pub enum Pullup {
     On,

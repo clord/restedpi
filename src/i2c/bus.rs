@@ -85,16 +85,25 @@ fn next_message(
             parameters,
         } => {
             if *current_address != Some(address) {
-                i2c.set_slave_address(address);
-                *current_address = Some(address);
-            }
+                match i2c.set_slave_address(address) {
+                    Ok(()) => *current_address = Some(address),
+                    Err(e) => error!("Failed to switch address: {}", e)
+                };
+            };
+            debug!("i2c write: {}, {}, {:?}", address, command, parameters);
             let _result = i2c.block_write(command, &parameters);
-            response.send(Ok(()));
+            match response.send(Ok(())) {
+                Ok(()) => (),
+                Err(e) => error!("Failed to respond in write: {}", e)
+            };
         }
 
         I2cMessage::Delay { duration, response } => {
             thread::sleep(duration);
-            response.send(Ok(()));
+            match response.send(Ok(())) {
+                Ok(()) => (),
+                Err(e) => error!("Failed to respond in delay: {}", e)
+            };
         }
 
         I2cMessage::Read {
@@ -104,23 +113,23 @@ fn next_message(
             response,
         } => {
             if *current_address != Some(address) {
-                i2c.set_slave_address(address);
-                *current_address = Some(address);
+                match i2c.set_slave_address(address) {
+                    Ok(()) => *current_address = Some(address),
+                    Err(e) => error!("Failed to switch address: {}", e)
+                };
             }
-            debug!("read: {}, {}, {}", address, command, size);
+            debug!("i2c read: {}, {}, {}", address, command, size);
             let mut vec = Vec::new();
             vec.resize(size, 0u8);
             match i2c.block_read(command, &mut vec) {
-                Ok(()) => {
-                    match response.send(Ok(vec)) {
-                        Ok(()) => (), Err(e) => error!("Failed to send response: {:?}", e)
-                    }
-                }
-                Err(e) => {
-                    match response.send(Err(crate::i2c::error::Error::I2cError(e))) {
-                        Ok(()) => (), Err(e) => error!("Failed to send response: {:?}", e)
-                    }
-                }
+                Ok(()) => match response.send(Ok(vec)) {
+                    Ok(()) => (),
+                    Err(e) => error!("Failed to send response: {:?}", e),
+                },
+                Err(e) => match response.send(Err(crate::i2c::error::Error::I2cError(e))) {
+                    Ok(()) => (),
+                    Err(e) => error!("Failed to send response: {:?}", e),
+                },
             };
         }
     };
@@ -134,7 +143,7 @@ pub fn start() -> I2cBus {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },
-        Err(UnknownModel) => {
+        Err(rppal::i2c::Error::UnknownModel) => {
             error!("Unsupported Raspberry PI; I2C bus not available");
         }
         Err(err) => {
