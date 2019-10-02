@@ -79,7 +79,7 @@ impl Coefficients {
     }
 }
 
-/// Represent access to a BMP085 device at 0x77
+/// Represent access to a BMP085 device at some address
 #[derive(Clone, Debug)]
 pub struct Device {
     address: Address,
@@ -89,6 +89,7 @@ pub struct Device {
 }
 
 impl Device {
+
     /// Construct a device with a given sampling mode on a given bus
     pub fn new(address: Address, i2c: I2cBus, accuracy: SamplingMode) -> Result<Self> {
         let coefficients = Coefficients::new(address, &i2c)?;
@@ -100,12 +101,14 @@ impl Device {
         };
         Ok(device)
     }
+    
 
     /// Read temperature in degrees c
     pub fn temperature_in_c(&self) -> Result<f32> {
         let (t, _) = self.read_raw_temp()?;
         Ok((t as f32) * 0.1)
     }
+
 
     /// Read air pressure in kPa
     pub fn pressure_kpa(&self) -> Result<f32> {
@@ -147,6 +150,7 @@ impl Device {
 
         Ok((((p) + ((x1 + x2 + 3791) >> 4)) as u32) as f32 / 1000f32)
     }
+    
 
     /// Reads the raw temperature data and associated register
     fn read_raw_temp(&self) -> Result<(i32, i32)> {
@@ -172,6 +176,7 @@ impl Device {
 
         Ok((t, b5))
     }
+
 
     /// Reads the raw pressure data
     fn read_raw_pressure(&self) -> Result<i32> {
@@ -204,6 +209,7 @@ impl Device {
         Ok(up)
     }
 }
+
 
 impl Sensor for Device {
     fn reset(&self) -> Result<()> {

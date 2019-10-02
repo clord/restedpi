@@ -52,6 +52,11 @@ fn read_sensor(
     }
 }
 
+
+/// big picture: 
+/// read configuration and decide what sensors and switches are available. start up application, then 
+/// start running state machine. finally, present a rest api to the outside world to interact with the 
+/// application.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var_os("RUST_LOG").is_none() {
         // Set `RUST_LOG=restedpi_rust=debug` to see debug logs,
@@ -88,8 +93,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     info!(
-        "starting up... device: '{}'; port {:?}",
-        server_name, config.port
+        "starting up... device: '{}'; port {}",
+        server_name, port
     );
 
     let app_raw = app::start()?;
@@ -123,15 +128,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     warp::serve(api).run((
         [0, 0, 0, 0],
-        match config.port {
-            Some(p) => p,
-            None => 3030,
-        },
+        port
     ));
 
     Ok(())
 }
 
+/// Produce a json-compatible error report
 fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {

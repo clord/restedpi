@@ -126,11 +126,12 @@ impl AppState {
     }
 }
 
-/// Start the app
+/// Start the main app thread
 pub fn start() -> Result<AppState> {
     let (action_sender, action_receiver) = channel();
     let thread_sender = action_sender.clone();
 
+    // this thread is responsible for running the main state machine
     thread::spawn(move || {
         let i2c = bus::start();
         let switches = HashMap::new();
@@ -141,22 +142,13 @@ pub fn start() -> Result<AppState> {
             switches,
             i2c,
         };
-        // let d1 =  mcp9808::Device::new(0x18u16, bus.clone())?;
-        // sensors.insert(String::from("sensor1"), Rc::new(d1) );
-        // let d2 =  mcp9808::Device::new(0x19u16, bus.clone())?;
-        // sensors.insert(String::from("sensor2"), Rc::new(d2) );
-        // let d3 =  mcp9808::Device::new(0x1au16, bus.clone())?;
-        // sensors.insert(String::from("sensor3"), Rc::new(d3) );
-        // let d4 =  bmp085::Device::new(0x77u16, bus.clone(), bmp085::SamplingMode::HighRes)?;
-        // sensors.insert(String::from("sensor4"), Rc::new(d4) );
-        // let d5 =  mcp23017::Device::new(0x20u16, bus.clone())?;
-        // switches.insert(String::from("switchbank"), Rc::new(d5) );
 
         for action in action_receiver {
             state.step(action);
         }
     });
 
+    // start a thread that sends events based on time
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(10));
         thread_sender.send(Action::Time(Local::now())).expect("send");
