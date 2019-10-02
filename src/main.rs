@@ -33,6 +33,7 @@ fn greeting(app: SharedAppState, server_name: String) -> impl warp::Reply {
     warp::reply::json(&reply)
 }
 
+
 // GET /config/checker
 fn config_checker(app: SharedAppState, config : config::Config) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("config evaluate: {:?}", config);
@@ -40,12 +41,14 @@ fn config_checker(app: SharedAppState, config : config::Config) -> Result<impl w
     Ok(warp::reply::json(&reply))
 }
 
+
 // GET /sensor/:name
 fn read_sensor(app: SharedAppState, sensor: String) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("sensor evaluate: {}",  sensor);
     let reply : i32 = 0;
     Ok(warp::reply::json(&reply))
 }
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var_os("RUST_LOG").is_none() {
@@ -76,8 +79,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             switches: HashMap::new()
         }}
     };
+    
+    let port = match config.port { Some(p) => p, None => 3030} ;
 
-    info!("starting up... device: '{}'; port {:?}", server_name, config.port);
+    info!("starting up... device: '{}'; port {:?}", server_name, port);
 
     let app_raw = app::start()?;
     let app_m = Arc::new(Mutex::new(app_raw));
@@ -112,12 +117,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(warp::log("restedpi"));
 
     warp::serve(api)
-        .run(([0, 0, 0, 0],
-            match config.port { Some(p) => p, None => 3030} ));
+        .run(([0, 0, 0, 0], port));
 
     Ok(())
 }
 
+/// Produce a json-compatible error report
 fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {
