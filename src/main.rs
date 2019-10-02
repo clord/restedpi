@@ -50,6 +50,10 @@ fn read_sensor(app: SharedAppState, sensor: String) -> Result<impl warp::Reply, 
 }
 
 
+/// big picture: 
+/// read configuration and decide what sensors and switches are available. start up application, then 
+/// start running state machine. finally, present a rest api to the outside world to interact with the 
+/// application.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var_os("RUST_LOG").is_none() {
         // Set `RUST_LOG=restedpi=debug` to see debug logs,
@@ -80,8 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }}
     };
     
-    let port = match config.port { Some(p) => p, None => 3030} ;
-
+    let port = match config.port { Some(p) => p, None => 3030};
     info!("starting up... device: '{}'; port {}", server_name, port);
 
     let app_raw = app::start()?;
