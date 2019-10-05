@@ -5,8 +5,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate warp;
 
-use crate::config::Unit;
 use crate::config::Config;
+use crate::config::Unit;
 use i2c::error::Error;
 use rppal::system::DeviceInfo;
 use serde_json::{from_str, json};
@@ -29,13 +29,25 @@ fn greeting(app: SharedAppState, server_name: String) -> impl warp::Reply {
     warp::reply::json(&reply)
 }
 
-// POST /api/debug/eval
+// POST /api/debug/eval_bool
 fn evaulate_bool_expr(
     app: SharedAppState,
     expr: config::BoolExpr,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    debug!("config evaluate: {:?}", expr);
-    let reply: bool = config::eval::evaluate(expr);
+    debug!("boolean evaluate: {:?}", expr);
+    let app_l = app.lock().expect("failure");
+    let reply = config::eval::evaluate_bool(&app_l, &expr);
+    Ok(warp::reply::json(&reply))
+}
+
+// POST /api/debug/eval_value
+fn evaulate_value_expr(
+    app: SharedAppState,
+    expr: config::Value,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("value evaluate: {:?}", expr);
+    let app_l = app.lock().expect("failure");
+    let reply = config::eval::evaluate_value(&app_l, &expr);
     Ok(warp::reply::json(&reply))
 }
 
@@ -46,16 +58,16 @@ fn read_sensor(
     unit: Unit,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("sensor evaluate: {}", sensor);
-    match app.lock().expect("failure").read_sensor(sensor, unit) {
+    let app_l = app.lock().expect("failure");
+    match app_l.read_sensor(sensor, unit) {
         Ok(reply) => Ok(warp::reply::json(&reply)),
-        Err(_e) => Err(warp::reject::not_found())
+        Err(_e) => Err(warp::reject::not_found()),
     }
 }
 
-
-/// big picture: 
-/// read configuration and decide what sensors and switches are available. start up application, then 
-/// start running state machine. finally, present a rest api to the outside world to interact with the 
+/// big picture:
+/// read configuration and decide what sensors and switches are available. start up application, then
+/// start running state machine. finally, present a rest api to the outside world to interact with the
 /// application.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var_os("RUST_LOG").is_none() {
@@ -92,16 +104,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    info!(
-        "starting up... device: '{}'; port {}",
-        server_name, port
-    );
+    let port = config.port.unwrap_or(3030);
+
+    info!("starting up... device: '{}'; port {}", server_name, port);
 
     let app_raw = app::start()?;
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
 
-    let json_body = warp::body::content_length_limit(1024 * 16).and(warp::body::json());
+    const LIMIT: u64 = 1024 * 16;
 
     let r_greeting = warp::get2()
         .and(app.clone())
@@ -109,11 +120,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path::end())
         .map(greeting);
 
-    let r_eval = warp::post2()
+    let r_eval_bool = warp::post2()
         .and(app.clone())
-        .and(path!("api" / "debug" / "eval"))
-        .and(json_body)
+        .and(path!("api" / "debug" / "eval_bool"))
+        .and(warp::body::content_length_limit(LIMIT))
+        .and(warp::body::json())
         .and_then(evaulate_bool_expr);
+
+    let r_eval_value = warp::post2()
+        .and(app.clone())
+        .and(path!("api" / "debug" / "eval_value"))
+        .and(warp::body::content_length_limit(LIMIT))
+        .and(warp::body::json())
+        .and_then(evaulate_value_expr);
 
     let r_sensors = warp::get2()
         .and(app.clone())
@@ -121,15 +140,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(read_sensor);
 
     let api = r_greeting
+        .or(r_eval_bool)
         .or(r_sensors)
-        .or(r_eval)
-        .recover(customize_error)
-        .with(warp::log("restedpi"));
+        .or(r_eval_value)
+        .with(warp::log("restedpi"))
+        .recover(customize_error);
 
-    warp::serve(api).run((
-        [0, 0, 0, 0],
-        port
-    ));
+    warp::serve(api).run(([0, 0, 0, 0], port));
 
     Ok(())
 }
@@ -142,8 +159,10 @@ fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::InvalidPinIndex => 1004,
             Error::InvalidPinDirection => 1008,
             Error::I2cError(_) => 1016,
+            Error::NonExistant(_) => 1017,
             Error::UnsupportedUnit(_) => 1019,
             Error::RecvError(_) => 1020,
+            Error::AppSendError(_) => 1023,
             Error::SendError(_) => 1024,
         };
         let message = err.to_string();
@@ -155,8 +174,6 @@ fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
             StatusCode::BAD_REQUEST,
         ))
     } else {
-        // Could be a NOT_FOUND, or any other internal error... here we just
-        // let warp use its default rendering.
         Err(err)
     }
 }

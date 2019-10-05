@@ -87,14 +87,14 @@ fn next_message(
             if *current_address != Some(address) {
                 match i2c.set_slave_address(address) {
                     Ok(()) => *current_address = Some(address),
-                    Err(e) => error!("Failed to switch address: {}", e)
+                    Err(e) => error!("Failed to switch address: {}", e),
                 };
             };
             debug!("i2c write: {}, {}, {:?}", address, command, parameters);
             let _result = i2c.block_write(command, &parameters);
             match response.send(Ok(())) {
                 Ok(()) => (),
-                Err(e) => error!("Failed to respond in write: {}", e)
+                Err(e) => error!("Failed to respond in write: {}", e),
             };
         }
 
@@ -102,7 +102,7 @@ fn next_message(
             thread::sleep(duration);
             match response.send(Ok(())) {
                 Ok(()) => (),
-                Err(e) => error!("Failed to respond in delay: {}", e)
+                Err(e) => error!("Failed to respond in delay: {}", e),
             };
         }
 
@@ -115,7 +115,7 @@ fn next_message(
             if *current_address != Some(address) {
                 match i2c.set_slave_address(address) {
                     Ok(()) => *current_address = Some(address),
-                    Err(e) => error!("Failed to switch address: {}", e)
+                    Err(e) => error!("Failed to switch address: {}", e),
                 };
             }
             debug!("i2c read: {}, {}, {}", address, command, size);

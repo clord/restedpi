@@ -10,10 +10,12 @@ pub enum Error {
     Io(io::Error),
     InvalidPinDirection,
     InvalidPinIndex,
+    NonExistant(String),
     UnsupportedUnit(Unit),
     I2cError(i2c::Error),
     RecvError(mpsc::RecvError),
     SendError(mpsc::SendError<crate::i2c::bus::I2cMessage>),
+    AppSendError(mpsc::SendError<crate::app::Action>),
 }
 
 impl fmt::Display for Error {
@@ -21,11 +23,13 @@ impl fmt::Display for Error {
         match *self {
             Error::Io(ref err) => write!(f, "I/O error: {}", err),
             Error::InvalidPinDirection => write!(f, "Can't set pin to direction"),
+            Error::NonExistant(ref name) => write!(f, "Device '{}' does not exist", name),
             Error::InvalidPinIndex => write!(f, "Pin index is invalid for device"),
             Error::UnsupportedUnit(ref unit) => {
                 write!(f, "Device does not support unit {:#?}", unit)
             }
             Error::I2cError(ref err) => write!(f, "I2C Error: {}", err),
+            Error::AppSendError(ref err) => write!(f, "App Send Error: {}", err),
             Error::RecvError(ref err) => write!(f, "Recv Error: {}", err),
             Error::SendError(ref err) => write!(f, "Send Error: {}", err),
         }
@@ -37,6 +41,12 @@ impl error::Error for Error {}
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::Io(err)
+    }
+}
+
+impl From<std::sync::mpsc::SendError<crate::app::Action>> for Error {
+    fn from(err: mpsc::SendError<crate::app::Action>) -> Error {
+        Error::AppSendError(err)
     }
 }
 

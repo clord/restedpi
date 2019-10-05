@@ -3,19 +3,20 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 pub mod eval;
+pub mod sched;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum Unit {
     DegC,
     KPa,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum SwitchType {
     MCP23017,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum SunPosition {
     Set,
     High,
@@ -27,17 +28,32 @@ pub enum Value {
     // Some constant
     Const(f64),
 
-    // ratio 0..1 of daylight hours passed by today
-    DaylightProgress,
-
     // angle of the sun (declination at noon, in radians)
-    NoonSunDeclinationAngle,
+    NoonSunDeclinationAngle { doy: Box<Value> },
 
-    // How many hours of daylight are in this day
-    HoursOfDaylight,
+    // hour-angle of sun at sunrise at a given lat and doy
+    HourAngleSunrise { lat: Box<Value>, doy: Box<Value> },
 
-    // Hour of day since midnight of this day
+    // How many hours of daylight are in day-of-year at latitude
+    HoursOfDaylight { lat: Box<Value>, doy: Box<Value> },
+
+    // hour of day since midnight of this day
     HourOfDay,
+
+    // Day of year, with fractional
+    DayOfYear,
+
+    // Mon=1, ..., Sun=7
+    WeekDayFromMonday,
+
+    // 2018, 2019...
+    Year,
+
+    // 1=Jan, 2=Feb
+    MonthOfYear,
+
+    // 1, 2, ... 30, 31
+    DayOfMonth,
 
     // Current value of a named sensor
     Sensor(String, Unit),
@@ -52,8 +68,18 @@ pub enum Value {
     //           A           x           b
     Linear(Box<Value>, Box<Value>, Box<Value>),
 
+    // y = x + y
+    Add(Box<Value>, Box<Value>),
+    // y = x - y
+    Sub(Box<Value>, Box<Value>),
+    // y = x * y
+    Mul(Box<Value>, Box<Value>),
+
     // y = 1/x, x != 0
     Inverse(Box<Value>),
+
+    // remove any floating point values (round-to-zero)
+    Trunc(Box<Value>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
