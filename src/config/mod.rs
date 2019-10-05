@@ -6,14 +6,17 @@ pub mod eval;
 pub mod sched;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
-pub enum Unit {
-    DegC,
-    KPa,
+pub enum SamplingMode {
+    UltraLowPower,
+    Standard,
+    HighRes,
+    UltraHighRes,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
-pub enum SwitchType {
-    MCP23017,
+pub enum Unit {
+    DegC,
+    KPa,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -23,7 +26,7 @@ pub enum SunPosition {
 }
 
 /// A source of f64 values, usable in expressions
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Value {
     // Some constant
     Const(f64),
@@ -82,7 +85,7 @@ pub enum Value {
     Trunc(Box<Value>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum BoolExpr {
     Equal(Value, Value),
     EqualPlusOrMinus(Value, Value, Value),
@@ -96,39 +99,44 @@ pub enum BoolExpr {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum SensorType {
-    MCP9808,
-    BMP085,
+    MCP9808 { address: u16 },
+    BMP085 { address: u16, mode: SamplingMode },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SwitchPin {
     pub direction: String,
     pub active_low: bool,
-    pub schedule: Option<BoolExpr>, // TODO: String, then parse
+    pub schedule: Option<BoolExpr>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum SwitchType {
+    MCP23017 {
+        address: u16,
+        bank0: HashMap<usize, SwitchPin>,
+        bank1: HashMap<usize, SwitchPin>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Switch {
-    pub device: SwitchType,
     pub description: String,
-    pub address: u16,
-    pub pins: HashMap<String, SwitchPin>,
+    pub device: SwitchType,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
     pub description: String,
     pub device: SensorType,
-    pub mode: Option<String>,
-    pub address: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub listen: String,
+    pub listen: Option<String>,
     pub port: Option<u16>,
-    pub sensors: HashMap<String, Sensor>,
-    pub switches: HashMap<String, Switch>,
+    pub sensors: Option<HashMap<String, Sensor>>,
+    pub switches: Option<HashMap<String, Switch>>,
 }
 
 pub enum ParseUnitError {

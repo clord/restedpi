@@ -7,12 +7,13 @@ extern crate warp;
 
 use crate::config::Config;
 use crate::config::Unit;
-use i2c::error::Error;
+use i2c::{bmp085, error::Error, mcp23017::Bank, mcp23017::Pin};
 use rppal::system::DeviceInfo;
 use serde_json::{from_str, json};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
 use warp::{http::StatusCode, path, Filter, Rejection, Reply};
 
@@ -29,6 +30,15 @@ fn greeting(app: SharedAppState, server_name: String) -> impl warp::Reply {
     warp::reply::json(&reply)
 }
 
+// POST /api/debug/check_config
+fn evaluate_config_check(
+    app: SharedAppState,
+    expr: config::Config,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("config: {:?}", expr);
+    let app_l = app.lock().expect("failure");
+    Ok(warp::reply::json(&expr))
+}
 // POST /api/debug/eval_bool
 fn evaulate_bool_expr(
     app: SharedAppState,
@@ -96,22 +106,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             warn!("error parsing config: {}", e);
             Config {
-                listen: "127.0.0.1".to_string(),
+                listen: None,
                 port: None,
-                sensors: HashMap::new(),
-                switches: HashMap::new(),
+                sensors: None,
+                switches: None,
             }
         }
     };
 
+    let listen = config.listen.unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
+    let sensor_config = config.sensors.unwrap_or(HashMap::new());
+    let switch_config = config.switches.unwrap_or(HashMap::new());
 
-    info!("starting up... device: '{}'; port {}", server_name, port);
+    let app_raw = app::start(sensor_config, switch_config)?;
 
-    let app_raw = app::start()?;
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
 
+    // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
 
     let r_greeting = warp::get2()
@@ -119,6 +132,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::any().map(move || server_name.clone()))
         .and(warp::path::end())
         .map(greeting);
+
+    let r_config_check = warp::post2()
+        .and(app.clone())
+        .and(path!("api" / "debug" / "config_check"))
+        .and(warp::body::content_length_limit(LIMIT))
+        .and(warp::body::json())
+        .and_then(evaluate_config_check);
 
     let r_eval_bool = warp::post2()
         .and(app.clone())
@@ -140,13 +160,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(read_sensor);
 
     let api = r_greeting
-        .or(r_eval_bool)
         .or(r_sensors)
+        .or(r_config_check)
+        .or(r_eval_bool)
         .or(r_eval_value)
         .with(warp::log("restedpi"))
         .recover(customize_error);
 
-    warp::serve(api).run(([0, 0, 0, 0], port));
+    let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
+
+    info!("RestedPi listening: http://{}", addr);
+    warp::serve(api).run(addr);
 
     Ok(())
 }
@@ -177,82 +201,3 @@ fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
         Err(err)
     }
 }
-
-// let r_mcp23017_get =
-//     warp::get2()
-//         .and(path!("mcp23017" / String / usize))
-//         .map(move |banknum, pinnum| {
-//             let bank = if banknum == "B" {
-//                 mcp23017::Bank::B
-//             } else {
-//                 mcp23017::Bank::A
-//             };
-
-//             let pin = match mcp23017::ordinal_pin(pinnum) {
-//                 Some(pin) => pin,
-//                 None => mcp23017::Pin::Pin0,
-//             };
-
-//             let mut data = d_mcp23017_1.lock().unwrap();
-
-//             let value = data.get_pin(bank, pin).expect("problem getting pin");
-
-//             Response::builder()
-//                 .header("content-type", "application/json")
-//                 .body(json!({ "value": value }).to_string())
-//         });
-
-// let r_mcp23017_put = warp::put2()
-//     .and(path!("mcp23017" / String / usize / bool))
-//     .map(move |banknum, pinnum, value| {
-//         let bank = if banknum == "B" {
-//             mcp23017::Bank::B
-//         } else {
-//             mcp23017::Bank::A
-//         };
-//         let pin = match mcp23017::ordinal_pin(pinnum) {
-//             Some(pin) => pin,
-//             None => mcp23017::Pin::Pin0,
-//         };
-
-//         let mut data = d_mcp23017_2.lock().unwrap();
-
-//         data.set_pin(bank, pin, value).expect("problem setting pin");
-
-//         Response::builder()
-//             .header("content-type", "application/json")
-//             .body(json!({ "value": value }).to_string())
-//     });
-
-// let r_mcp9808 = warp::get2()
-//     .and(path!("mcp9808" / usize))
-//     .map(move |index| {
-//         let device_mx = match index {
-//             0 => Arc::clone(&d_mcp9808_0),
-//             1 => Arc::clone(&d_mcp9808_1),
-//             2 => Arc::clone(&d_mcp9808_2),
-//             _ => panic!("bad index"),
-//         };
-
-//         let device = device_mx.lock().unwrap();
-
-//         let temperature: f32 = device.read_temp().expect("failed to read temperature");
-
-//         Response::builder()
-//             .header("content-type", "application/json")
-//             .body(json!({ "temperature": temperature }).to_string())
-//     });
-
-// let r_bmp085 = warp::get2().and(path!("bmp085" / usize)).map(move |index| {
-//     if index != 0 {
-//         panic!("bad index")
-//     }
-//     let device = d_bmp085.lock().unwrap();
-//     let pressure: f32 = device.pressure_kpa().expect("failed to read pressure");
-//     let temperature: f32 = device
-//         .temperature_in_c()
-//         .expect("failed to read temperature");
-//     Response::builder()
-//         .header("content-type", "application/json")
-//         .body(json!({ "temperature": temperature, "pressure": pressure }).to_string())
-// });

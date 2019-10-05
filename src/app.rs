@@ -1,11 +1,15 @@
 extern crate chrono;
 
+use crate::config;
+use crate::config::Config;
 use crate::config::Unit;
-use crate::i2c::{bmp085, mcp23017, mcp9808, Result, Sensor, Switch};
 use crate::i2c::{
-    bus,
-    error::Error,
+    bmp085, bus,
     bus::{Address, I2cBus},
+    error::Error,
+    mcp23017,
+    mcp23017::{Bank, Pin},
+    mcp9808, Result, Sensor, Switch,
 };
 use chrono::prelude::*;
 use std::collections::HashMap;
@@ -22,6 +26,19 @@ struct State {
 }
 
 impl State {
+    pub fn create_mcp23017(&mut self, a: Address) -> Result<mcp23017::Device> {
+        mcp23017::Device::new(a, self.i2c.clone())
+    }
+    pub fn create_bmp085(
+        &mut self,
+        a: Address,
+        mode: bmp085::SamplingMode,
+    ) -> Result<bmp085::Device> {
+        bmp085::Device::new(a, self.i2c.clone(), mode)
+    }
+    pub fn create_mcp9808(&mut self, a: Address) -> Result<mcp9808::Device> {
+        mcp9808::Device::new(a, self.i2c.clone())
+    }
 
     pub fn add_sensor(&mut self, name: String, sensor: Box<dyn Sensor>) {
         self.sensors.insert(name, sensor);
@@ -31,42 +48,29 @@ impl State {
         self.switches.insert(name, switch);
     }
 
+    pub fn reset(&mut self) {
+        {
+            for v in self.sensors.values_mut() {
+                v.reset().expect("reset");
+            }
+        }
+        {
+            for v in self.switches.values_mut() {
+                v.reset().expect("reset");
+            }
+        }
+        self.dt = Local::now();
+    }
+
     pub fn step(&mut self, action: Action) {
         match action {
-
-            Action::Reset => {
-                {
-                    for v in self.sensors.values_mut() {
-                        v.reset().expect("reset");
-                    }
-                }
-                for v in self.switches.values_mut() {
-                    v.reset().expect("reset");
-                }
-                self.dt = Local::now();
-            }
-
-            Action::AddBmp085(n, a, res) => match bmp085::Device::new(a, self.i2c.clone(), res) {
-                Ok(d) => self.add_sensor(n, Box::new(d)),
-                Err(_) => error!("Failed to add {} named {} at {}", "BMP085", n, a),
-            },
-
-            Action::AddMcp9808(n, a) => match mcp9808::Device::new(a, self.i2c.clone()) {
-                Ok(d) => self.add_sensor(n, Box::new(d)),
-                Err(_) => error!("Failed to add {} named {} at {}", "MCP9808", n, a),
-            },
-
-            Action::AddMcp23017(n, a) => match mcp23017::Device::new(a, self.i2c.clone()) {
-                Ok(d) => self.add_switch(n, Box::new(d)),
-                Err(_) => error!("Failed to add {} named {} at {}", "MCP23017", n, a),
-            },
+            Action::Reset => self.reset(),
 
             Action::SetTime(t) => {
                 self.dt = t;
             }
 
-            Action::CurrentTime(sender) =>
-                sender.send(self.dt).expect("send datetime"),
+            Action::CurrentTime(sender) => sender.send(self.dt).expect("send datetime"),
 
             Action::SwitchSet(name, pin, value) => {
                 if let Some(m) = self.switches.get_mut(&name) {
@@ -78,9 +82,9 @@ impl State {
                 if let Some(m) = self.sensors.get(&name) {
                     let result = m.read_sensor(unit);
                     resp.send(result).expect("send read sensor");
-                }
-                else {
-                    resp.send(Err(Error::NonExistant(name))).expect("non-existant send");
+                } else {
+                    resp.send(Err(Error::NonExistant(name)))
+                        .expect("non-existant send");
                 }
             }
 
@@ -104,9 +108,6 @@ pub enum Action {
     SetTime(DateTime<Local>),
     SwitchSet(String, usize, bool),
     SwitchToggle(String, usize),
-    AddMcp9808(String, Address),
-    AddMcp23017(String, Address),
-    AddBmp085(String, Address, bmp085::SamplingMode),
 }
 
 #[derive(Clone)]
@@ -142,28 +143,13 @@ impl AppState {
             .send(Action::SwitchToggle(name, pin))
             .expect("send add");
     }
-
-    pub fn add_bmp085(&self, name: String, address: Address, res: bmp085::SamplingMode) {
-        self.action_sender
-            .send(Action::AddBmp085(name, address, res))
-            .expect("send add");
-    }
-
-    pub fn add_mcp9808(&self, name: String, address: Address) {
-        self.action_sender
-            .send(Action::AddMcp9808(name, address))
-            .expect("send add");
-    }
-
-    pub fn add_mcp23017(&self, name: String, address: Address) {
-        self.action_sender
-            .send(Action::AddMcp23017(name, address))
-            .expect("send add");
-    }
 }
 
 /// Start the main app thread
-pub fn start() -> Result<AppState> {
+pub fn start(
+    sensor_config: HashMap<String, config::Sensor>,
+    switch_config: HashMap<String, config::Switch>,
+) -> Result<AppState> {
     let (action_sender, action_receiver) = channel();
     let thread_sender = action_sender.clone();
 
@@ -179,6 +165,75 @@ pub fn start() -> Result<AppState> {
             i2c,
         };
 
+        for (name, config) in sensor_config.iter() {
+            match config.device {
+                config::SensorType::BMP085 { address, mode } => {
+                    let trans_mode = match mode {
+                        config::SamplingMode::UltraLowPower => bmp085::SamplingMode::UltraLowPower,
+                        config::SamplingMode::Standard => bmp085::SamplingMode::Standard,
+                        config::SamplingMode::HighRes => bmp085::SamplingMode::HighRes,
+                        config::SamplingMode::UltraHighRes => bmp085::SamplingMode::UltraHighRes,
+                    };
+                    info!(
+                        "Adding BMP085 sensor named '{}' at i2c address {}",
+                        name, address
+                    );
+                    match state.create_bmp085(address, trans_mode) {
+                        Ok(dev) => state.add_sensor(name.to_string(), Box::new(dev)),
+                        Err(e) => error!("error adding bmp085: {}", e),
+                    };
+                }
+                config::SensorType::MCP9808 { address } => {
+                    info!(
+                        "Adding MCP9808 sensor named '{}' at i2c address {}",
+                        name, address
+                    );
+                    match state.create_mcp9808(address) {
+                        Ok(dev) => state.add_sensor(name.to_string(), Box::new(dev)),
+                        Err(e) => error!("error adding mcp9808: {}", e),
+                    };
+                }
+            }
+        }
+        for (name, config) in switch_config.iter() {
+            match config.device {
+                config::SwitchType::MCP23017 {
+                    address,
+                    ref bank0,
+                    ref bank1,
+                } => {
+                    info!(
+                        "Adding MCP23017 switch bank named '{}' at i2c address {}",
+                        name, address
+                    );
+                    match state.create_mcp23017(address) {
+                        Ok(dev) => {
+                            for (bankcfg, bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter() {
+                                for pin in [
+                                    Pin::Pin0,
+                                    Pin::Pin1,
+                                    Pin::Pin2,
+                                    Pin::Pin3,
+                                    Pin::Pin4,
+                                    Pin::Pin5,
+                                    Pin::Pin6,
+                                    Pin::Pin7,
+                                ]
+                                .iter()
+                                {
+                                    // if (bankcfg[ordinal(pin)]) {
+                                        // set up
+                                    // }
+                                }
+                            }
+                            state.add_switch(name.to_string(), Box::new(dev));
+                        }
+                        Err(e) => error!("error adding mcp23017: {}", e),
+                    };
+                }
+            }
+        }
+
         for action in action_receiver {
             state.step(action);
         }
@@ -186,7 +241,7 @@ pub fn start() -> Result<AppState> {
 
     // start a thread that sends events based on time
     thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(5));
         thread_sender
             .send(Action::SetTime(Local::now()))
             .expect("send");
