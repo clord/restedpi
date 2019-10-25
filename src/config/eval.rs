@@ -45,11 +45,11 @@ pub fn evaluate_value(app: &AppState, expr: &Value) -> f64 {
             let dt: DateTime<Local> = app.current_dt();
             let doy_ev = evaluate_value(app, doy);
             let h = sched::hour_angle_sunrise(
-                evaluate_value(app, lat),
+                evaluate_value(app, lat).to_radians(),
                 sched::noon_decl_sun(doy_ev),
             ).to_degrees() / 15.0;
             let exact_offset = sched::exact_offset_hrs(evaluate_value(app, long));
-            let solar_offset =  (h + 2.0*h) * 3600.0;
+            let solar_offset =  (12.0 + h) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32).yo(dt.year(), doy_ev as u32).and_hms(0,0,0) + Duration::seconds(solar_offset as i64);
             let local = solar_dt.with_timezone(&dt.timezone());
             local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0
@@ -65,7 +65,7 @@ pub fn evaluate_value(app: &AppState, expr: &Value) -> f64 {
 
             let exact_offset = sched::exact_offset_hrs(evaluate_value(app, long));
             debug!("ha: {}, sn: {}", h, exact_offset);
-            let solar_offset = (h) * 3600.0;
+            let solar_offset = (12.0 - h) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset  * 3600.0) as i32).yo(dt.year(), doy_ev as u32).and_hms(0,0,0) + Duration::seconds(solar_offset as i64);
             debug!("solar: {}", solar_dt);
             let local = solar_dt.with_timezone(&dt.timezone());
