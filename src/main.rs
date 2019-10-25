@@ -5,6 +5,9 @@ extern crate serde;
 extern crate serde_derive;
 extern crate warp;
 
+#[macro_use]
+extern crate rust_embed;
+
 use crate::config::Config;
 use crate::config::Unit;
 use i2c::{bmp085, error::Error, mcp23017::Bank, mcp23017::Pin};
@@ -15,10 +18,11 @@ use std::env;
 use std::fs;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use warp::{http::StatusCode, path, Filter, Rejection, Reply};
+use warp::{http::StatusCode, filters::path::Tail, path, Filter, Rejection, Reply};
 
 mod app;
 mod config;
+mod webapp;
 mod i2c;
 
 // We have to share the app state since warp uses a thread pool
@@ -128,10 +132,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
 
+    let index_html = warp::get2()
+        .and(warp::path::end())
+        .and_then(|| webapp::serve("index.html"));
+
+    let r_static = warp::get2()
+        .and(warp::path("static"))
+        .and(warp::path::tail())
+        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
+
     let r_greeting = warp::get2()
         .and(app.clone())
         .and(warp::any().map(move || server_name.clone()))
-        .and(warp::path::end())
+        .and(path!("about"))
         .map(greeting);
 
     let r_config_check = warp::post2()
@@ -160,7 +173,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(path!("api" / "sensors" / String / Unit))
         .and_then(read_sensor);
 
-    let api = r_greeting
+    let api = index_html
+        .or(r_static)
+        .or(r_greeting)
         .or(r_sensors)
         .or(r_config_check)
         .or(r_eval_bool)
