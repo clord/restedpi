@@ -32,20 +32,38 @@ pub enum Value {
     Const(f64),
 
     // angle of the sun (declination at noon, in radians)
-    NoonSunDeclinationAngle { doy: Box<Value> },
+    NoonSunDeclinationAngle {
+        doy: Box<Value>,
+    },
 
     // hour-angle of sun at sunrise at a given lat and doy
-    HourAngleSunrise { lat: Box<Value>, doy: Box<Value> },
+    HourAngleSunrise {
+        lat: Box<Value>,
+        doy: Box<Value>,
+    },
 
     // How many hours of daylight are in day-of-year at latitude
-    HoursOfDaylight { lat: Box<Value>, doy: Box<Value> },
+    HoursOfDaylight {
+        lat: Box<Value>,
+        doy: Box<Value>,
+    },
 
     // Give local time of sunrise and sunset in local time hours
-    HourOfSunrise { lat: Box<Value>, long: Box<Value>, doy: Box<Value> },
-    HourOfSunset { lat: Box<Value>, long: Box<Value>, doy: Box<Value> },
+    HourOfSunrise {
+        lat: Box<Value>,
+        long: Box<Value>,
+        doy: Box<Value>,
+    },
+    HourOfSunset {
+        lat: Box<Value>,
+        long: Box<Value>,
+        doy: Box<Value>,
+    },
 
     // Hour-offset (negative for west, positive for east) of a given longnitude
-    OffsetForLong {long: Box<Value> },
+    OffsetForLong {
+        long: Box<Value>,
+    },
 
     // hour of day since midnight of this day
     HourOfDay,

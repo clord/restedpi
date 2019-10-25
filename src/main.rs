@@ -39,6 +39,7 @@ fn evaluate_config_check(
     let app_l = app.lock().expect("failure");
     Ok(warp::reply::json(&expr))
 }
+
 // POST /api/debug/eval_bool
 fn evaulate_bool_expr(
     app: SharedAppState,

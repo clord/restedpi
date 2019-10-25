@@ -222,7 +222,7 @@ pub fn start(
                                 .iter()
                                 {
                                     // if (bankcfg[ordinal(pin)]) {
-                                        // set up
+                                    // set up
                                     // }
                                 }
                             }
