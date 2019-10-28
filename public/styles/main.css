@@ -1,0 +1,55 @@
+
+body
+{
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+
+#app {
+    display: grid;
+    grid-template-areas: "header header"
+                         "aside  body"
+                         "aside  footer";
+    grid-template-columns: 120px 1fr;
+	grid-template-rows: 60px
+						1fr
+						30px;
+	min-height: 100vh;
+}
+
+#app > footer {
+    grid-area: footer
+}
+
+#app > section {
+    grid-area: body
+}
+
+#app > aside {
+    grid-area: aside
+}
+
+#app > header {
+    grid-area: header
+}
+
+.centered-inside {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+@media screen and (max-width: 400px) {
+	.hg {
+		grid-template-areas: "header"
+		                     "aside"
+		                     "body"
+		                     "footer";
+		grid-template-columns: 100%;
+		grid-template-rows: 100px
+							50px
+							1fr
+							30px;
+	}
+}

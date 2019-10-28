@@ -51,7 +51,8 @@ fn evaulate_bool_expr(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("boolean evaluate: {:?}", expr);
     let app_l = app.lock().expect("failure");
-    let reply = config::eval::evaluate_bool(&app_l, &expr);
+    let reply_bool = config::eval::evaluate_bool(&app_l, &expr);
+    let reply = json!({ "result": reply_bool });
     Ok(warp::reply::json(&reply))
 }
 
@@ -62,7 +63,8 @@ fn evaulate_value_expr(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("value evaluate: {:?}", expr);
     let app_l = app.lock().expect("failure");
-    let reply = config::eval::evaluate_value(&app_l, &expr);
+    let reply_value = config::eval::evaluate_value(&app_l, &expr);
+    let reply = json!({ "result": reply_value });
     Ok(warp::reply::json(&reply))
 }
 
@@ -132,19 +134,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
 
-    let index_html = warp::get2()
-        .and(warp::path::end())
-        .and_then(|| webapp::serve("index.html"));
-
-    let r_static = warp::get2()
-        .and(warp::path("static"))
-        .and(warp::path::tail())
-        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
-
     let r_greeting = warp::get2()
         .and(app.clone())
         .and(warp::any().map(move || server_name.clone()))
-        .and(path!("about"))
+        .and(path!("api" / "about"))
         .map(greeting);
 
     let r_config_check = warp::post2()
@@ -173,13 +166,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(path!("api" / "sensors" / String / Unit))
         .and_then(read_sensor);
 
-    let api = index_html
-        .or(r_static)
+    let index_html = warp::get2()
+        .and_then(|| webapp::serve("index.html"));
+
+    let r_static = warp::get2()
+        .and(warp::path("static"))
+        .and(warp::path::tail())
+        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
+
+    let api = r_static
         .or(r_greeting)
         .or(r_sensors)
         .or(r_config_check)
         .or(r_eval_bool)
         .or(r_eval_value)
+        .or(index_html)
         .with(warp::log("restedpi"))
         .recover(customize_error);
 
