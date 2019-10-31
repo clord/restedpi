@@ -1,27 +1,26 @@
-import { useState, useEffect } from './depend/preact.hooks.js';
+import { useState, useMemo, useEffect } from './depend/preact.hooks.js';
+import produce from './depend/immer.module.js'
 
-/**
- * Post a body to a url
- */
-export function usePost(url, body) {
-    return useFetch(url, {
-	    method: 'POST',
-        cache: 'no-cache',
-        headers: {
-        	'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-	});
+const JSON_HEADER = {
+  'Content-Type': 'application/json'
 }
 
-export function useFetch(url, options) {
+export function usePost(url, body) {
+  return useFetch(url, "POST", "no-cache", JSON_HEADER, JSON.stringify(body));
+}
+
+export function useGet(url) {
+  return useFetch(url, "GET", "", JSON_HEADER);
+}
+
+function useFetch(url, method, cache, headers, body) {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const FetchData = async () => {
       try {
-        const res = await fetch(url, options);
+        const res = await fetch(url, {method, cache, headers, body});
         const json = await res.json();
         setResponse(json);
       } catch (error) {
@@ -29,6 +28,6 @@ export function useFetch(url, options) {
       }
     };
     FetchData();
-  }, []);
+  }, [url, method, body]);
   return { response, error };
 };

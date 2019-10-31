@@ -1,12 +1,15 @@
-import { usePost, useFetch } from './util.js'
+import { usePost, useGet } from './util.js'
 import { html, render } from './html.js'
-import {Spinner} from './comp/Spinner.js'
+
+import { Router, Link } from './depend/preact-router.js';
+
+import { Spinner } from './comp/Spinner.js'
 
 /**
  * Present the current description of the server to the user
  */
 function Header(props) {
-    const {response, error} = useFetch(`/api/about`, {});
+    const {response, error} = useGet(`/api/about`);
     if (response == null) {
         return html`
             <header>
@@ -36,6 +39,7 @@ function Header(props) {
 }
 
 function EvaluateValue(props) {
+    console.log("val:", props)
     const {response, error} = usePost(`/api/debug/eval_value`,
 		{HoursOfDaylight: [{Const: -53.32},  "DayOfYear" ]});
 
@@ -53,7 +57,7 @@ function EvaluateValue(props) {
 function EvaluateBool(props) {
     // POST /api/debug/eval_bool
     const {response, error} = usePost(`/api/debug/eval_bool`, {
-    	Equal: [{Const: 12}, {Const: 13}]
+    	Equal: [{Const: Number(props.value)}, {Const: 13}]
 	});
 
     if (response == null) {
@@ -69,9 +73,17 @@ function EvaluateBool(props) {
 
 const app = html`
     <${Header} />
-    <aside><${EvaluateBool} /></aside>
+    <aside style="display:flex; flex-direction:column;">
+            <${Link} href="/value">Evaluate</${Link}>
+            <${Link} href="/bool/1">check 1</${Link}>
+            <${Link} href="/bool/12">check 12</${Link}>
+            <${Link} href="/bool/13">check 13</${Link}>
+    </aside>
     <section>
-        <${EvaluateValue} />
+      <${Router}>
+        <${EvaluateBool} path="/bool/:value" />
+        <${EvaluateValue} path="/value" />
+      </${Router}>
     </section>
     <footer> Footer</footer>
 `
