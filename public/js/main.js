@@ -74,10 +74,10 @@ function EvaluateBool(props) {
 const app = html`
     <${Header} />
     <aside style="display:flex; flex-direction:column;">
-            <${Link} href="/value">Evaluate</${Link}>
-            <${Link} href="/bool/1">check 1</${Link}>
-            <${Link} href="/bool/12">check 12</${Link}>
-            <${Link} href="/bool/13">check 13</${Link}>
+        <${Link} href="/value">Evaluate</${Link}>
+        <${Link} href="/bool/1">check 1</${Link}>
+        <${Link} href="/bool/12">check 12</${Link}>
+        <${Link} href="/bool/13">check 13</${Link}>
     </aside>
     <section>
       <${Router}>
