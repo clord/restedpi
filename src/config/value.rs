@@ -1,10 +1,108 @@
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::str::FromStr;
 use crate::app::AppState;
 use crate::config::sched;
 use crate::config::{BoolExpr, Value};
 use chrono::prelude::*;
 use chrono::Duration;
 
-pub fn evaluate_value(app: &AppState, expr: &Value) -> f64 {
+
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+pub enum Unit {
+    DegC,
+    KPa,
+}
+
+/// A source of f64 values, usable in expressions
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum Value {
+    // Some constant
+    Const(f64),
+
+    // angle of the sun (declination at noon, in radians)
+    NoonSunDeclinationAngle {
+        doy: Box<Value>,
+    },
+
+    // hour-angle of sun at sunrise at a given lat and doy
+    HourAngleSunrise {
+        lat: Box<Value>,
+        doy: Box<Value>,
+    },
+
+    // How many hours of daylight are in day-of-year at latitude
+    HoursOfDaylight {
+        lat: Box<Value>,
+        doy: Box<Value>,
+    },
+
+    // Give local time of sunrise and sunset in local time hours
+    HourOfSunrise {
+        lat: Box<Value>,
+        long: Box<Value>,
+        doy: Box<Value>,
+    },
+    HourOfSunset {
+        lat: Box<Value>,
+        long: Box<Value>,
+        doy: Box<Value>,
+    },
+
+    // Hour-offset (negative for west, positive for east) of a given longnitude
+    OffsetForLong {
+        long: Box<Value>,
+    },
+
+    // hour of day since midnight of this day
+    HourOfDay,
+
+    // Day of year, with fractional
+    DayOfYear,
+
+    // Mon=1, ..., Sun=7
+    WeekDayFromMonday,
+
+    // 2018, 2019...
+    Year,
+
+    // 1=Jan, 2=Feb
+    MonthOfYear,
+
+    // 1, 2, ... 30, 31
+    DayOfMonth,
+
+    // Current value of a named sensor
+    Sensor(String, Unit),
+
+    // linear interpolation  A * (1 - t) + B * t
+    // where:
+    //         A           t∈0..1      B
+    Lerp(Box<Value>, Box<Value>, Box<Value>),
+
+    // Transform y = Ax + b
+    // where:
+    //           A           x           b
+    Linear(Box<Value>, Box<Value>, Box<Value>),
+
+    // y = x + y
+    Add(Box<Value>, Box<Value>),
+    // y = x - y
+    Sub(Box<Value>, Box<Value>),
+    // y = x * y
+    Mul(Box<Value>, Box<Value>),
+
+    // y = 1/x, x != 0
+    Inverse(Box<Value>),
+
+    // remove any floating point values (round-to-zero)
+    Trunc(Box<Value>),
+}
+
+
+/// An evaluator for value expressions.
+pub fn evaluate(app: &AppState, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
@@ -126,20 +224,3 @@ pub fn evaluate_value(app: &AppState, expr: &Value) -> f64 {
     }
 }
 
-pub fn evaluate_bool(app: &AppState, expr: &BoolExpr) -> bool {
-    match expr {
-        BoolExpr::Equal(a, b) => evaluate_value(app, a) == evaluate_value(app, b),
-        BoolExpr::EqualPlusOrMinus(a, b, c) => {
-            (evaluate_value(app, a) - evaluate_value(app, b)).abs() < evaluate_value(app, c)
-        }
-        BoolExpr::MoreThan(a, b) => evaluate_value(app, a) > evaluate_value(app, b),
-        BoolExpr::LessThan(a, b) => evaluate_value(app, a) < evaluate_value(app, b),
-        BoolExpr::Between(a, b, c) => {
-            evaluate_value(app, a) <= evaluate_value(app, b)
-                && evaluate_value(app, b) <= evaluate_value(app, c)
-        }
-        BoolExpr::And(a, b) => evaluate_bool(app, &*a) && evaluate_bool(app, &*b),
-        BoolExpr::Or(a, b) => evaluate_bool(app, &*a) || evaluate_bool(app, &*b),
-        BoolExpr::Not(b) => !evaluate_bool(app, &*b),
-    }
-}
