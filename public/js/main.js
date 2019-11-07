@@ -71,16 +71,48 @@ function EvaluateBool(props) {
     `
 }
 
+function Sensors(props) {
+    // GET /api/sensors
+    const {response, error} = useGet(`/api/sensors`);
+
+    if (response == null) {
+        return null
+    }
+
+    return html`
+        <div>
+          	Sensors: ${response.result ? "true" : "false"}
+        </div>
+    `
+}
+function Switches(props) {
+    // GET /api/switches
+    const {response, error} = useGet(`/api/switches`);
+
+    if (response == null) {
+        return null
+    }
+
+    return html`
+        <div>
+          	Switches: ${response.result ? "true" : "false"}
+        </div>
+    `
+}
+
 const app = html`
     <${Header} />
     <aside style="display:flex; flex-direction:column;">
-            <${Link} href="/value">Evaluate</${Link}>
-            <${Link} href="/bool/1">check 1</${Link}>
-            <${Link} href="/bool/12">check 12</${Link}>
-            <${Link} href="/bool/13">check 13</${Link}>
+        <${Link} href="/sensors">Sensors</${Link}>
+        <${Link} href="/switches">Switches</${Link}>
+        <${Link} href="/bool/1">check 1</${Link}>
+        <${Link} href="/bool/12">check 12</${Link}>
+        <${Link} href="/bool/13">check 13</${Link}>
     </aside>
     <section>
       <${Router}>
+        <${Sensors} path="/sensors" />
+        <${Switches} path="/switches" />
         <${EvaluateBool} path="/bool/:value" />
         <${EvaluateValue} path="/value" />
       </${Router}>

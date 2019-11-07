@@ -170,9 +170,9 @@ pub fn start(
                 config::SensorType::BMP085 { address, mode } => {
                     let trans_mode = match mode {
                         config::SamplingMode::UltraLowPower => bmp085::SamplingMode::UltraLowPower,
-                        config::SamplingMode::Standard => bmp085::SamplingMode::Standard,
-                        config::SamplingMode::HighRes => bmp085::SamplingMode::HighRes,
-                        config::SamplingMode::UltraHighRes => bmp085::SamplingMode::UltraHighRes,
+                        config::SamplingMode::Standard      => bmp085::SamplingMode::Standard,
+                        config::SamplingMode::HighRes       => bmp085::SamplingMode::HighRes,
+                        config::SamplingMode::UltraHighRes  => bmp085::SamplingMode::UltraHighRes,
                     };
                     info!(
                         "Adding BMP085 sensor named '{}' at i2c address {}",

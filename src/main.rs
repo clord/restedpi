@@ -68,7 +68,16 @@ fn evaulate_value_expr(
     Ok(warp::reply::json(&reply))
 }
 
-// GET /sensor/:name/:unit
+// GET /sensors
+fn all_sensors(
+    app: SharedAppState
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let app_l = app.lock().expect("failure");
+    let reply = json!({ "result": [] });
+    Ok(warp::reply::json(&reply))
+}
+
+// GET /sensors/:name/:unit
 fn read_sensor(
     app: SharedAppState,
     sensor: String,
@@ -163,6 +172,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r_sensors = warp::get2()
         .and(app.clone())
+        .and(path!("api" / "sensors"))
+        .and_then(all_sensors);
+
+    let r_sensor = warp::get2()
+        .and(app.clone())
         .and(path!("api" / "sensors" / String / Unit))
         .and_then(read_sensor);
 
@@ -176,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let api = r_static
         .or(r_greeting)
-        .or(r_sensors)
+        .or(r_sensor)
         .or(r_config_check)
         .or(r_eval_bool)
         .or(r_eval_value)
