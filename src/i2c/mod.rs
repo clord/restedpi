@@ -5,7 +5,7 @@ pub mod mcp23017;
 pub mod mcp9808;
 pub mod util;
 
-use crate::config::Unit;
+use crate::config::value::Unit;
 use std::result;
 
 #[derive(Debug, PartialEq, Copy, Clone, PartialOrd)]

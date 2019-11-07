@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use crate::app::AppState;
 use crate::config::sched;
-use crate::config::{BoolExpr, Value};
+use crate::config::value::{Value, evaluate as evaluate_value};
 use chrono::prelude::*;
 use chrono::Duration;
 
@@ -33,8 +33,8 @@ pub fn evaluate(app: &AppState, expr: &BoolExpr) -> bool {
             evaluate_value(app, a) <= evaluate_value(app, b)
                 && evaluate_value(app, b) <= evaluate_value(app, c)
         }
-        BoolExpr::And(a, b) => evaluate_bool(app, &*a) && evaluate_bool(app, &*b),
-        BoolExpr::Or(a, b) => evaluate_bool(app, &*a) || evaluate_bool(app, &*b),
-        BoolExpr::Not(b) => !evaluate_bool(app, &*b),
+        BoolExpr::And(a, b) => evaluate(app, &*a) && evaluate(app, &*b),
+        BoolExpr::Or(a, b) => evaluate(app, &*a) || evaluate(app, &*b),
+        BoolExpr::Not(b) => !evaluate(app, &*b),
     }
 }

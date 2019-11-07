@@ -1,5 +1,6 @@
 use crate::i2c::util::{iv2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, error::Error, Result, Sensor, Unit};
+use crate::i2c::{bus::Address, bus::I2cBus, Result, Sensor};
+use crate::config::value::Unit;
 use std::thread;
 use std::time::Duration;
 

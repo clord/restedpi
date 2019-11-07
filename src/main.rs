@@ -9,14 +9,15 @@ extern crate warp;
 extern crate rust_embed;
 
 use crate::config::Config;
-use crate::config::Unit;
-use i2c::{bmp085, error::Error, mcp23017::Bank, mcp23017::Pin};
+use crate::config::value::{Value, Unit, evaluate as evaluate_val};
+use crate::config::boolean::{BoolExpr, evaluate as evaluate_bool};
+use i2c::error::Error;
 use rppal::system::DeviceInfo;
-use serde_json::{from_str, json};
+use serde_json::{json};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use warp::{http::StatusCode, filters::path::Tail, path, Filter, Rejection, Reply};
 
@@ -47,11 +48,11 @@ fn evaluate_config_check(
 // POST /api/debug/eval_bool
 fn evaulate_bool_expr(
     app: SharedAppState,
-    expr: config::BoolExpr,
+    expr: BoolExpr,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("boolean evaluate: {:?}", expr);
     let app_l = app.lock().expect("failure");
-    let reply_bool = config::eval::evaluate_bool(&app_l, &expr);
+    let reply_bool = evaluate_bool(&app_l, &expr);
     let reply = json!({ "result": reply_bool });
     Ok(warp::reply::json(&reply))
 }
@@ -59,11 +60,11 @@ fn evaulate_bool_expr(
 // POST /api/debug/eval_value
 fn evaulate_value_expr(
     app: SharedAppState,
-    expr: config::Value,
+    expr: Value,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("value evaluate: {:?}", expr);
     let app_l = app.lock().expect("failure");
-    let reply_value = config::eval::evaluate_value(&app_l, &expr);
+    let reply_value = evaluate_val(&app_l, &expr);
     let reply = json!({ "result": reply_value });
     Ok(warp::reply::json(&reply))
 }

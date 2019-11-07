@@ -1,6 +1,10 @@
+pub mod value;
+pub mod boolean;
+
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::str::FromStr;
+//use std::str::FromStr;
+use boolean::BoolExpr;
 
 pub mod sched;
 
@@ -60,18 +64,3 @@ pub struct Config {
     pub switches: Option<HashMap<String, Switch>>,
 }
 
-pub enum ParseUnitError {
-    NotKnown,
-}
-
-impl FromStr for Unit {
-    type Err = ParseUnitError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "degc" => Ok(Unit::DegC),
-            "kpa" => Ok(Unit::KPa),
-            _ => Err(ParseUnitError::NotKnown),
-        }
-    }
-}

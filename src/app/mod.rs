@@ -1,8 +1,7 @@
 extern crate chrono;
 
 use crate::config;
-use crate::config::Config;
-use crate::config::Unit;
+use crate::config::value::Unit;
 use crate::i2c::{
     bmp085, bus,
     bus::{Address, I2cBus},

@@ -1,9 +1,9 @@
-use crate::i2c::Unit;
 use rppal::i2c;
 use std::error;
 use std::fmt;
 use std::io;
 use std::sync::mpsc;
+use crate::config::value::Unit;
 
 #[derive(Debug)]
 pub enum Error {
