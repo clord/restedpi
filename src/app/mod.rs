@@ -207,7 +207,7 @@ pub fn start(
                     );
                     match state.create_mcp23017(address) {
                         Ok(dev) => {
-                            for (bankcfg, bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter() {
+                            for (_bankcfg, _bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter() {
                                 for pin in [
                                     Pin::Pin0,
                                     Pin::Pin1,

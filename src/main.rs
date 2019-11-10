@@ -30,18 +30,18 @@ mod i2c;
 type SharedAppState = std::sync::Arc<std::sync::Mutex<app::AppState>>;
 
 // GET /
-fn greeting(app: SharedAppState, server_name: String) -> impl warp::Reply {
+fn greeting(_app: SharedAppState, server_name: String) -> impl warp::Reply {
     let reply = json!({ "server": format!("restedpi on {}", server_name) });
     warp::reply::json(&reply)
 }
 
 // POST /api/debug/check_config
 fn evaluate_config_check(
-    app: SharedAppState,
+    _app: SharedAppState,
     expr: config::Config,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("config: {:?}", expr);
-    let app_l = app.lock().expect("failure");
+    //let app_l = app.lock().expect("failure");
     Ok(warp::reply::json(&expr))
 }
 
@@ -69,11 +69,20 @@ fn evaulate_value_expr(
     Ok(warp::reply::json(&reply))
 }
 
+// GET /devices
+fn all_devices(
+    _app: SharedAppState
+) -> Result<impl warp::Reply, warp::Rejection> {
+    //let app_l = app.lock().expect("failure");
+    let reply = json!({ "result": [] });
+    Ok(warp::reply::json(&reply))
+}
+
 // GET /sensors
 fn all_sensors(
-    app: SharedAppState
+    _app: SharedAppState
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let app_l = app.lock().expect("failure");
+    //let app_l = app.lock().expect("failure");
     let reply = json!({ "result": [] });
     Ok(warp::reply::json(&reply))
 }
@@ -171,6 +180,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::body::json())
         .and_then(evaulate_value_expr);
 
+    let r_devices = warp::get2()
+        .and(app.clone())
+        .and(path!("api" / "devices"))
+        .and_then(all_devices);
+
     let r_sensors = warp::get2()
         .and(app.clone())
         .and(path!("api" / "sensors"))
@@ -192,6 +206,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api = r_static
         .or(r_greeting)
         .or(r_sensor)
+        .or(r_sensors)
+        .or(r_devices)
         .or(r_config_check)
         .or(r_eval_bool)
         .or(r_eval_value)
