@@ -10,7 +10,7 @@ export function usePost(url, body) {
 }
 
 export function useGet(url) {
-  return useFetch(url, "GET", "", JSON_HEADER);
+  return useFetch(url, "GET", undefined, JSON_HEADER);
 }
 
 function useFetch(url, method, cache, headers, body) {

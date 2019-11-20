@@ -4,17 +4,22 @@ body
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-
 #app {
     display: grid;
-    grid-template-areas: "header header"
-                         "aside  body"
-                         "aside  footer";
-    grid-template-columns: 120px 1fr;
+    grid-template-areas: "header  nav     aside"
+                         "body   body    body"
+                         "footer  footer  footer";
+    grid-template-columns: 1fr minmax(350px, 2fr) 1fr;
+    align-items: stretch;
+    justify-items: stretch;
 	grid-template-rows: 60px
 						1fr
 						30px;
 	min-height: 100vh;
+}
+
+#app > nav {
+    grid-area: nav
 }
 
 #app > footer {
@@ -39,17 +44,141 @@ body
     align-items: center;
 }
 
+#app > header {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin: 0 0 0 20px;
+    flex-direction:row;
+}
 
-@media screen and (max-width: 400px) {
-	.hg {
+#app > aside {
+    display: flex;
+    justify-content: flex-end;
+    margin:0 20px 0 0 ;
+    align-items: center;
+}
+
+#app > nav {
+    display: flex;
+    flex-direction:row;
+    justify-content: space-evenly;
+    align-items: center;
+    width:100%;
+    font-size:120%;
+}
+
+#app > nav i {
+    margin: 4px 10px
+}
+
+#app > nav a {
+    text-decoration: none;
+}
+
+#app > header > h1 {
+    font-size:30px;
+}
+
+#app > header > h1 > i {
+    margin: 12px;
+}
+
+.devices {
+    padding:12px;
+    display: grid;
+    grid-auto-flow: dense;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(140px, auto);
+    grid-gap: 10px;
+}
+
+.devices > .device {
+    border: 1px solid gray;
+    padding: 12px;
+    border-radius: 4px;
+    box-shadow: 1px 1px 4px rgb(230,230,230);
+    display: grid;
+    grid-template-areas: 'head' 'features' 'action';
+    grid-template-rows: auto 1fr 26px;
+}
+
+.device > dl {
+    grid-area: features;
+    align-content: center;
+}
+.device > button {
+    grid-area: action;
+    border: 1px solid rgb(20,20,20);
+    cursor: pointer;
+    background: transparent;
+    border-radius: 4px;
+}
+.device > button:hover {
+    border: 1px solid black;
+    background: rgba(0,0,0,0.05);
+}
+.device > header {
+    grid-area: head;
+}
+
+.device > header > h1 {
+    font-size:110%;
+    margin: 0 0 12px 0;
+}
+
+.device > header > p {
+    font-size:90%
+}
+
+.device > dl {
+    font-size:80%;
+    margin: 12px;
+}
+
+.device dd small {
+    opacity: 0.7;
+    font-size:9px;
+}
+
+
+@media screen and (max-width: 600px) {
+    #app {
 		grid-template-areas: "header"
+		                     "nav"
 		                     "aside"
 		                     "body"
 		                     "footer";
 		grid-template-columns: 100%;
 		grid-template-rows: 100px
 							50px
+							50px
 							1fr
 							30px;
 	}
 }
+
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-gap: 0 1em;
+}
+
+dl > dt + dd {
+    margin:10px 0 0 0
+}
+
+dl > dd + dt {
+}
+
+dt {
+  grid-column: 1;
+  font-weight: bold;
+  text-align: right;
+  margin:10px 0 0 0;
+}
+
+dd {
+   grid-column: 2;
+ }

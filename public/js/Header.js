@@ -1,31 +1,27 @@
 import { useGet } from './util.js'
 import { html, render } from './html.js'
+import { Nav } from './Nav.js';
+
+export function About(props) {
+    const { response, error } = useGet(`/api/about`);
+    if (response == null) {
+        return html`<aside>loading</aside>`
+    }
+    return html`<aside>${response.server}</aside>`
+}
 
 /**
  * Present the current description of the server to the user
  */
 export function Header(props) {
-    const {response, error} = useGet(`/api/about`);
-    if (response == null) {
-        return html`
+    return html`
+        <header>
             <h1>
                 <i class="fas fa-pizza-slice"></i>
-                RestedPI
+                REpi
             </h1>
-            <h2>
-                <i class="fas fa-microchip"></i>
-            </h2>
-        `
-    }
-
-    return html`
-        <h1>
-            <i class="fas fa-pizza-slice"></i>
-            RestedPI
-        </h1>
-        <h2>
-            <i class="fas fa-microchip"></i>
-            ${response.server}
-        </h2>
+        </header>
+        <${Nav} />
+        <${About} />
     `
 }

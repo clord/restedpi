@@ -4,10 +4,19 @@ import { Link } from './depend/preact-router.js';
 
 export function Nav(props) {
     return html`
-        <nav style="display:flex; flex-direction:column;">
-            <${Link} href="/devices">Devices</${Link}>
-            <${Link} href="/sensors">Sensors</${Link}>
-            <${Link} href="/switches">Switches</${Link}>
+        <nav>
+            <${Link} href="/devices">
+                <i class="fas fa-microchip"></i>
+                Devices
+            </${Link}>
+            <${Link} href="/sensors">
+            <i class="fas fa-thermometer-quarter"></i>
+                Sensors
+            </${Link}>
+            <${Link} href="/switches">
+            <i class="fas fa-toggle-on"></i>
+                Switches
+            </${Link}>
         </nav>
     `
 }
