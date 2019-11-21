@@ -18,11 +18,21 @@
             };
         </script>
 
+        <!-- Preload dependencies async -->
         <script type="module" src="/static/js/depend/htm.js" async></script>
-        <script type="module" src="/static/js/depend/preact.js" async></script>
-        <script type="module" src="/static/js/depend/preact.hooks.js" async></script>
+        <script type="module" src="/static/js/depend/react/react.js" async></script>
+        <script type="module" src="/static/js/depend/react/react-dom.js" async></script>
+        <script type="module" src="/static/js/depend/react/react.production.min-75551000.js" async></script>
+        <script type="module" src="/static/js/depend/react/_commonjsHelpers-62a4d7f9.js" async></script>
+        <script type="module" src="/static/js/depend/react/checkPropTypes-b5aa2e99.js" async></script>
+
+        <!-- Preload core internal modules async -->
         <script type="module" src="/static/js/hooks/network.js" async></script>
         <script type="module" src="/static/js/html.js" async></script>
+        <script type="module" src="/static/js/Nav.js" async></script>
+        <script type="module" src="/static/js/Header.js" async></script>
+
+        <!-- Start main application -->
         <script type="module" src="/static/js/main.js"></script>
 
         <link rel="stylesheet" href="/static/styles/fa.all.css">

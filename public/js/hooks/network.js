@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect } from '/static/js/depend/preact.hooks.js';
-// import produce from '/static/js/depend/immer.module.js'
+import { useState, useMemo, useEffect } from '/static/js/depend/react/react.js';
 
 const JSON_HEADER = {
   'Content-Type': 'application/json'

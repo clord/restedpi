@@ -1,5 +1,5 @@
+import { useCallback } from '/static/js/depend/react/react.js'
 import { useGet } from '/static/js/hooks/network.js'
-import { useCallback } from '/static/js/depend/preact.hooks.js'
 import { html, render } from '/static/js/html.js'
 
 function SensorsOfDevice({sensors}) {
