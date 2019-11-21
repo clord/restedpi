@@ -1,10 +1,11 @@
-import { usePost, useGet } from './util.js'
-import { html, render } from './html.js'
-import { Router, Link } from './depend/preact-router.js';
-import { Header } from './Header.js';
-import { Switches } from './Switches.js';
-import { Sensors } from './Sensors.js';
-import { Devices } from './Devices.js';
+import { usePost, useGet } from '/static/js/hooks/network.js'
+import { html, render } from '/static/js/html.js'
+import { Router, Link } from '/static/js/depend/preact-router.js'
+
+import { Header } from './Header.js'
+import { Switches } from './Switches/index.js'
+import { Sensors } from './Sensors/index.js'
+import { Devices } from './Devices/index.js'
 
 const app = html`
     <${Header} />
@@ -15,7 +16,7 @@ const app = html`
         <${Switches} path="/switches" />
       </${Router}>
     </section>
-    <footer>Footer</footer>
+    <footer>Footer bla bla</footer>
 `
 
 render(app, document.getElementById('app'));

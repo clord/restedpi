@@ -12,4 +12,3 @@ deploy-binary: restedpi-rust
 test-binary: deploy-binary
 	ssh pi@${DEPLOY}  "~/rustedpi-rust"
 
-

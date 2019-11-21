@@ -1,4 +1,4 @@
-import { useGet } from './util.js'
+import { useGet } from '/static/js/hooks/network.js'
 import { html, render } from './html.js'
 import { Link } from './depend/preact-router.js';
 

@@ -25,9 +25,11 @@ struct State {
 }
 
 impl State {
+
     pub fn create_mcp23017(&mut self, a: Address) -> Result<mcp23017::Device> {
         mcp23017::Device::new(a, self.i2c.clone())
     }
+
     pub fn create_bmp085(
         &mut self,
         a: Address,
@@ -35,6 +37,7 @@ impl State {
     ) -> Result<bmp085::Device> {
         bmp085::Device::new(a, self.i2c.clone(), mode)
     }
+
     pub fn create_mcp9808(&mut self, a: Address) -> Result<mcp9808::Device> {
         mcp9808::Device::new(a, self.i2c.clone())
     }

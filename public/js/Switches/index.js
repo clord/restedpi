@@ -1,8 +1,8 @@
-import { useGet } from './util.js'
-import { html, render } from './html.js'
+import {  useGet } from '/static/js/hooks/network.js'
+import { html, render } from '/static/js/html.js'
 
 export function Switches(props) {
-    const {response, error} = useGet(`/api/switches`);
+    const {response, error} = useGet(`/switches`);
 
     if (response == null) {
         return null

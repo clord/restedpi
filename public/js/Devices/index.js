@@ -1,6 +1,6 @@
-import { useGet } from './util.js'
-import { useCallback } from './depend/preact.hooks.js'
-import { html, render } from './html.js'
+import { useGet } from '/static/js/hooks/network.js'
+import { useCallback } from '/static/js/depend/preact.hooks.js'
+import { html, render } from '/static/js/html.js'
 
 function SensorsOfDevice({sensors}) {
     if (sensors.length === 0) {
@@ -57,7 +57,7 @@ function Device({name, description, sensors, switches, datasheet, bus}) {
 }
 
 export function Devices(props) {
-    const {response, error} = useGet(`/api/devices`);
+    const {response, error} = useGet(`/devices`);
 
     if (response == null) {
         return null

@@ -1,19 +1,20 @@
-import { useState, useMemo, useEffect } from './depend/preact.hooks.js';
-import produce from './depend/immer.module.js'
+import { useState, useMemo, useEffect } from '/static/js/depend/preact.hooks.js';
+// import produce from '/static/js/depend/immer.module.js'
 
 const JSON_HEADER = {
   'Content-Type': 'application/json'
 }
 
 export function usePost(url, body) {
-  return useFetch(url, "POST", "no-cache", JSON_HEADER, JSON.stringify(body));
+    return useFetch(`${window.env.api}${url}`, "POST", "no-cache", JSON_HEADER, JSON.stringify(body));
 }
 
 export function useGet(url) {
-  return useFetch(url, "GET", undefined, JSON_HEADER);
+    return useFetch(`${window.env.api}${url}`, "GET", undefined, JSON_HEADER);
 }
 
-function useFetch(url, method, cache, headers, body) {
+// Raw fetch, which does not prefix with environment prefix for api
+export function useFetch(url, method, cache, headers, body) {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
 
