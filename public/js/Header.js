@@ -1,9 +1,9 @@
 import { useGet } from '/static/js/hooks/network.js'
 import { html, render } from './html.js'
-import { Nav } from './Nav.js';
+import { Nav } from './Nav.js'
 
 export function About(props) {
-    const { response, error } = useGet(`/about`);
+    const { response, error } = useGet(`/about`)
     if (response == null) {
         return html`<aside>loading</aside>`
     }
