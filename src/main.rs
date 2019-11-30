@@ -242,7 +242,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let r_static = warp::get2()
         .and(warp::path("static"))
         .and(warp::path::tail())
-        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
+        .and_then(|tail: Tail| webapp::serve(tail.as_str()))
+        .with(warp::log("restedpi-static"));
 
     let api = r_static
         .or(r_greeting)
