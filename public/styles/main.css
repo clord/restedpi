@@ -1,9 +1,32 @@
 
+/** Layout System  **/
+
+html {
+    --m0-gap:0;
+    --m1-gap:4px;
+    --m2-gap:8px;
+    --m3-gap:12px;
+    --m4-gap:16px;
+    --m5-gap:24px;
+    --m6-gap:32px;
+    --m7-gap:48px;
+    --m8-gap:64px;
+    --m9-gap:96px;
+    --ma-gap:128px;
+    --mb-gap:192px;
+    --mc-gap:256px;
+    --md-gap:384px;
+    --me-gap:512px;
+    --mf-gap:640px;
+}
+
+
 body
 {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
+/** Layout **/
 #app {
     display: grid;
     grid-template-areas: "header  nav     aside"

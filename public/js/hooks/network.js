@@ -12,7 +12,18 @@ export function useGet(url) {
     return useFetch(`${window.env.api}${url}`, "GET", undefined, JSON_HEADER);
 }
 
-// Raw fetch, which does not prefix with environment prefix for api
+export async function apiGet(url) {
+    const result = await fetch(`${window.env.api}${url}`,
+        {method: "GET", headers: JSON_HEADER})
+    return result.json()
+}
+
+export async function apiPost(url, body) {
+    const result = await fetch(`${window.env.api}${url}`,
+        {method: "POST", cache: "no-cache", headers: JSON_HEADER, body: JSON.stringify(body)})
+   return result.json()
+}
+
 export function useFetch(url, method, cache, headers, body) {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);

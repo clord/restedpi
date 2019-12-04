@@ -1,5 +1,12 @@
-import {  h } from '/static/js/html.js'
+import { h } from '/static/js/html.js'
 import { Link } from '/static/js/depend/wouter/index.js'
+
+function DtDd({dt, dd, dds}) {
+    if (dds != null) {
+        return [h("dt", {}, dt), dds.map(d => h("dd", {}, d))]
+    }
+    return [h("dt", {}, dt), h("dd", {}, dd)]
+}
 
 function SensorsOfDevice({sensors}) {
     if (sensors.length === 0) {
