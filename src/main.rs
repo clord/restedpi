@@ -19,25 +19,22 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use warp::{http::StatusCode, filters::path::Tail, path, Filter, Rejection, Reply};
+use warp::{http::StatusCode, filters::path::Tail, path, Filter};
 
 mod app;
 mod config;
 mod webapp;
 mod i2c;
 
-// We have to share the app state since warp uses a thread pool
-type SharedAppState = std::sync::Arc<std::sync::Mutex<app::AppState>>;
-
 // GET /
-fn greeting(_app: SharedAppState, server_name: String) -> impl warp::Reply {
+fn greeting(_app: webapp::SharedAppState, server_name: String) -> impl warp::Reply {
     let reply = json!({ "server": format!("restedpi on {}", server_name) });
     warp::reply::json(&reply)
 }
 
 // POST /api/debug/check_config
 fn evaluate_config_check(
-    _app: SharedAppState,
+    _app: webapp::SharedAppState,
     expr: config::Config,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("config: {:?}", expr);
@@ -47,7 +44,7 @@ fn evaluate_config_check(
 
 // POST /api/debug/eval_bool
 fn evaulate_bool_expr(
-    app: SharedAppState,
+    app: webapp::SharedAppState,
     expr: BoolExpr,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("boolean evaluate: {:?}", expr);
@@ -59,7 +56,7 @@ fn evaulate_bool_expr(
 
 // POST /api/debug/eval_value
 fn evaulate_value_expr(
-    app: SharedAppState,
+    app: webapp::SharedAppState,
     expr: Value,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("value evaluate: {:?}", expr);
@@ -69,59 +66,9 @@ fn evaulate_value_expr(
     Ok(warp::reply::json(&reply))
 }
 
-// GET /devices
-//
-// available devices that can be configured on this system
-// (not configured devices)
-fn all_devices(
-    _app: SharedAppState
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let reply = json!({ "result": [
-        { "name": "BMP085"
-        , "description": "High accuracy temperature and pressure"
-        , "datasheet": "https://www.sparkfun.com/datasheets/Components/General/BST-BMP085-DS000-05.pdf"
-        , "bus": "I2C"
-        , "create": "/api/devices/create/bmp085"
-        , "sensors": [{ "type": "temperature", "range": "-40°C to +85°C  ±0.1°C" }, {"type": "pressure", "range": "300 to 1100hPa"}]
-        },
-        { "name": "MCP23017"
-        , "description": " 16-port GPIO Expander"
-        , "datasheet": "http://ww1.microchip.com/downloads/en/DeviceDoc/20001952C.pdf"
-        , "bus": "I2C"
-        , "create": "/api/devices/create/mcp23017"
-        , "switches":
-             [ { "name": "pin0" }
-             , { "name": "pin1" }
-             , { "name": "pin2" }
-             , { "name": "pin3" }
-             , { "name": "pin4" }
-             , { "name": "pin5" }
-             , { "name": "pin6" }
-             , { "name": "pin7" }
-             , { "name": "pin8" }
-             , { "name": "pin9" }
-             , { "name": "pin10" }
-             , { "name": "pin11" }
-             , { "name": "pin12" }
-             , { "name": "pin13" }
-             , { "name": "pin14" }
-             , { "name": "pin15" }
-             ]
-        },
-        { "name": "MCP9808"
-        , "description": "High-accuracy temperature sensor"
-        , "datasheet": "http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf"
-        , "bus": "I2C"
-        , "create": "/api/devices/create/mcp9808"
-        , "sensors": [{ "type": "temperature", "range": "-40°C to +125°C ±0.5°C" }]
-        }
-    ] });
-    Ok(warp::reply::json(&reply))
-}
-
 // GET /sensors
 fn all_sensors(
-    _app: SharedAppState
+    _app: webapp::SharedAppState
 ) -> Result<impl warp::Reply, warp::Rejection> {
     //let app_l = app.lock().expect("failure");
     let reply = json!({ "result": [] });
@@ -130,7 +77,7 @@ fn all_sensors(
 
 // GET /sensors/:name/:unit
 fn read_sensor(
-    app: SharedAppState,
+    app: webapp::SharedAppState,
     sensor: String,
     unit: Unit,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -197,43 +144,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let r_greeting = warp::get2()
         .and(app.clone())
         .and(warp::any().map(move || server_name.clone()))
-        .and(path!("api" / "about"))
+        .and(path!("about"))
         .map(greeting);
 
     let r_config_check = warp::post2()
         .and(app.clone())
-        .and(path!("api" / "debug" / "config_check"))
+        .and(path!("debug" / "config_check"))
         .and(warp::body::content_length_limit(LIMIT))
         .and(warp::body::json())
         .and_then(evaluate_config_check);
 
     let r_eval_bool = warp::post2()
         .and(app.clone())
-        .and(path!("api" / "debug" / "eval_bool"))
+        .and(path!("debug" / "eval_bool"))
         .and(warp::body::content_length_limit(LIMIT))
         .and(warp::body::json())
         .and_then(evaulate_bool_expr);
 
     let r_eval_value = warp::post2()
         .and(app.clone())
-        .and(path!("api" / "debug" / "eval_value"))
+        .and(path!("debug" / "eval_value"))
         .and(warp::body::content_length_limit(LIMIT))
         .and(warp::body::json())
         .and_then(evaulate_value_expr);
 
-    let r_devices = warp::get2()
-        .and(app.clone())
-        .and(path!("api" / "devices"))
-        .and_then(all_devices);
 
     let r_sensors = warp::get2()
         .and(app.clone())
-        .and(path!("api" / "sensors"))
+        .and(path!("sensors"))
         .and_then(all_sensors);
 
     let r_sensor = warp::get2()
         .and(app.clone())
-        .and(path!("api" / "sensors" / String / Unit))
+        .and(path!("sensors" / String / Unit))
         .and_then(read_sensor);
 
     let index_html = warp::get2()
@@ -242,19 +185,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let r_static = warp::get2()
         .and(warp::path("static"))
         .and(warp::path::tail())
-        .and_then(|tail: Tail| webapp::serve(tail.as_str()))
-        .with(warp::log("restedpi-static"));
+        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
+
+    let r_available =
+        warp::get2()
+            .and(path!("available"))
+            .and(app.clone())
+            .and_then(move |app| webapp::all_devices(app));
+
+    let r_adding_configured =
+        warp::post2()
+            .and(app.clone())
+            .and_then(move |app| webapp::add_device(app));
+
+    let r_fetching_configured =
+        warp::get2()
+            .and(app.clone())
+            .and_then(move |app| webapp::configured_devices(app));
+
+    let r_configured =
+        warp::path("configured")
+            .and(r_adding_configured.or(r_fetching_configured));
+
+    let r_devices =
+        warp::path("devices")
+            .and(r_available.or(r_configured));
+
 
     let api = r_static
-        .or(r_greeting)
-        .or(r_sensor)
-        .or(r_sensors)
-        .or(r_devices)
-        .or(r_config_check)
-        .or(r_eval_bool)
-        .or(r_eval_value)
+        .or(path!("api").and(
+            r_greeting
+            .or(r_sensor)
+            .or(r_sensors)
+            .or(r_devices)
+            .or(r_config_check)
+            .or(r_eval_bool)
+            .or(r_eval_value)))
         .or(index_html)
-        .with(warp::log("restedpi"))
         .recover(customize_error);
 
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
@@ -266,7 +233,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Produce a json-compatible error report
-fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
+fn customize_error(err: warp::Rejection)
+    -> Result<impl warp::Reply, warp::Rejection> {
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {
             Error::Io(_) => 1001,

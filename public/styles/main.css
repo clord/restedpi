@@ -1,7 +1,7 @@
 
 /** Layout System  **/
 
-html {
+:root {
     --m0-gap:0;
     --m1-gap:4px;
     --m2-gap:8px;
@@ -30,14 +30,14 @@ body
 #app {
     display: grid;
     grid-template-areas: "header  nav     aside"
-                         "body   body    body"
+                         "body    body    body"
                          "footer  footer  footer";
-    grid-template-columns: 1fr minmax(350px, 2fr) 1fr;
+    grid-template-columns: 1fr minmax(var(--mc-gap), 2fr) 1fr;
     align-items: stretch;
     justify-items: stretch;
-	grid-template-rows: 60px
+	grid-template-rows: var(--m8-gap)
 						1fr
-						30px;
+						var(--m6-gap);
 	min-height: 100vh;
 }
 
@@ -72,14 +72,14 @@ body
     align-items: center;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    margin: 0 0 0 20px;
+    margin: 0 0 0 var(--m5-gap);
     flex-direction:row;
 }
 
 #app > aside {
     display: flex;
     justify-content: flex-end;
-    margin:0 20px 0 0 ;
+    margin:0 var(--m5-gap) 0 0 ;
     align-items: center;
 }
 
@@ -93,7 +93,7 @@ body
 }
 
 #app > nav i {
-    margin: 4px 10px
+    margin: var(--m1-gap) var(--m2-gap)
 }
 
 #app > nav a {
@@ -101,30 +101,30 @@ body
 }
 
 #app > header > h1 {
-    font-size:30px;
+    font-size: var(--m5-gap);
 }
 
 #app > header > h1 > i {
-    margin: 12px;
+    margin: var(--m4-gap);
 }
 
 .devices {
-    padding:12px;
+    padding: var(--m3-gap);
     display: grid;
     grid-auto-flow: dense;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: minmax(140px, auto);
-    grid-gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: minmax(var(--ma-gap), auto);
+    grid-gap: var(--m3-gap);
 }
 
 .devices > .device {
     border: 1px solid gray;
-    padding: 12px;
+    padding:  var(--m3-gap);
     border-radius: 4px;
     box-shadow: 1px 1px 4px rgb(230,230,230);
     display: grid;
     grid-template-areas: 'head' 'features' 'action';
-    grid-template-rows: auto 1fr 26px;
+    grid-template-rows: auto 1fr var(--m5-gap);
 }
 
 .device > dl {
@@ -148,7 +148,7 @@ body
 
 .device > header > h1 {
     font-size:110%;
-    margin: 0 0 12px 0;
+    margin: 0 0  var(--m3-gap) 0;
 }
 
 .device > header > p {
@@ -157,12 +157,12 @@ body
 
 .device > dl {
     font-size:80%;
-    margin: 12px;
+    margin:  var(--m3-gap);
 }
 
 .device dd small {
     opacity: 0.7;
-    font-size:9px;
+    font-size: 9px;
 }
 
 
@@ -174,11 +174,11 @@ body
 		                     "body"
 		                     "footer";
 		grid-template-columns: 100%;
-		grid-template-rows: 100px
-							50px
-							50px
+		grid-template-rows: var(--ma-gap)
+						    var(--m7-gap)
+							var(--m7-gap)
 							1fr
-							30px;
+							var(--m6-gap);
 	}
 }
 
@@ -189,7 +189,7 @@ dl {
 }
 
 dl > dt + dd {
-    margin:10px 0 0 0
+    margin:var(--m2-gap) 0 0 0
 }
 
 dl > dd + dt {
@@ -199,7 +199,7 @@ dt {
   grid-column: 1;
   font-weight: bold;
   text-align: right;
-  margin:10px 0 0 0;
+  margin:var(--m2-gap) 0 0 0;
 }
 
 dd {

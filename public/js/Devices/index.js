@@ -6,7 +6,7 @@ import { Device } from './Device.js'
 import { AddDevice } from './AddDevice.js'
 
 function DevicesList(props) {
-    const {response, error} = useGet('/devices');
+    const {response, error} = useGet('/devices/available');
 
     if (response == null) {
         return null
@@ -16,11 +16,28 @@ function DevicesList(props) {
         response.result.map(device => h(Device, device)))
 }
 
+function ConfiguredDevice(props) {
+    return "Configured Device"
+}
+
+function DevicesConfiguredList(props) {
+    const {response, error} = useGet('/devices/available');
+
+    if (response == null) {
+        return null
+    }
+
+    return h("div", {}, [
+        response.result.map(device => h(ConfiguredDevice, device))
+    ])
+}
+
 export function Devices(props) {
     return (
         h(Switch, {}, [
             h(Route, {path: "/devices/add/:item"}, p => h(AddDevice, p)),
-            h(Route, {path: "/devices", component: DevicesList})
+            h(Route, {path: "/devices/available", component: DevicesList}),
+            h(Route, {path: "/devices"}, p => h(DevicesConfiguredList, p)),
         ])
     )
 }

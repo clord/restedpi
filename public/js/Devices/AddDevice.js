@@ -2,9 +2,10 @@ import { h } from '/static/js/html.js'
 import { Form, Text, Radio, Choice } from '/static/js/Forms/Form.js'
 
 function AddBmp085(props) {
-    const onSubmit = values => {
+    const onSubmit = useCallback(values => {
         console.log(values);
-    };
+    }, []);
+
     return h(Form, {onSubmit: onSubmit}, [
             h('p', {}, "BMP Form and button that will add it"),
             h(Text, { name: 'address',

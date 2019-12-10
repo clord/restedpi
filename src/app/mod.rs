@@ -94,7 +94,7 @@ impl State {
                 if let Some(m) = self.switches.get_mut(&name) {
                     match m.read_switch(pin) {
                         Ok(cur_value) => self.step(Action::SwitchSet(name, pin, !cur_value)),
-                        Err(e) => (),
+                        Err(_e) => (),
                     };
                 }
             }
@@ -211,7 +211,7 @@ pub fn start(
                     match state.create_mcp23017(address) {
                         Ok(dev) => {
                             for (_bankcfg, _bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter() {
-                                for pin in [
+                                for _pin in [
                                     Pin::Pin0,
                                     Pin::Pin1,
                                     Pin::Pin2,
