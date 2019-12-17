@@ -26,9 +26,11 @@ mod config;
 mod webapp;
 mod i2c;
 
-// GET /
-fn greeting(_app: webapp::SharedAppState, server_name: String) -> impl warp::Reply {
-    let reply = json!({ "server": format!("restedpi on {}", server_name) });
+// GET /api/config
+fn server_config(_app: webapp::SharedAppState, server_name: String) -> impl warp::Reply {
+    let reply = json!({ "serverConfig":
+        {"deviceName": format!("restedpi on {}", server_name),
+        }});
     warp::reply::json(&reply)
 }
 
@@ -141,11 +143,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
 
-    let r_greeting = warp::get2()
+    let r_config = warp::get2()
         .and(app.clone())
         .and(warp::any().map(move || server_name.clone()))
-        .and(path!("about"))
-        .map(greeting);
+        .and(path!("config"))
+        .map(server_config);
 
     let r_config_check = warp::post2()
         .and(app.clone())
@@ -168,7 +170,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::body::json())
         .and_then(evaulate_value_expr);
 
-
     let r_sensors = warp::get2()
         .and(app.clone())
         .and(path!("sensors"))
@@ -189,45 +190,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r_available =
         warp::get2()
-            .and(path!("available"))
-            .and(app.clone())
-            .and_then(move |app| webapp::all_devices(app));
+        .and(path!("available"))
+        .and(app.clone())
+        .and_then(move |app| webapp::all_devices(app));
 
     let r_adding_configured =
         warp::post2()
-            .and(app.clone())
-            .and_then(move |app| webapp::add_device(app));
+        .and(app.clone())
+        .and_then(move |app| webapp::add_device(app));
 
     let r_fetching_configured =
         warp::get2()
-            .and(app.clone())
-            .and_then(move |app| webapp::configured_devices(app));
+        .and(app.clone())
+        .and_then(move |app| webapp::configured_devices(app));
 
     let r_configured =
         warp::path("configured")
-            .and(r_adding_configured.or(r_fetching_configured));
+        .and(r_adding_configured.or(r_fetching_configured));
 
     let r_devices =
         warp::path("devices")
-            .and(r_available.or(r_configured));
+        .and(r_available.or(r_configured));
 
 
     let api = r_static
         .or(path!("api").and(
-            r_greeting
-            .or(r_sensor)
-            .or(r_sensors)
-            .or(r_devices)
-            .or(r_config_check)
-            .or(r_eval_bool)
-            .or(r_eval_value)))
+                r_config
+                .or(r_sensor)
+                .or(r_sensors)
+                .or(r_devices)
+                .or(r_config_check)
+                .or(r_eval_bool)
+                .or(r_eval_value)))
         .or(index_html)
         .recover(customize_error);
 
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
 
     info!("RestedPi listening: http://{}", addr);
-    warp::serve(api).run(addr);
+    warp::serve(api.with(warp::log("restedpi_rust::access"))).run(addr);
 
     Ok(())
 }

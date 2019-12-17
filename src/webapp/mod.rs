@@ -79,19 +79,21 @@ pub extern fn all_devices(
 pub extern fn configured_devices(
     _app: SharedAppState
 ) -> Result<impl Reply, Rejection> {
-    let reply = json!({ "result": [
-        { "name": "Configured Device 1"
-        , "description": "A User-entered description for the device"
-        , "device": "/api/devices/available/mcp9808"
-        , "status": "ok"
-        , "config": {
-            "bus": {
-                "type": "i2c",
-                "address": "23"
-            },
-        }
-        }
-    ] });
+    let reply = json!([
+        [ "/api/devices/configured/1",
+            { "name": "Configured Device 1"
+            , "device": "/api/devices/available/mcp9808"
+            , "description": "A User-entered description for the device"
+            , "status": "ok"
+            , "config": {
+                    "bus": {
+                        "type": "i2c",
+                        "address": "23"
+                    },
+                }
+            }
+            ]
+        ]);
     Ok(reply::json(&reply))
 }
 

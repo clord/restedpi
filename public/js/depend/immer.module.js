@@ -42,7 +42,9 @@ var assign = Object.assign || (function (target) {
   var overrides = [], len = arguments.length - 1;
   while ( len-- > 0 ) overrides[ len ] = arguments[ len + 1 ];
 
-  overrides.forEach(function (override) { return Object.keys(override).forEach(function (key) { return target[key] = override[key]; }); });
+  overrides.forEach(function (override) {
+    if (typeof override === "object" && override !== null) { Object.keys(override).forEach(function (key) { return target[key] = override[key]; }); }
+  });
   return target;
 });
 var ownKeys = typeof Reflect !== "undefined" && Reflect.ownKeys ? Reflect.ownKeys : typeof Object.getOwnPropertySymbols !== "undefined" ? function (obj) { return Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertySymbols(obj)); } : Object.getOwnPropertyNames;

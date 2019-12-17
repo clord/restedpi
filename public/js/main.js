@@ -9,14 +9,8 @@ import { Switches } from './Switches/index.js'
 import { Sensors } from './Sensors/index.js'
 import { Devices } from './Devices/index.js'
 
-
 function App() {
-
-    const setup = useApp(x => x.setup)
-    useEffect(() => {
-        setup()
-    }, [])
-
+    useApp()
     return [
         h(Header),
         h("section", {}, [

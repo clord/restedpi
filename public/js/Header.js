@@ -1,14 +1,14 @@
 import { html, h } from './html.js'
 import { Nav } from './Nav.js'
-import { useApp } from '/static/js/hooks/useApp.js'
+import { useAppStore } from '/static/js/hooks/useApp.js'
 
 export function About() {
-    const server = useApp(x => x.server)
+    const name = useAppStore(x => x.serverConfig.deviceName)
 
-    if (server == null) {
+    if (name == null) {
         return h("aside", {}, "loading")
     }
-    return h("aside", {}, server)
+    return h("aside", {}, name)
 }
 
 /**
