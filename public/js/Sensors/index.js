@@ -15,3 +15,4 @@ export function Sensors(props) {
     `
 }
 
+export {Sensors as default}

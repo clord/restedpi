@@ -46,7 +46,7 @@ function ConfiguredDevice({device, url}) {
 }
 
 function DevicesConfiguredList(props) {
-    useEffect(useAppStore(x => x.devices.setup), [])
+    useEffect(useAppStore(x => x.devices.read), [])
     const configured = useAppStore(x => x.devices.configured)
 
     return (
@@ -72,4 +72,5 @@ export function Devices(props) {
     )
 }
 
+export { Devices as default }
 

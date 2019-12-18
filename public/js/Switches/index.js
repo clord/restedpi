@@ -15,3 +15,4 @@ export function Switches(props) {
     `
 }
 
+export {Switches as default}
