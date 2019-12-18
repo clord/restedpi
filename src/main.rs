@@ -19,7 +19,7 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use warp::{http::StatusCode, filters::path::Tail, path, Filter};
+use warp::{http::StatusCode, http::header::{HeaderMap, HeaderValue}, filters::path::Tail, path, Filter};
 
 mod app;
 mod config;
@@ -180,8 +180,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(path!("sensors" / String / Unit))
         .and_then(read_sensor);
 
+    let mut nocache_header = HeaderMap::new();
+    nocache_header.insert("cache-control", HeaderValue::from_static("no-store"));
+
     let index_html = warp::get2()
-        .and_then(|| webapp::serve("index.html"));
+        .and_then(|| webapp::serve("index.html"))
+        .with(warp::reply::with::headers(nocache_header));
 
     let r_static = warp::get2()
         .and(warp::path("static"))
