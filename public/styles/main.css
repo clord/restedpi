@@ -18,16 +18,72 @@
     --md-gap:384px;
     --me-gap:512px;
     --mf-gap:640px;
+
+    --prim-yellow-vivid-050: #FFFBEA;
+    --prim-yellow-vivid-100: #FFF3C4;
+    --prim-yellow-vivid-200: #FCE588;
+    --prim-yellow-vivid-300: #FADB5F;
+    --prim-yellow-vivid-400: #F7C948;
+    --prim-yellow-vivid-500: #F0B429;
+    --prim-yellow-vivid-600: #DE911D;
+    --prim-yellow-vivid-700: #CB6E17;
+    --prim-yellow-vivid-800: #B44D12;
+    --prim-yellow-vivid-900: #8D2B0B;
+    --prim-light-blue-vivid-050: #E3F8FF;
+    --prim-light-blue-vivid-100: #B3ECFF;
+    --prim-light-blue-vivid-200: #81DEFD;
+    --prim-light-blue-vivid-300: #5ED0FA;
+    --prim-light-blue-vivid-400: #40C3F7;
+    --prim-light-blue-vivid-500: #2BB0ED;
+    --prim-light-blue-vivid-600: #1992D4;
+    --prim-light-blue-vivid-700: #127FBF;
+    --prim-light-blue-vivid-800: #0B69A3;
+    --prim-light-blue-vivid-900: #035388;
+    --neut-grey-050: #F7F7F7;
+    --neut-grey-100: #E1E1E1;
+    --neut-grey-200: #CFCFCF;
+    --neut-grey-300: #B1B1B1;
+    --neut-grey-400: #9E9E9E;
+    --neut-grey-500: #7E7E7E;
+    --neut-grey-600: #626262;
+    --neut-grey-700: #515151;
+    --neut-grey-800: #3B3B3B;
+    --neut-grey-900: #222222,;
+    --support-red-vivid-050: #FFE3E3;
+    --support-red-vivid-100: #FFBDBD;
+    --support-red-vivid-200: #FF9B9B;
+    --support-red-vivid-300: #F86A6A;
+    --support-red-vivid-400: #EF4E4E;
+    --support-red-vivid-500: #E12D39;
+    --support-red-vivid-600: #CF1124;
+    --support-red-vivid-700: #AB091E;
+    --support-red-vivid-800: #8A041A;
+    --support-red-vivid-900: #610316;
+    --teal-050: #EFFCF6;
+    --teal-100: #C6F7E2;
+    --teal-200: #8EEDC7;
+    --teal-300: #65D6AD;
+    --teal-400: #3EBD93;
+    --teal-500: #27AB83;
+    --teal-600: #199473;
+    --teal-700: #147D64;
+    --teal-800: #0C6B58;
+    --teal-900: #014D40;
 }
 
 
 body
 {
+    color: var(--neut-grey-900);
+    background-color: var(--neut-grey-100);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 /** Layout **/
 #app {
+    --header-background: var(--prim-yellow-vivid-400);
+    --header-background-border: var(--prim-yellow-vivid-500);
+    --header-foreground: var(--neut-grey-900);
     display: grid;
     grid-template-areas: "header  nav     aside"
                          "body    body    body"
@@ -41,47 +97,65 @@ body
 	min-height: 100vh;
 }
 
-#app > nav {
-    grid-area: nav
-}
 
 #app > footer {
-    grid-area: footer
+    grid-area: footer;
+    background-color: var(--header-background);
+    color: var(--header-foreground);
+    border-top: 1px solid var(--header-background-border);
 }
 
 #app > section {
-    grid-area: body
-}
-
-#app > aside {
-    grid-area: aside
+    grid-area: body;
 }
 
 #app > header {
-    grid-area: header
-}
-
-.centered-inside {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-#app > header {
+    grid-area: header;
+    background-color: var(--header-background);
+    color: var(--header-foreground);
+    border-bottom: 1px solid var(--header-background-border);
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    margin: 0 0 0 var(--m5-gap);
+    padding: 0 0 0 var(--m5-gap);
     flex-direction:row;
 }
 
+#app > header > h1 {
+    font-size: var(--m5-gap);
+}
+
+#app > header > h1 > i {
+    margin: var(--m4-gap);
+}
+
+#app > nav {
+    grid-area: nav;
+    background-color: var(--header-background);
+    color: var(--header-foreground);
+    border-bottom: 1px solid var(--header-background-border);
+}
+#app > nav > a {
+    color: var(--header-foreground);
+}
+#app > nav > a:hover {
+    color: var(--neut-grey-800);
+}
+#app > nav > a:focus {
+    color: var(--prim-yellow-vivid-600);
+}
 #app > aside {
+    grid-area: aside;
+    background-color: var(--header-background);
+    color: var(--header-foreground);
+    border-bottom: 1px solid var(--header-background-border);
     display: flex;
     justify-content: flex-end;
-    margin:0 var(--m5-gap) 0 0 ;
+    padding:0 var(--m5-gap) 0 0 ;
     align-items: center;
 }
+
 
 #app > nav {
     display: flex;
@@ -100,12 +174,10 @@ body
     text-decoration: none;
 }
 
-#app > header > h1 {
-    font-size: var(--m5-gap);
-}
-
-#app > header > h1 > i {
-    margin: var(--m4-gap);
+.centered-inside {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .devices {
