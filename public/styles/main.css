@@ -76,7 +76,38 @@ body
 {
     color: var(--neut-grey-900);
     background-color: var(--neut-grey-100);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+button:focus, object:focus, embed:focus {
+    outline-style:none;
+}
+button, object, embed {
+    outline: 0;
+}
+
+:focus {outline:none;}
+::-moz-focus-inner {border:0;}
+
+
+a:hover, a:active, a:focus, a:link, a:visited {
+    outline: 0;
+    outline-style: none;
+}
+
+a:active {
+    background:var(--prim-light-blue-vivid-400);
+    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-600);
+}
+button:active, object:active, embed:active {
+    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-600);
+}
+a:focus {
+    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-400);
+    border-radius:4px;
+}
+button:focus, object:focus, embed:focus {
+    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-400);
 }
 
 /** Layout **/
@@ -85,10 +116,10 @@ body
     --header-background-border: var(--prim-yellow-vivid-500);
     --header-foreground: var(--neut-grey-900);
     display: grid;
-    grid-template-areas: "header  nav     aside"
-                         "body    body    body"
-                         "footer  footer  footer";
-    grid-template-columns: 1fr minmax(var(--mc-gap), 2fr) 1fr;
+    grid-template-areas: "header header   header header"
+                         "gapl   body     body   gapr"
+                         "footer footer   footer footer";
+    grid-template-columns: minmax(0, 1fr) minmax(var(--mc-gap), 4fr) minmax(var(--mc-gap), 4fr) minmax(0, 1fr);
     align-items: stretch;
     justify-items: stretch;
 	grid-template-rows: var(--m8-gap)
@@ -117,8 +148,8 @@ body
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
-    justify-content: flex-start;
-    padding: 0 0 0 var(--m5-gap);
+    justify-content: space-between;
+    padding: 0 var(--m5-gap) 0 var(--m5-gap);
     flex-direction:row;
 }
 
@@ -127,29 +158,32 @@ body
 }
 
 #app > header > h1 > i {
-    margin: var(--m4-gap);
+    margin: var(--m3-gap);
 }
 
-#app > nav {
-    grid-area: nav;
+#app > header > nav {
+}
+
+#app > header > nav > a {
+    margin-left:var(--m5-gap);
+    padding:var(--m2-gap);
     background-color: var(--header-background);
     color: var(--header-foreground);
-    border-bottom: 1px solid var(--header-background-border);
 }
-#app > nav > a {
-    color: var(--header-foreground);
-}
-#app > nav > a:hover {
+#app > header > nav > a:hover {
     color: var(--neut-grey-800);
 }
-#app > nav > a:focus {
-    color: var(--prim-yellow-vivid-600);
+
+#app > header > nav i {
+    margin: var(--m1-gap) var(--m2-gap)
 }
-#app > aside {
+
+#app > header a {
+    text-decoration: none;
+}
+
+#app > header > aside {
     grid-area: aside;
-    background-color: var(--header-background);
-    color: var(--header-foreground);
-    border-bottom: 1px solid var(--header-background-border);
     display: flex;
     justify-content: flex-end;
     padding:0 var(--m5-gap) 0 0 ;
@@ -157,22 +191,6 @@ body
 }
 
 
-#app > nav {
-    display: flex;
-    flex-direction:row;
-    justify-content: space-evenly;
-    align-items: center;
-    width:100%;
-    font-size:120%;
-}
-
-#app > nav i {
-    margin: var(--m1-gap) var(--m2-gap)
-}
-
-#app > nav a {
-    text-decoration: none;
-}
 
 .centered-inside {
     display: flex;
@@ -277,3 +295,5 @@ dt {
 dd {
    grid-column: 2;
  }
+
+

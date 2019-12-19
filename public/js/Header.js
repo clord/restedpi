@@ -21,8 +21,8 @@ export function Header(props) {
                 <i class="fas fa-pizza-slice"></i>
                 REpi
             </h1>
+            <${Nav} />
+            <${About} />
         </header>
-        <${Nav} />
-        <${About} />
     `
 }
