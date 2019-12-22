@@ -65,7 +65,7 @@
     --neut-grey-600: #626262;
     --neut-grey-700: #515151;
     --neut-grey-800: #3B3B3B;
-    --neut-grey-900: #222222,;
+    --neut-grey-900: #222222;
     --support-red-vivid-050: #FFE3E3;
     --support-red-vivid-100: #FFBDBD;
     --support-red-vivid-200: #FF9B9B;
@@ -86,6 +86,13 @@
     --teal-700: #147D64;
     --teal-800: #0C6B58;
     --teal-900: #014D40;
+
+    /* Defaults */
+    --focus: var(--support-red-vivid-400);
+    --active: var(--prim-light-blue-vivid-200);
+    --hover: var(--prim-light-blue-vivid-100);
+    --button-background: var(--neut-grey-100);
+    --button-foreground:: var(--neut-grey-800);
 }
 
 
@@ -94,14 +101,42 @@ body
     color: var(--neut-grey-900);
     background-color: var(--neut-grey-100);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-size: var(--f2);
 }
 
 button:focus, object:focus, embed:focus {
     outline-style:none;
 }
+
 button, object, embed {
     outline: 0;
 }
+
+button {
+    border:none;
+    font-weight:600;
+    padding: var(--m2-gap) var(--m3-gap);
+    border-radius: var(--m1-gap);
+    background: var(--button-background);
+    color: var(--button-foreground);
+    margin: var(--m1-gap);
+}
+
+button.primary {
+    --button-background: var(--prim-light-blue-vivid-400);
+    --button-foreground: var(--prim-light-blue-vivid-050);
+}
+
+button.secondary {
+    --button-background: var(--prim-light-blue-vivid-100);
+    --button-foreground: var(--prim-light-blue-vivid-700);
+}
+
+button.tertiary {
+    --button-background: var(--prim-yellow-vivid-100);
+    --button-foreground: var(--prim-yellow-vivid-700);
+}
+
 
 :focus {outline:none;}
 ::-moz-focus-inner {border:0;}
@@ -113,21 +148,70 @@ a:hover, a:active, a:focus, a:link, a:visited {
 }
 
 a:active {
-    background:var(--prim-light-blue-vivid-400);
-    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-600);
+    background:var(--active);
+    box-shadow: 0 0 0 3px var(--active);
 }
 button:active, object:active, embed:active {
-    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-600);
+    box-shadow: 0 0 0 3px var(--active);
 }
 a:focus {
-    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-400);
+    box-shadow: 0 0 0 3px var(--focus);
     border-radius:4px;
 }
 button:focus, object:focus, embed:focus {
-    box-shadow: 0 0 0 3px var(--prim-light-blue-vivid-400);
+    box-shadow: 0 0 0 3px var(--focus);
 }
 
-/** Layout **/
+a:hover {
+    box-shadow: 0 0 0 3px var(--hover);
+    border-radius:4px;
+}
+button:hover, object:hover, embed:hover {
+    box-shadow: 0 0 0 3px var(--hover);
+}
+
+
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-gap: 0 1em;
+}
+
+dl > dt + dd {
+    margin:var(--m2-gap) 0 0 0
+}
+
+dl > dd + dt {
+}
+
+dt {
+  grid-column: 1;
+  font-weight: bold;
+  text-align: right;
+  margin:var(--m2-gap) 0 0 0;
+}
+
+dd {
+   grid-column: 2;
+}
+
+table {
+    border-spacing: 0;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+th {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+th, td {
+    margin: 0;
+    padding: var(--m3-gap);
+}
+
+
+
+/** App Specific Layout **/
 #app {
     --header-background: var(--prim-yellow-vivid-400);
     --header-background-border: var(--prim-yellow-vivid-500);
@@ -144,6 +228,22 @@ button:focus, object:focus, embed:focus {
 						var(--m6-gap);
 	min-height: 100vh;
 }
+@media screen and (max-width: 600px) {
+    #app {
+		grid-template-areas: "header"
+		                     "nav"
+		                     "aside"
+		                     "body"
+		                     "footer";
+		grid-template-columns: 100%;
+		grid-template-rows: var(--ma-gap)
+						    var(--m7-gap)
+							var(--m7-gap)
+							1fr
+							var(--m6-gap);
+	}
+}
+
 
 
 #app > footer {
@@ -161,6 +261,7 @@ button:focus, object:focus, embed:focus {
     grid-area: header;
     background-color: var(--header-background);
     color: var(--header-foreground);
+    font-size: var(--f3);
     border-bottom: 1px solid var(--header-background-border);
     display: flex;
     align-items: center;
@@ -168,6 +269,9 @@ button:focus, object:focus, embed:focus {
     justify-content: space-between;
     padding: 0 var(--m5-gap) 0 var(--m5-gap);
     flex-direction:row;
+    --focus: var(--prim-yellow-vivid-500);
+    --active: var(--prim-yellow-vivid-500);
+    --hover: var(--prim-yellow-vivid-400);
 }
 
 #app > header > h1 {
@@ -216,8 +320,6 @@ button:focus, object:focus, embed:focus {
     display:block;
     padding:var(--m5gap);
 }
-
-
 
 .centered-inside {
     display: flex;
@@ -282,45 +384,25 @@ button:focus, object:focus, embed:focus {
     font-size: 9px;
 }
 
-
-@media screen and (max-width: 600px) {
-    #app {
-		grid-template-areas: "header"
-		                     "nav"
-		                     "aside"
-		                     "body"
-		                     "footer";
-		grid-template-columns: 100%;
-		grid-template-rows: var(--ma-gap)
-						    var(--m7-gap)
-							var(--m7-gap)
-							1fr
-							var(--m6-gap);
-	}
+.main-body {
+    border-left: 1px solid var(--neut-grey-200);
+    border-right: 1px solid var(--neut-grey-200);
+    padding: 0 var(--m4-gap);
+    background-color: var(--neut-grey-050);
 }
 
-dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-gap: 0 1em;
+.part > h1 {
+    font-size: var(--f3);
+    margin: 0 calc(-1 * var(--m4-gap));
+    padding: var(--m5-gap) 0 var(--m5-gap) var(--m5-gap);
+    border-bottom: 2px solid var(--neut-grey-100);
+    background-color: white;
 }
-
-dl > dt + dd {
-    margin:var(--m2-gap) 0 0 0
+.part > button {
+    margin: var(--m5-gap) 0;
+    font-size: var(--f3);
 }
-
-dl > dd + dt {
+.part > table {
+    background-color: white;
+    width: 100%
 }
-
-dt {
-  grid-column: 1;
-  font-weight: bold;
-  text-align: right;
-  margin:var(--m2-gap) 0 0 0;
-}
-
-dd {
-   grid-column: 2;
- }
-
-
