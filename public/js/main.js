@@ -14,7 +14,7 @@ function App() {
     return [
         h(Header),
         h(Suspense, {fallback: h("div", {className: "loading"}, "...")},
-            h("section", {}, [
+            h("section", {className: "main-body"}, [
                 h(Route, {path: "/devices/:rest*", component: Devices}),
                 h(Route, {path: "/sensors/:rest*", component: Sensors}),
                 h(Route, {path: "/switches/:rest*", component: Switches})
