@@ -19,6 +19,23 @@
     --me-gap:512px;
     --mf-gap:640px;
 
+    --f0: 10px;
+    --f1: 12px;
+    --f2: 14px;
+    --f3: 16px;
+    --f4: 18px;
+    --f5: 20px;
+    --f6: 24px;
+    --f7: 32px;
+    --f8: 48px;
+
+    --ixsm: 12px;
+    --ism: 16px;
+    --imd: 24px;
+    --ilg: 32px;
+    --ixlg: 48px;
+
+
     --prim-yellow-vivid-050: #FFFBEA;
     --prim-yellow-vivid-100: #FFF3C4;
     --prim-yellow-vivid-200: #FCE588;
@@ -190,6 +207,16 @@ button:focus, object:focus, embed:focus {
     align-items: center;
 }
 
+.configured-devices > header {
+    padding: var(--m5-gap) 0;
+}
+
+.configured-devices .configured-device {
+    border: 1px solid black;
+    display:block;
+    padding:var(--m5gap);
+}
+
 
 
 .centered-inside {
@@ -211,7 +238,7 @@ button:focus, object:focus, embed:focus {
     border: 1px solid gray;
     padding:  var(--m3-gap);
     border-radius: 4px;
-    box-shadow: 1px 1px 4px rgb(230,230,230);
+    box-shadow: 1px 1px 12px rgba(230,230,230, 0.5);
     display: grid;
     grid-template-areas: 'head' 'features' 'action';
     grid-template-rows: auto 1fr var(--m5-gap);
