@@ -43,14 +43,16 @@ function DevicesConfiguredTable({data}) {
             },
             { Header: 'Status',
               accessor: 'device.status',
-              Cell: DeviceStatus
+              Cell: DeviceStatus,
+              style: {textAlign: 'center'}
             },
             { Header: 'Description',
               accessor: 'device.description'
             },
             {
               accessor: 'url',
-              Cell: ActionCol
+              Cell: ActionCol,
+              style: {textAlign:"right"}
             },
         ],
         data
