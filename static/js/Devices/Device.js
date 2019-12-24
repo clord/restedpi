@@ -1,5 +1,5 @@
 import { h } from '/static/js/html.js'
-import { Link } from '/static/js/depend/wouter/index.js'
+import { Link } from '/static/js/depend/wouter'
 
 function DtDd({dt, dd, dds}) {
     if (dds != null) {

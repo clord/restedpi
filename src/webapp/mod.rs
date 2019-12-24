@@ -8,18 +8,31 @@ use warp::{ http::Response, Reply, Rejection, reply};
 pub type SharedAppState = std::sync::Arc<std::sync::Mutex<app::AppState>>;
 
 #[derive(RustEmbed)]
-#[folder = "public/"]
+#[folder = "static/"]
 struct Asset;
 
 pub extern fn serve(path: &str) -> Result<impl Reply, Rejection> {
-  let mime = from_path(path).first_or_octet_stream();
-  let asset: Option<Cow<'static, [u8]>> = Asset::get(path);
-  let file = asset.ok_or_else(|| warp::reject::not_found())?;
+  let assetA: Option<Cow<'static, [u8]>> = Asset::get(path);
+  if assetA.is_some() {
+    let mime = from_path(path).first_or_octet_stream();
+    let file = assetA.ok_or_else(|| warp::reject::not_found())?;
+    Ok(Response::builder()
+        .header("content-type", mime.to_string())
+        .body(file)
+        )
+  }
+  else {
+    let mut pathB: String =  path.to_owned();
+    pathB.push_str("/index.js");
+    let assetB: Option<Cow<'static, [u8]>> = Asset::get(pathB.as_str());
+    let mime = from_path(pathB.as_str()).first_or_octet_stream();
+    let file = assetB.ok_or_else(|| warp::reject::not_found())?;
+    Ok(Response::builder()
+        .header("content-type", mime.to_string())
+        .body(file)
+        )
+  }
 
-  Ok(Response::builder()
-      .header("content-type", mime.to_string())
-      .body(file)
-    )
 }
 
 // GET /devices/available

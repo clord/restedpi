@@ -1,7 +1,7 @@
 import {useCallback, useEffect} from '/static/js/depend/react/react.js'
 import {useGet} from '/static/js/hooks/network.js'
 import {h} from '/static/js/html.js'
-import {Route, Switch} from '/static/js/depend/wouter/index.js'
+import {Route, Switch} from '/static/js/depend/wouter'
 import {useAppStore} from '/static/js/hooks/useApp.js'
 
 import {Device} from './Device.js'

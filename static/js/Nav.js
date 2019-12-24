@@ -1,6 +1,6 @@
 import { useGet } from '/static/js/hooks/network.js'
 import { html, render } from '/static/js/html.js'
-import { Link } from '/static/js/depend/wouter/index.js'
+import { Link } from '/static/js/depend/wouter'
 
 export function Nav(props) {
     return html`
