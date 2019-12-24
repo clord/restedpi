@@ -1,7 +1,7 @@
-import {useEffect} from '/static/js/depend/react/react.js'
-import produce from '/static/js/depend/immer.module.js'
-import create from '/static/js/depend/zustand.js'
-import {apiGet} from '/static/js/hooks/network.js'
+import {useEffect} from '/js/depend/react/'
+import produce from '/js/depend/immer.module.js'
+import create from '/js/depend/zustand.js'
+import {apiGet} from '/js/hooks/network.js'
 
 const [useAppStore, api] = create(set => {
     const s = fn => set(produce(fn))

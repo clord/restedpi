@@ -1,5 +1,5 @@
-import { h } from '/static/js/html.js'
-import { useTable } from '/static/js/depend/react-table.7.rc15.js'
+import { h } from '/js/html.js'
+import { useTable } from '/js/depend/react-table.7.rc15.js'
 
 const defaultPropGetter = () => ({})
 

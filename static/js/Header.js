@@ -1,6 +1,6 @@
 import { html, h } from './html.js'
 import { Nav } from './Nav.js'
-import { useAppStore } from '/static/js/hooks/useApp.js'
+import { useAppStore } from '/js/hooks/useApp.js'
 
 export function About() {
     const name = useAppStore(x => x.serverConfig.deviceName)

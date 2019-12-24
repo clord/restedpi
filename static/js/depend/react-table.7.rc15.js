@@ -1,4 +1,4 @@
-import React from '/static/js/depend/react/react.js';
+import React from '/js/depend/react/';
 
 function _extends() {
   _extends = Object.assign || function (target) {

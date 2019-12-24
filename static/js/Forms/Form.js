@@ -1,6 +1,6 @@
-import { createContext, useContext, Fragment } from '/static/js/depend/react/react.js'
-import useForm, {FormContext, useFormContext} from "/static/js/depend/react-hook-form.js"
-import { h } from '/static/js/html.js'
+import { createContext, useContext, Fragment } from '/js/depend/react/'
+import useForm, {FormContext, useFormContext} from "/js/depend/react-hook-form.js"
+import { h } from '/js/html.js'
 
 export function Form({onSubmit, children}) {
     const methods = useForm({mode: 'onBlur'})

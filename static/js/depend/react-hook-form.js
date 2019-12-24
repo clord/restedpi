@@ -1,4 +1,4 @@
-import * as React from '/static/js/depend/react/react.js'
+import * as React from '/js/depend/react/'
 
 const VALIDATION_MODE = {
     onBlur: 'onBlur',

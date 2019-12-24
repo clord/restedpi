@@ -1,14 +1,13 @@
-import { Route } from '/static/js/depend/wouter'
-
-import { useEffect, lazy, Suspense } from '/static/js/depend/react/react.js'
-import { h, render } from '/static/js/html.js'
-import { useApp } from '/static/js/hooks/useApp.js'
+import { Route } from '/js/depend/wouter/'
+import { useEffect, lazy, Suspense } from '/js/depend/react/'
+import { h, render } from '/js/html.js'
+import { useApp } from '/js/hooks/useApp.js'
 
 import { Header } from './Header.js'
 
-const Switches = lazy(() => import('./Switches'))
-const Sensors = lazy(() => import('./Sensors'))
-const Devices = lazy(() => import('./Devicess'))
+const Switches = lazy(() => import('./Switches/'))
+const Sensors = lazy(() => import('./Sensors/'))
+const Devices = lazy(() => import('./Devices/'))
 
 function App() {
     useApp()

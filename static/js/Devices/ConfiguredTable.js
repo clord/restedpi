@@ -1,7 +1,7 @@
-import {useCallback, useEffect} from '/static/js/depend/react/react.js'
-import {h} from '/static/js/html.js'
-import {useAppStore} from '/static/js/hooks/useApp.js'
-import {Table} from '/static/js/Table'
+import {useCallback, useEffect} from '/js/depend/react/'
+import {h} from '/js/html.js'
+import {useAppStore} from '/js/hooks/useApp.js'
+import {Table} from '/js/Table/'
 
 function DeviceStatus({cell}) {
     switch (cell.value) {

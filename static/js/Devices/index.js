@@ -1,8 +1,8 @@
-import {useCallback, useEffect} from '/static/js/depend/react/react.js'
-import {useGet} from '/static/js/hooks/network.js'
-import {h} from '/static/js/html.js'
-import {Route, Switch} from '/static/js/depend/wouter'
-import {useAppStore} from '/static/js/hooks/useApp.js'
+import {useCallback, useEffect} from '/js/depend/react/'
+import {Route, Switch} from '/js/depend/wouter/'
+import {useGet} from '/js/hooks/network.js'
+import {h} from '/js/html.js'
+import {useAppStore} from '/js/hooks/useApp.js'
 
 import {Device} from './Device.js'
 import {AddDevice} from './AddDevice.js'

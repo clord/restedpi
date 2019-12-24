@@ -188,7 +188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(warp::reply::with::headers(nocache_header));
 
     let r_static = warp::get2()
-        .and(warp::path("static"))
+        .and(warp::any())
         .and(warp::path::tail())
         .and_then(|tail: Tail| webapp::serve(tail.as_str()));
 

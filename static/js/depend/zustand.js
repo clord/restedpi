@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useReducer, useRef } from '/static/js/depend/react/react.js';
+import { useEffect, useLayoutEffect, useReducer, useRef } from '/js/depend/react/';
 
 export default function create(createState) {
     let state;

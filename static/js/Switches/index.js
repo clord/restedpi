@@ -1,5 +1,5 @@
-import {  useGet } from '/static/js/hooks/network.js'
-import { html, render } from '/static/js/html.js'
+import {  useGet } from '/js/hooks/network.js'
+import { html, render } from '/js/html.js'
 
 export function Switches(props) {
     const {response, error} = useGet(`/switches`);

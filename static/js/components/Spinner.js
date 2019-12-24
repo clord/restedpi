@@ -1,4 +1,4 @@
-import { html } from '/static/js/html.js'
+import { html } from '/js/html.js'
 
 /**
  * Show a Spinner which fills its container

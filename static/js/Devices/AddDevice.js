@@ -1,6 +1,6 @@
-import { useCallback } from '/static/js/depend/react/react.js'
-import { h } from '/static/js/html.js'
-import { Form, Text, Radio, Choice } from '/static/js/Forms/Form.js'
+import { useCallback } from '/js/depend/react/'
+import { h } from '/js/html.js'
+import { Form, Text, Radio, Choice } from '/js/Forms/Form.js'
 
 function AddBmp085(props) {
     const onSubmit = useCallback(values => {
