@@ -51,7 +51,7 @@ export function Device({name, description, sensors, switches, datasheet, bus}) {
             h(SensorsOfDevice,  {sensors:  sensors  || []}, []),
             h(SwitchesOfDevice, {switches: switches || []}, []),
         ]),
-        h(Link, {href: '/devices/add/' + name}, "Add Device")
+        h(Link, {href: '/devices/add/' + name, className: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"}, "Add Device")
     ])
 }
 

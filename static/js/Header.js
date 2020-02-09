@@ -10,16 +10,15 @@ export function About() {
     }
     return h("aside", {}, name)
 }
-
 /**
+
  * Present the current description of the server to the user
  */
 export function Header(props) {
     return html`
-        <header>
-            <h1>
-                <i class="fas fa-pizza-slice"></i>
-                REpi
+        <header class="flex items-center justify-between flex-wrap text-white bg-orange-500 p-5" >
+            <h1 class="flex items-center flex-shrink-0 text-white mr-6 text-lg">
+                <i class="fas fa-pizza-slice mr-2"></i> REpi
             </h1>
             <${Nav} />
             <${About} />

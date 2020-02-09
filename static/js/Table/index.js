@@ -21,7 +21,7 @@ export function Table({ columns, data,
   })
 
   return (
-      h("table", getTableProps(), [
+      h("table", {...getTableProps(), class: "border table-auto container"}, [
           h("thead", {}, headerGroups.map(headerGroup => (
               h("tr", headerGroup.getHeaderGroupProps(),
                   headerGroup.headers.map(column => (
@@ -41,7 +41,7 @@ export function Table({ columns, data,
                 return (
                     h("tr", row.getRowProps(), row.cells.map(cell =>
                         h("td", cell.getCellProps([{
-                                className: cell.column.className,
+                                className: `${cell.column.className} border-t px-4 py-2`,
                                 style: cell.column.style,
                             },
                             getCellProps(cell),

@@ -6,7 +6,7 @@ import {useAppStore} from '/js/hooks/useApp.js'
 
 import {Device} from './Device.js'
 import {AddDevice} from './AddDevice.js'
-import {DevicesConfigured} from './ConfiguredTable.js'
+import {DevicesConfigured} from './DevicesConfigured.js'
 
 function DevicesList(props) {
     const {response, error} = useGet('/devices/available');
