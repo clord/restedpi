@@ -1,6 +1,6 @@
 import { useCallback } from '/js/depend/react/'
 import { h } from '/js/html.js'
-import { Form, Text, Radio, Choice } from '/js/Forms/Form.js'
+import { Form, Text, Label, Radio, Choice } from '/js/Forms/Form.js'
 
 function AddBmp085(props) {
     const onSubmit = useCallback(values => {
@@ -8,10 +8,14 @@ function AddBmp085(props) {
     }, []);
 
     return h(Form, {onSubmit: onSubmit}, [
-            h('p', {}, "BMP Form and button that will add it"),
-            h(Text, { name: 'address',
-                    required: "Required",
-                    pattern: {value: /^\d+$/, message: "decimal address required"}}),
+            h(Text, { id: 'address',
+                      label: 'Bus Address',
+                      required: "Required",
+                      pattern: {
+                        value: /^\d+$/,
+                        message: "decimal address required"
+                      }
+                    }),
             h(Radio, { name: 'resolution'}, [
 				h(Choice, {name: "high"}, "High Accuracy (slow)"),
 				h(Choice, {name: "med"}, "Medium Accuracy"),

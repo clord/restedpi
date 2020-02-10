@@ -6,8 +6,17 @@ export function Form({onSubmit, children}) {
     const methods = useForm({mode: 'onBlur'})
     const { handleSubmit } = methods
     return h(FormContext, methods,
-        h('form', {className: 'rpi-form',
+        h('form', {className: 'w-full max-w-lg',
             onSubmit: handleSubmit(onSubmit) }, children))
+}
+
+export function Label({children, ...props}) {
+    return h('label', {
+            ...props,
+            className: 'block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2'
+        },
+        children
+    )
 }
 
 export function Group({name, children}) {
@@ -17,16 +26,19 @@ export function Group({name, children}) {
     )
 }
 
-export function Text({name, ...validation}) {
+export function Text({id, label, ...validation}) {
 	const {register, errors} = useFormContext()
 	return [
-        h('label', {}, [
+        h(Label, {"for": id}, [
+            label,
             h('input', {
                 type: 'text',
-                name,
+                id,
                 ref: register(validation)
             }),
-            h('p', {}, errors[name] && errors[name].message)
+            errors[id] ?
+                h('p', {className: 'text-red-500 text-xs italic'}, errors[id].message) :
+                null
         ])
 	]
 }

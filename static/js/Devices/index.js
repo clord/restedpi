@@ -15,7 +15,7 @@ function DevicesList(props) {
         return null
     }
 
-    return h("div", {className: "devices"},
+    return h("div", {className: "grid grid-flow-col grid-cols-3 gap-4"},
         response.result.map(device => h(Device, device)))
 }
 
