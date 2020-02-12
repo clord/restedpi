@@ -1,6 +1,6 @@
-import { useCallback } from '/js/depend/react/';
-import { h } from '/js/html.js';
-import { Form, Text, Label, Radio, Choice } from '/js/Forms/Form.js';
+import { useCallback } from "/js/depend/react/";
+import { h } from "/js/html.js";
+import { Form, Text, Label, Select } from "/js/Forms/Form.js";
 
 function AddBmp085(props) {
   const onSubmit = useCallback(values => {
@@ -9,32 +9,63 @@ function AddBmp085(props) {
 
   return h(Form, { onSubmit: onSubmit }, [
     h(Text, {
-      id: 'address',
-      label: 'Bus Address',
-      required: 'Required',
+      id: "address",
+      label: "Bus Address",
+      required: "Required",
       pattern: {
         value: /^\d+$/,
-        message: 'decimal address required',
-      },
+        message: "decimal address required"
+      }
     }),
-    h(Radio, { name: 'resolution' }, [
-      h(Choice, { name: 'high' }, 'High Accuracy (slow)'),
-      h(Choice, { name: 'med' }, 'Medium Accuracy'),
-      h(Choice, { name: 'low' }, 'Low (Fast sample rate)'),
+    h(Select, { name: "resolution", label: "Resolution" }, [
+      h(Select.Choice, { value: "high" }, "High Accuracy (slow)"),
+      h(Select.Choice, { value: "med", selected: true }, "Medium Accuracy"),
+      h(Select.Choice, { value: "low" }, "Low (Fast sample rate)")
     ]),
-    h('button', { type: 'submit' }, 'create'),
+    h(
+      "button",
+      {
+        type: "submit",
+        className:
+          "mx-auto mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+      },
+      "Create"
+    )
   ]);
 }
 
-export function AddDevice(props) {
-  switch (props.item) {
-    case 'BMP085':
-      return h(AddBmp085, {});
+export function AddDevice({
+  name,
+  description,
+  onHideAddDevice: handleHideDevice
+}) {
+  let component;
+
+  switch (name) {
+    case "BMP085": {
+      component = h(AddBmp085, { name });
+      break;
+    }
   }
 
-  return h(
-    'div',
-    { className: 'add-device' },
-    h('h1', {}, 'configure device: ' + props.item)
-  );
+  return [
+    h("div", { className: "" }, [
+      h("header", { className: "mb-4" }, [
+        h("h1", { className: "font-bold text-xl mb-2" }, name),
+        h("p", { className: "text-gray-700 text-base" }, description)
+      ]),
+      component
+    ]),
+
+    h("div", { className: "mx-auto px-3 py-3" }, [
+      h(
+        "button",
+        {
+          onClick: handleHideDevice,
+          className: "font-bold py-2 px-4 text-sm"
+        },
+        "Back"
+      )
+    ])
+  ];
 }
