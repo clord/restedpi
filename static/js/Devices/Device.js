@@ -34,10 +34,10 @@ function SwitchesOfDevice({switches}) {
     })
 }
 
-export function Device({name, description, sensors, switches, datasheet, bus}) {
-    return h("article", {className: "max-w-sm rounded overflow-hidden shadow-lg border flex flex-col justify-between px-6 py-4"}, [
-        h("div", {}, [
-            h("header", {className: ""}, [
+function ShowDevice({name, description, sensors, switches, datasheet, bus}) {
+  return [
+          h("div", {className: ""}, [
+            h("header", {}, [
                 h("h1", {className: "font-bold text-xl mb-2"}, name),
                 h("p", {className: "text-gray-700 text-base"}, description)
             ]),
@@ -51,9 +51,20 @@ export function Device({name, description, sensors, switches, datasheet, bus}) {
                 }, []),
                 h(SensorsOfDevice,  {sensors:  sensors  || []}, []),
                 h(SwitchesOfDevice, {switches: switches || []}, []),
-            ])]
-        ),
-        h("div", {className: "mx-auto px-3 py-3"}, [h(Link, {href: '/devices/add/' + name, className: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"}, "Add Device")])
+            ])]),
+        h("div", {className: "mx-auto px-3 py-3"}, [
+          h(Link,
+            { href: '/devices/add/' + name,
+              className: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"},
+            "Add Device")])
+  ]
+}
+
+export function Device({name, description, sensors, switches, datasheet, bus}) {
+  return h("article",
+    {className: "max-w-sm rounded overflow-hidden shadow-lg border flex flex-col justify-between px-6 py-4"}, 
+    [
+      h(ShowDevice, {name, description, sensors, switches, datasheet, bus})
     ])
 }
 
