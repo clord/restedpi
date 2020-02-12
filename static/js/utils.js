@@ -1,5 +1,3 @@
-
 export function alertMessage(message) {
-    alert(message)
+  alert(message);
 }
-
