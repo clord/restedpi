@@ -1,36 +1,35 @@
-import { useCallback } from "/js/depend/react/";
+import { useCallback, useState } from "/js/depend/react/";
 import { h } from "/js/html.js";
-import { Form, Text, Label, Select } from "/js/Forms/Form.js";
+import { Form, Text, Submit, Select } from "/js/Forms/Form.js";
+import { useAppStore } from "/js/hooks/useApp.js";
 
 function AddBmp085(props) {
-  const onSubmit = useCallback(values => {
-    console.log(values);
-  }, []);
+  const [submitting, setSubmitting] = useState(false);
+  const addDevice = useAppStore(x => x.devices.add);
+  const handleSubmit = useCallback(
+    form => {
+      setSubmitting(true);
+      addDevice(form).finally(() => setSubmitting(false));
+    },
+    [addDevice]
+  );
 
-  return h(Form, { onSubmit: onSubmit }, [
+  return h(Form, { onSubmit: handleSubmit }, [
     h(Text, {
       id: "address",
       label: "Bus Address",
       required: "Required",
       pattern: {
         value: /^\d+$/,
-        message: "decimal address required"
+        message: "decimal i2c address required"
       }
     }),
     h(Select, { name: "resolution", label: "Resolution" }, [
-      h(Select.Choice, { value: "high" }, "High Accuracy (slow)"),
-      h(Select.Choice, { value: "med", selected: true }, "Medium Accuracy"),
-      h(Select.Choice, { value: "low" }, "Low (Fast sample rate)")
+      h(Select.Choice, { value: "high" }, "High Resolution (slow)"),
+      h(Select.Choice, { value: "med", selected: true }, "Medium Resolution"),
+      h(Select.Choice, { value: "low" }, "Low Resolution (fast)")
     ]),
-    h(
-      "button",
-      {
-        type: "submit",
-        className:
-          "mx-auto mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-      },
-      "Create"
-    )
+    h(Submit, { submitting }, "Create")
   ]);
 }
 

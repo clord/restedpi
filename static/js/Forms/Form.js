@@ -22,6 +22,25 @@ export function Form({ onSubmit, children }) {
   );
 }
 
+export function Submit({ disabled, submitting, children }) {
+  const { errors } = useFormContext();
+  const hasErrors = Object.entries(errors).length > 0;
+
+  return h(
+    "button",
+    {
+      type: "submit",
+      disabled: hasErrors || disabled,
+      className: `mx-auto mt-4 ${
+        hasErrors
+          ? "bg-gray-300 text-gray-500"
+          : "bg-blue-500 hover:bg-blue-700 text-white"
+      } font-bold py-2 px-4 rounded`
+    },
+    children
+  );
+}
+
 export function Label({ children, ...props }) {
   return h(
     "label",
@@ -40,24 +59,25 @@ export function Group({ name, children }) {
 
 export function Text({ id, label, placeholder, ...validation }) {
   const { register, errors } = useFormContext();
+  const hasError = errors.hasOwnProperty(id);
   return [
     h(Label, { for: id }, [
       label,
       h("input", {
         type: "text",
         placeholder,
-        className:
-          "appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-gray-500",
+        className: `appearance-none block w-full text-gray-700 border bg-gray-200
+        ${
+          hasError
+            ? "border-red-500 focus:border-red-400"
+            : "border-gray-200 focus:border-gray-500"
+        } rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white`,
         id,
         name: id,
         ref: register(validation)
       }),
       errors[id]
-        ? h(
-            "p",
-            { className: "text-red-500 text-xs italic" },
-            errors[id].message
-          )
+        ? h("p", { className: "text-red-500 text-xs" }, errors[id].message)
         : null
     ])
   ];
