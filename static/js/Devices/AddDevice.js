@@ -16,12 +16,21 @@ function AddBmp085(props) {
 
   return h(Form, { onSubmit: handleSubmit }, [
     h(Text, {
+      id: "name",
+      label: "Sensor Name",
+      required: "Required",
+      pattern: {
+        value: /^[ \w]+$/,
+        message: "Name must be alphanumeric"
+      }
+    }),
+    h(Text, {
       id: "address",
-      label: "Bus Address",
+      label: "I2C Bus Address",
       required: "Required",
       pattern: {
         value: /^\d+$/,
-        message: "decimal i2c address required"
+        message: "Address must be decimal number"
       }
     }),
     h(Select, { name: "resolution", label: "Resolution" }, [

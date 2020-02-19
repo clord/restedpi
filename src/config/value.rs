@@ -1,9 +1,9 @@
-use serde_derive::{Deserialize, Serialize};
-use std::str::FromStr;
-use crate::app::AppState;
+use crate::app::State;
 use crate::config::sched;
 use chrono::prelude::*;
 use chrono::Duration;
+use serde_derive::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum Unit {
@@ -112,9 +112,8 @@ pub enum Value {
     Trunc(Box<Value>),
 }
 
-
 /// An evaluator for value expressions.
-pub fn evaluate(app: &AppState, expr: &Value) -> f64 {
+pub fn evaluate(app: &State, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
@@ -132,11 +131,10 @@ pub fn evaluate(app: &AppState, expr: &Value) -> f64 {
 
         Value::OffsetForLong { long } => sched::exact_offset_hrs(evaluate(app, long)),
 
-        Value::HourAngleSunrise { lat, doy } => sched::hour_angle_sunrise(
-            evaluate(app, lat),
-            sched::noon_decl_sun(evaluate(app, doy)),
-        )
-        .to_degrees(),
+        Value::HourAngleSunrise { lat, doy } => {
+            sched::hour_angle_sunrise(evaluate(app, lat), sched::noon_decl_sun(evaluate(app, doy)))
+                .to_degrees()
+        }
 
         Value::NoonSunDeclinationAngle { doy } => sched::noon_decl_sun(evaluate(app, doy)),
 
@@ -226,13 +224,10 @@ pub fn evaluate(app: &AppState, expr: &Value) -> f64 {
             aev * (1f64 - tev) + bev * tev
         }
 
-        Value::Linear(a, x, b) => {
-            evaluate(app, a) * evaluate(app, x) + evaluate(app, b)
-        }
+        Value::Linear(a, x, b) => evaluate(app, a) * evaluate(app, x) + evaluate(app, b),
 
         Value::Trunc(x) => evaluate(app, x).trunc(),
 
         Value::Inverse(v) => 1.0f64 / evaluate(app, v),
     }
 }
-

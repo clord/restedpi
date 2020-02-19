@@ -1,47 +1,41 @@
-use std::borrow::Cow;
 use crate::app;
 use mime_guess::from_path;
-use serde_json::{json};
-use warp::{ http::Response, Reply, Rejection, reply};
+use serde_json::json;
+use std::borrow::Cow;
+use warp::{http::Response, reply, Rejection, Reply};
 
 // We have to share the app state since warp uses a thread pool
-pub type SharedAppState = std::sync::Arc<std::sync::Mutex<app::AppState>>;
+pub type SharedAppState = std::sync::Arc<std::sync::Mutex<app::State>>;
 
 #[derive(RustEmbed)]
 #[folder = "static/"]
 struct Asset;
 
-pub extern fn serve(path: &str) -> Result<impl Reply, Rejection> {
-  let assetA: Option<Cow<'static, [u8]>> = Asset::get(path);
-  if assetA.is_some() {
-    let mime = from_path(path).first_or_octet_stream();
-    let file = assetA.ok_or_else(|| warp::reject::not_found())?;
-    Ok(Response::builder()
-        .header("content-type", mime.to_string())
-        .body(file)
-        )
-  }
-  else {
-    let mut pathB: String =  path.to_owned();
-    pathB.push_str("/index.js");
-    let assetB: Option<Cow<'static, [u8]>> = Asset::get(pathB.as_str());
-    let mime = from_path(pathB.as_str()).first_or_octet_stream();
-    let file = assetB.ok_or_else(|| warp::reject::not_found())?;
-    Ok(Response::builder()
-        .header("content-type", mime.to_string())
-        .body(file)
-        )
-  }
-
+pub extern "C" fn serve(path: &str) -> Result<impl Reply, Rejection> {
+    let assetA: Option<Cow<'static, [u8]>> = Asset::get(path);
+    if assetA.is_some() {
+        let mime = from_path(path).first_or_octet_stream();
+        let file = assetA.ok_or_else(|| warp::reject::not_found())?;
+        Ok(Response::builder()
+            .header("content-type", mime.to_string())
+            .body(file))
+    } else {
+        let mut pathB: String = path.to_owned();
+        pathB.push_str("/index.js");
+        let assetB: Option<Cow<'static, [u8]>> = Asset::get(pathB.as_str());
+        let mime = from_path(pathB.as_str()).first_or_octet_stream();
+        let file = assetB.ok_or_else(|| warp::reject::not_found())?;
+        Ok(Response::builder()
+            .header("content-type", mime.to_string())
+            .body(file))
+    }
 }
 
 // GET /devices/available
 //
 // available devices that can be configured on this system
 // (not configured devices)
-pub extern fn all_devices(
-    _app: SharedAppState
-) -> Result<impl Reply, Rejection> {
+pub extern "C" fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
     let reply = json!({ "result": [
         { "name": "BMP085"
         , "device": "/api/devices/available/bmp085"
@@ -85,37 +79,33 @@ pub extern fn all_devices(
     Ok(reply::json(&reply))
 }
 
-
 // GET /devices/configured
 //
 // configured devices in the system
-pub extern fn configured_devices(
-    _app: SharedAppState
-) -> Result<impl Reply, Rejection> {
+pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
+    let app_l = app.lock().expect("failure");
+
     let reply = json!([
-        [ "/api/devices/configured/1",
-            { "name": "Configured Device 1"
-            , "device": "/api/devices/available/mcp9808"
-            , "description": "A User-entered description for the device"
-            , "status": "ok"
-            , "config": {
-                    "bus": {
-                        "type": "i2c",
-                        "address": "23"
-                    },
-                }
+    [ "/api/devices/configured/1",
+        { "name": "Configured Device 1"
+        , "device": "/api/devices/available/mcp9808"
+        , "description": "A User-entered description for the device"
+        , "status": "ok"
+        , "config": {
+                "bus": {
+                    "type": "i2c",
+                    "address": "23"
+                },
             }
-            ]
-        ]);
+        }
+        ]
+    ]);
     Ok(reply::json(&reply))
 }
 
-pub extern fn add_device(
-    _app: SharedAppState
-) -> Result<impl Reply, Rejection> {
+pub extern "C" fn add_device(_app: SharedAppState) -> Result<impl Reply, Rejection> {
     let reply = json!({
         "result": []
     });
     Ok(reply::json(&reply))
 }
-
