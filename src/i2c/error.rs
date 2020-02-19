@@ -28,7 +28,6 @@ impl fmt::Display for Error {
                 write!(f, "Device does not support unit {:#?}", unit)
             }
             Error::I2cError(ref err) => write!(f, "I2C Error: {}", err),
-            Error::AppSendError(ref err) => write!(f, "App Send Error: {}", err),
             Error::RecvError(ref err) => write!(f, "Recv Error: {}", err),
             Error::SendError(ref err) => write!(f, "Send Error: {}", err),
         }

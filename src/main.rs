@@ -139,8 +139,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let switch_config = config.switches.unwrap_or(HashMap::new());
 
     let app_raw = app::new();
-    app_raw.add_sensors_from_config(sensor_config)?;
-    app_raw.add_switches_from_config(switch_config)?;
+    app_raw.add_sensors_from_config(sensor_config);
+    app_raw.add_switches_from_config(switch_config);
 
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
@@ -246,7 +246,6 @@ fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejec
             Error::NonExistant(_) => 1017,
             Error::UnsupportedUnit(_) => 1019,
             Error::RecvError(_) => 1020,
-            Error::AppSendError(_) => 1023,
             Error::SendError(_) => 1024,
         };
         let message = err.to_string();

@@ -4,7 +4,6 @@ use crate::config;
 use crate::config::value::Unit;
 use crate::i2c::{
     bmp085, bus,
-    bus::{Address, I2cBus},
     error::Error,
     mcp23017,
     mcp23017::{Bank, Pin},
@@ -12,15 +11,12 @@ use crate::i2c::{
 };
 use chrono::prelude::*;
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Sender};
-use std::thread;
-use std::time::Duration;
 
 // Keep current app state in memory, together with device state
 pub struct State {
     dt: DateTime<Local>,
     devices: HashMap<String, Box<dyn Device>>,
-    i2c: I2cBus,
+    i2c: bus::I2cBus,
 }
 
 // Internal State machine for the application. this is core logic.
@@ -40,30 +36,32 @@ impl State {
         self.dt = t;
     }
 
-    pub fn current_time(&self) {
+    pub fn current_dt(&self) -> DateTime<Local> {
         self.dt
     }
 
     pub fn switch_set(&mut self, name: String, switch: usize, pin: usize, value: bool) {
         if let Some(m) = self.devices.get_mut(&name) {
-            m[switch]
-                .write_switch(pin, value)
+            let switches = m.switches();
+            switches[switch].write_switch(pin, value)
                 .expect("send write switch");
         }
     }
 
     pub fn switch_toggle(&mut self, name: String, switch: usize, pin: usize) {
         if let Some(m) = self.devices.get_mut(&name) {
-            match m[switch].read_switch(pin) {
-                Ok(cur_value) => self.switch_set(name, pin, switch, pin, !cur_value),
+            let switches = m.switches();
+            match switches[switch].read_switch(pin) {
+                Ok(cur_value) => self.switch_set(name, switch, pin, !cur_value),
                 Err(_e) => (),
             };
         }
     }
 
-    pub fn read_sensor(&mut self, name: String, sensor: usize, unit: Unit) {
+    pub fn read_sensor(&mut self, name: String, sensor: usize, unit: Unit) -> Result<f64> {
         if let Some(m) = self.devices.get(&name) {
-            m[sensor].read_sensor(unit)
+            let sensors = m.sensors();
+            sensors[sensor].read_sensor(unit)
         } else {
             Err(Error::NonExistant(name))
         }
@@ -82,7 +80,7 @@ impl State {
                         "Adding MCP23017 switch bank named '{}' at i2c address {}",
                         name, address
                     );
-                    match (mcp23017::Device::new(address, self.i2c.clone())) {
+                    match mcp23017::Device::new(address, self.i2c.clone()) {
                         Ok(dev) => {
                             for (_bankcfg, _bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter()
                             {
@@ -150,7 +148,7 @@ impl State {
 }
 
 pub fn new() -> State {
-    let dt = DateTime::local();
+    let dt = Local::now();
     let i2c = bus::start();
 
     State {

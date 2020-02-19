@@ -38,8 +38,8 @@ pub trait Device {
     fn reset(&self) -> Result<()>;
     fn address(&self) -> Result<bus::Address>;
 
-    fn sensors(&self) -> Result<[Box<dyn Sensor>]>;
-    fn switches(&self) -> Result<[Box<dyn Switch>]>;
+    fn sensors(&self) -> Vec<Box<dyn Sensor>>;
+    fn switches(&self) -> Vec<Box<dyn Switch>>;
 }
 
 /// Represent all common results of i2c
