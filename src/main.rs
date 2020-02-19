@@ -8,29 +8,34 @@ extern crate warp;
 #[macro_use]
 extern crate rust_embed;
 
+use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
+use crate::config::value::{evaluate as evaluate_val, Unit, Value};
 use crate::config::Config;
-use crate::config::value::{Value, Unit, evaluate as evaluate_val};
-use crate::config::boolean::{BoolExpr, evaluate as evaluate_bool};
 use i2c::error::Error;
 use rppal::system::DeviceInfo;
-use serde_json::{json};
+use serde_json::json;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use warp::{http::StatusCode, http::header::{HeaderMap, HeaderValue}, filters::path::Tail, path, Filter};
+use warp::{
+    filters::path::Tail,
+    http::header::{HeaderMap, HeaderValue},
+    http::StatusCode,
+    path, Filter,
+};
 
 mod app;
 mod config;
-mod webapp;
 mod i2c;
+mod webapp;
 
 // GET /api/config
 fn server_config(_app: webapp::SharedAppState, server_name: String) -> impl warp::Reply {
     let reply = json!({ "serverConfig":
-        {"deviceName": format!("restedpi on {}", server_name),
-        }});
+    {"deviceName": format!("restedpi on {}", server_name),
+    }});
     warp::reply::json(&reply)
 }
 
@@ -69,9 +74,7 @@ fn evaulate_value_expr(
 }
 
 // GET /sensors
-fn all_sensors(
-    _app: webapp::SharedAppState
-) -> Result<impl warp::Reply, warp::Rejection> {
+fn all_sensors(_app: webapp::SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
     //let app_l = app.lock().expect("failure");
     let reply = json!({ "result": [] });
     Ok(warp::reply::json(&reply))
@@ -135,7 +138,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sensor_config = config.sensors.unwrap_or(HashMap::new());
     let switch_config = config.switches.unwrap_or(HashMap::new());
 
-    let app_raw = app::start(sensor_config, switch_config)?;
+    let app_raw = app::new();
+    app_raw.add_sensors_from_config(sensor_config)?;
+    app_raw.add_switches_from_config(switch_config)?;
 
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
@@ -192,40 +197,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path::tail())
         .and_then(|tail: Tail| webapp::serve(tail.as_str()));
 
-    let r_available =
-        warp::get2()
+    let r_available = warp::get2()
         .and(path!("available"))
         .and(app.clone())
         .and_then(move |app| webapp::all_devices(app));
 
-    let r_adding_configured =
-        warp::post2()
+    let r_adding_configured = warp::post2()
         .and(app.clone())
         .and_then(move |app| webapp::add_device(app));
 
-    let r_fetching_configured =
-        warp::get2()
+    let r_fetching_configured = warp::get2()
         .and(app.clone())
         .and_then(move |app| webapp::configured_devices(app));
 
-    let r_configured =
-        warp::path("configured")
-        .and(r_adding_configured.or(r_fetching_configured));
+    let r_configured = warp::path("configured").and(r_adding_configured.or(r_fetching_configured));
 
-    let r_devices =
-        warp::path("devices")
-        .and(r_available.or(r_configured));
-
+    let r_devices = warp::path("devices").and(r_available.or(r_configured));
 
     let api = r_static
         .or(path!("api").and(
-                r_config
+            r_config
                 .or(r_sensor)
                 .or(r_sensors)
                 .or(r_devices)
                 .or(r_config_check)
                 .or(r_eval_bool)
-                .or(r_eval_value)))
+                .or(r_eval_value),
+        ))
         .or(index_html)
         .recover(customize_error);
 
@@ -238,8 +236,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Produce a json-compatible error report
-fn customize_error(err: warp::Rejection)
-    -> Result<impl warp::Reply, warp::Rejection> {
+fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {
             Error::Io(_) => 1001,

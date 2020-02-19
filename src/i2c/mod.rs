@@ -21,18 +21,25 @@ pub enum Direction {
 }
 
 /// generically read devices that can act as sensors
-pub trait Sensor: Send {
-    fn reset(&self) -> Result<()>;
+pub trait Sensor {
     fn read_sensor(&self, unit: Unit) -> Result<f64>;
 }
 
 /// Generically read or write to devices that act as gpio pins
-pub trait Switch: Send {
-    fn reset(&mut self) -> Result<()>;
+pub trait Switch {
     fn pin_count(&self) -> usize;
     fn set_direction(&mut self, index: usize, dir: Direction) -> Result<()>;
     fn write_switch(&mut self, index: usize, value: bool) -> Result<()>;
     fn read_switch(&mut self, index: usize) -> Result<bool>;
+}
+
+/// Generically read or write a device
+pub trait Device {
+    fn reset(&self) -> Result<()>;
+    fn address(&self) -> Result<bus::Address>;
+
+    fn sensors(&self) -> Result<[Box<dyn Sensor>]>;
+    fn switches(&self) -> Result<[Box<dyn Switch>]>;
 }
 
 /// Represent all common results of i2c

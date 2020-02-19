@@ -1,5 +1,6 @@
+use crate::i2c;
 use crate::i2c::bus::{Address, I2cBus};
-use crate::i2c::{error::Error, Direction, Pullup, Result, Switch};
+use crate::i2c::{error::Error, Direction, Pullup, Result};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -257,10 +258,13 @@ impl Device {
     }
 }
 
-impl Switch for Device {
+impl i2c::Device for Device {
     fn reset(&mut self) -> Result<()> {
         self.reset()
     }
+}
+
+impl i2c::Switch for Device {
     fn pin_count(&self) -> usize {
         16
     }

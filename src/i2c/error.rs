@@ -1,9 +1,9 @@
+use crate::config::value::Unit;
 use rppal::i2c;
 use std::error;
 use std::fmt;
 use std::io;
 use std::sync::mpsc;
-use crate::config::value::Unit;
 
 #[derive(Debug)]
 pub enum Error {
@@ -15,7 +15,6 @@ pub enum Error {
     I2cError(i2c::Error),
     RecvError(mpsc::RecvError),
     SendError(mpsc::SendError<crate::i2c::bus::I2cMessage>),
-    AppSendError(mpsc::SendError<crate::app::Action>),
 }
 
 impl fmt::Display for Error {
@@ -41,12 +40,6 @@ impl error::Error for Error {}
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::Io(err)
-    }
-}
-
-impl From<std::sync::mpsc::SendError<crate::app::Action>> for Error {
-    fn from(err: mpsc::SendError<crate::app::Action>) -> Error {
-        Error::AppSendError(err)
     }
 }
 

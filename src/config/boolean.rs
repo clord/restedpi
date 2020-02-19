@@ -1,7 +1,6 @@
-
+use crate::app::State;
+use crate::config::value::{evaluate as evaluate_value, Value};
 use serde_derive::{Deserialize, Serialize};
-use crate::app::AppState;
-use crate::config::value::{Value, evaluate as evaluate_value};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum BoolExpr {
@@ -16,7 +15,7 @@ pub enum BoolExpr {
 }
 
 /// A very basic parser that evaluates an expression for truth. Can refer to values.
-pub fn evaluate(app: &AppState, expr: &BoolExpr) -> bool {
+pub fn evaluate(app: &State, expr: &BoolExpr) -> bool {
     match expr {
         BoolExpr::Equal(a, b) => evaluate_value(app, a) == evaluate_value(app, b),
         BoolExpr::EqualPlusOrMinus(a, b, c) => {

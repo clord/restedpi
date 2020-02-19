@@ -1,5 +1,5 @@
-pub mod value;
 pub mod boolean;
+pub mod value;
 
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -63,4 +63,3 @@ pub struct Config {
     pub sensors: Option<HashMap<String, Sensor>>,
     pub switches: Option<HashMap<String, Switch>>,
 }
-

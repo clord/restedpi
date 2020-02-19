@@ -1,6 +1,7 @@
-use crate::i2c::util::{iv2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, Result, Sensor};
 use crate::config::value::Unit;
+use crate::i2c;
+use crate::i2c::util::{iv2be, uv2be};
+use crate::i2c::{bus::Address, bus::I2cBus, Result};
 use std::thread;
 use std::time::Duration;
 
@@ -206,10 +207,13 @@ impl Device {
     }
 }
 
-impl Sensor for Device {
+impl i2c::Device for Device {
     fn reset(&self) -> Result<()> {
         Ok(())
     }
+}
+
+impl i2c::Sensor for Device {
     fn read_sensor(&self, unit: Unit) -> Result<f64> {
         match unit {
             Unit::DegC => {
