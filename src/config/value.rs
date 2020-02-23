@@ -86,7 +86,7 @@ pub enum Value {
     DayOfMonth,
 
     // Current value of a named sensor
-    Sensor(String, Unit),
+    Sensor(String, usize, Unit),
 
     // linear interpolation  A * (1 - t) + B * t
     // where:
@@ -113,11 +113,11 @@ pub enum Value {
 }
 
 /// An evaluator for value expressions.
-pub fn evaluate(app: &State, expr: &Value) -> f64 {
+pub fn evaluate(app: &mut State, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
-        Value::Sensor(name, unit) => match app.read_sensor(name.to_string(), *unit) {
+        Value::Sensor(name, index, unit) => match app.read_sensor(name.to_string(), *index, *unit) {
             Ok(value) => value,
             std::result::Result::Err(e) => {
                 error!("Failed to read sensor: {}", e);

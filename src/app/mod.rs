@@ -19,10 +19,17 @@ pub struct State {
     i2c: bus::I2cBus,
 }
 
+unsafe impl Send for State {}
+
+
 // Internal State machine for the application. this is core logic.
 impl State {
     pub fn add_device(&mut self, name: String, sensor: Box<dyn Device>) {
         self.devices.insert(name, sensor);
+    }
+
+    pub fn devices(&self) -> &HashMap<String, Box<dyn Device>> {
+        &self.devices
     }
 
     pub fn reset(&mut self) {
@@ -42,7 +49,7 @@ impl State {
 
     pub fn switch_set(&mut self, name: String, switch: usize, pin: usize, value: bool) {
         if let Some(m) = self.devices.get_mut(&name) {
-            let switches = m.switches();
+            let mut switches = m.switches();
             switches[switch].write_switch(pin, value)
                 .expect("send write switch");
         }
@@ -50,7 +57,7 @@ impl State {
 
     pub fn switch_toggle(&mut self, name: String, switch: usize, pin: usize) {
         if let Some(m) = self.devices.get_mut(&name) {
-            let switches = m.switches();
+            let mut switches = m.switches();
             match switches[switch].read_switch(pin) {
                 Ok(cur_value) => self.switch_set(name, switch, pin, !cur_value),
                 Err(_e) => (),
@@ -68,7 +75,6 @@ impl State {
     }
 
     pub fn add_switches_from_config(&mut self, switch_config: HashMap<String, config::Switch>) {
-        let switches = HashMap::new();
         for (name, config) in switch_config.iter() {
             match config.device {
                 config::SwitchType::MCP23017 {
@@ -111,7 +117,6 @@ impl State {
     }
 
     pub fn add_sensors_from_config(&mut self, sensor_config: HashMap<String, config::Sensor>) {
-        let sensors = HashMap::new();
 
         for (name, config) in sensor_config.iter() {
             match config.device {

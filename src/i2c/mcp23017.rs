@@ -1,6 +1,7 @@
 use crate::i2c;
 use crate::i2c::bus::{Address, I2cBus};
 use crate::i2c::{error::Error, Direction, Pullup, Result};
+use crate::i2c::{ Sensor, Switch };
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -259,8 +260,17 @@ impl Device {
 }
 
 impl i2c::Device for Device {
-    fn reset(&mut self) -> Result<()> {
+    fn reset(&self) -> Result<()> {
         self.reset()
+    }
+    fn address(&self) -> Result<Address> {
+        return Ok(self.address)
+    }
+    fn sensors(&self) -> Vec<Box<dyn Sensor>> {
+        return vec![]
+    }
+    fn switches(&self) -> Vec<Box<dyn Switch>> {
+        return vec![]
     }
 }
 

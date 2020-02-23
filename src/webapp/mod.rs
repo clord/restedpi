@@ -85,6 +85,7 @@ pub extern "C" fn all_devices(_app: SharedAppState) -> Result<impl Reply, Reject
 pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
     let app_l = app.lock().expect("failure");
 
+ //       app_l.devices()
     let reply = json!([
     [ "/api/devices/configured/1",
         { "name": "Configured Device 1"

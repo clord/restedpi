@@ -1,5 +1,6 @@
 use crate::i2c;
 use crate::i2c::{bus::Address, bus::I2cBus, error::Error, util::uv2be, Result, Unit};
+use crate::i2c::{ Sensor, Switch };
 
 /// MCP 9808
 /// High-accuracy temperature Sensor -40°C to +125°C ±0.5°C
@@ -34,6 +35,15 @@ impl i2c::Device for Device {
     fn reset(&self) -> Result<()> {
         Ok(())
     }
+    fn address(&self) -> Result<Address> {
+        return Ok(self.address)
+    }
+    fn sensors(&self) -> Vec<Box<dyn Sensor>> {
+        return vec![]
+    }
+    fn switches(&self) -> Vec<Box<dyn Switch>> {
+        return vec![]
+    }
 }
 
 impl i2c::Sensor for Device {
@@ -46,4 +56,5 @@ impl i2c::Sensor for Device {
             _ => Err(Error::UnsupportedUnit(unit)),
         }
     }
+
 }

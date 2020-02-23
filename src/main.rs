@@ -55,8 +55,7 @@ fn evaulate_bool_expr(
     expr: BoolExpr,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("boolean evaluate: {:?}", expr);
-    let app_l = app.lock().expect("failure");
-    let reply_bool = evaluate_bool(&app_l, &expr);
+    let reply_bool = evaluate_bool(&mut app.lock().expect("failure"), &expr);
     let reply = json!({ "result": reply_bool });
     Ok(warp::reply::json(&reply))
 }
@@ -67,15 +66,13 @@ fn evaulate_value_expr(
     expr: Value,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("value evaluate: {:?}", expr);
-    let app_l = app.lock().expect("failure");
-    let reply_value = evaluate_val(&app_l, &expr);
+    let reply_value = evaluate_val(&mut app.lock().expect("failure"), &expr);
     let reply = json!({ "result": reply_value });
     Ok(warp::reply::json(&reply))
 }
 
 // GET /sensors
 fn all_sensors(_app: webapp::SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
-    //let app_l = app.lock().expect("failure");
     let reply = json!({ "result": [] });
     Ok(warp::reply::json(&reply))
 }
@@ -84,11 +81,12 @@ fn all_sensors(_app: webapp::SharedAppState) -> Result<impl warp::Reply, warp::R
 fn read_sensor(
     app: webapp::SharedAppState,
     sensor: String,
+    index: usize,
     unit: Unit,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     debug!("sensor evaluate: {}", sensor);
-    let app_l = app.lock().expect("failure");
-    match app_l.read_sensor(sensor, unit) {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.read_sensor(sensor, index, unit) {
         Ok(reply) => Ok(warp::reply::json(&reply)),
         Err(_e) => Err(warp::reject::not_found()),
     }
@@ -138,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sensor_config = config.sensors.unwrap_or(HashMap::new());
     let switch_config = config.switches.unwrap_or(HashMap::new());
 
-    let app_raw = app::new();
+    let mut app_raw = app::new();
     app_raw.add_sensors_from_config(sensor_config);
     app_raw.add_switches_from_config(switch_config);
 
@@ -182,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r_sensor = warp::get2()
         .and(app.clone())
-        .and(path!("sensors" / String / Unit))
+        .and(path!("sensors" / String / usize / Unit))
         .and_then(read_sensor);
 
     let mut nocache_header = HeaderMap::new();

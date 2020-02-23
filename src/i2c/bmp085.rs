@@ -2,6 +2,7 @@ use crate::config::value::Unit;
 use crate::i2c;
 use crate::i2c::util::{iv2be, uv2be};
 use crate::i2c::{bus::Address, bus::I2cBus, Result};
+use crate::i2c::{Sensor, Switch};
 use std::thread;
 use std::time::Duration;
 
@@ -210,6 +211,18 @@ impl Device {
 impl i2c::Device for Device {
     fn reset(&self) -> Result<()> {
         Ok(())
+    }
+
+    fn address(&self) -> Result<Address> {
+        return Ok(self.address)
+    }
+
+    fn sensors(&self) -> Vec<Box<dyn Sensor>> {
+        return vec![]
+    }
+
+    fn switches(&self) -> Vec<Box<dyn Switch>> {
+        return vec![]
     }
 }
 
