@@ -9,6 +9,9 @@ lazy_static! {
 
 // Convert arbitrary human name for something into a slug for url purposes
 pub fn slugify(name: &str, inc: usize) -> String {
+    if name.trim().len() == 0 {
+        return format!("{}", inc)
+    }
     let mut replaced = String::new();
     for c in name.trim().chars() {
         replaced.push_str(&replace_char(c))
@@ -571,12 +574,16 @@ mod tests {
         assert_eq!(slugify("hello world", 1), "hello-world-1");
         assert_eq!(slugify("hello world", 2), "hello-world-2");
         assert_eq!(slugify("hello world", 3), "hello-world-3");
+        assert_eq!(slugify("hello WOrLd", 0), "hello-world");
+        assert_eq!(slugify("Hello world", 0), "hello-world");
+        assert_eq!(slugify("hello worlD", 0), "hello-world");
+        assert_eq!(slugify("hELLo world", 0), "hello-world");
     }
 
     #[test]
     fn test_email() {
         assert_eq!(slugify("alice@bob.com", 0), "alice-at-bob.com");
-        assert_eq!(slugify("alice@bob.fo.bar", 0), "alice-at-bob.fo.bar");
+        assert_eq!(slugify("alice@bob.fo.bar", 1), "alice-at-bob.fo.bar-1");
     }
 
     #[test]
@@ -589,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_contains_numbers() {
-        assert_eq!(slugify("the 101 dalmatians", 0), "the-101-dalmatians");
+        assert_eq!(slugify("The 101 Dalmatians", 0), "the-101-dalmatians");
     }
 
     #[test]
@@ -601,6 +608,13 @@ mod tests {
     }
 
     #[test]
+    fn empty_string() {
+        assert_eq!(slugify("", 0), "0");
+        assert_eq!(slugify("", 1), "1");
+        assert_eq!(slugify("", 2), "2");
+        assert_eq!(slugify("", 3), "3");
+    }
+    #[test]
     fn test_numbers_only() {
         assert_eq!(slugify("101", 0), "101");
     }
@@ -608,7 +622,7 @@ mod tests {
     #[test]
     fn test_numbers_and_symbols() {
         assert_eq!(
-            slugify("100% is all you can do & find #1", 0),
+            slugify("100% Is All You can do & Find #1", 0),
             "100-percent-is-all-you-can-do-and-find-number-1"
         );
     }
