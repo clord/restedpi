@@ -555,3 +555,56 @@ fn replace_char(c: char) -> String {
     }
     .to_string()
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::webapp::slugify::slugify;
+    #[test]
+    fn basic() {
+        assert_eq!(slugify("hello world", 0), "hello-world");
+    }
+
+    #[test]
+    fn test_email() {
+        assert_eq!(slugify("alice@bob.com", 0), "alice-bob.com");
+    }
+
+    #[test]
+    fn test_starts_with_number() {
+        assert_eq!(slugify("10 amazing secrets", 0), "10-amazing-secrets");
+    }
+
+    #[test]
+    fn test_contains_numbers() {
+        assert_eq!(slugify("the 101 dalmatians", 0), "the-101-dalmatians");
+    }
+
+    #[test]
+    fn test_ends_with_number() {
+        assert_eq!(slugify("lucky number 7", 0), "lucky-number-7");
+    }
+
+    #[test]
+    fn test_numbers_only() {
+        assert_eq!(slugify("101", 0), "101");
+    }
+
+    #[test]
+    fn test_numbers_and_symbols() {
+        assert_eq!(slugify("1000 reasons you are #1", 0),
+                   "1000-reasons-you-are-1");
+    }
+
+
+    #[test]
+    fn test_separator() {
+        assert_eq!(slugify("hello world", 0), "hello-world");
+    }
+
+    #[test]
+    fn test_cyrillic_text() {
+        assert_eq!(slugify("Компьютер", 0), "kompyuter");
+    }
+}
