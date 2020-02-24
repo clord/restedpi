@@ -16,3 +16,18 @@ pub fn i2be(r: u16) -> i16 {
 pub fn u2be(r: u16) -> u16 {
     r.to_be()
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::i2c::util;
+
+    #[test]
+    fn basic() {
+        assert_eq!(util::i2be(50u16), 12800i16);
+        assert_eq!(util::u2be(50u16), 12800u16);
+        assert_eq!(util::iv2be(&[1u8, 2u8]), 258i16);
+        assert_eq!(util::uv2be(&[1u8, 2u8]), 258u16);
+        assert_eq!(util::iv2be(&[255u8, 10u8]), -246i16);
+        assert_eq!(util::uv2be(&[255u8, 10u8]), 65290u16);
+    }
+}
