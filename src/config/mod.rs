@@ -22,9 +22,13 @@ pub enum SunPosition {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum SensorType {
-    MCP9808 { address: u16 },
-    BMP085 { address: u16, mode: SamplingMode },
+pub enum Type {
+    MCP9808,
+    BMP085 { mode: SamplingMode },
+    MCP23017 {
+        bank0: HashMap<usize, SwitchPin>,
+        bank1: HashMap<usize, SwitchPin>,
+    },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -34,31 +38,18 @@ pub struct SwitchPin {
     pub schedule: Option<BoolExpr>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum SwitchType {
-    MCP23017 {
-        address: u16,
-        bank0: HashMap<usize, SwitchPin>,
-        bank1: HashMap<usize, SwitchPin>,
-    },
-}
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Switch {
+pub struct Device {
+    pub name: String,
     pub description: String,
-    pub device: SwitchType,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Sensor {
-    pub description: String,
-    pub device: SensorType,
+    pub address: u16,
+    pub config: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub listen: Option<String>,
     pub port: Option<u16>,
-    pub sensors: Option<HashMap<String, Sensor>>,
-    pub switches: Option<HashMap<String, Switch>>,
+    pub database_path: Option<String>,
+    pub devices: Option<HashMap<String, Device>>,
 }

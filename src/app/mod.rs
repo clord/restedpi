@@ -74,11 +74,38 @@ impl State {
         }
     }
 
-    pub fn add_switches_from_config(&mut self, switch_config: HashMap<String, config::Switch>) {
-        for (name, config) in switch_config.iter() {
-            match config.device {
-                config::SwitchType::MCP23017 {
-                    address,
+    pub fn add_devices_from_config(&mut self, configuration: HashMap<String, config::Device>) {
+        for (name, config) in configuration.iter() {
+            let address = config.address;
+            match config.config {
+                config::Type::BMP085 { mode } => {
+                    let trans_mode = match mode {
+                        config::SamplingMode::UltraLowPower => bmp085::SamplingMode::UltraLowPower,
+                        config::SamplingMode::Standard => bmp085::SamplingMode::Standard,
+                        config::SamplingMode::HighRes => bmp085::SamplingMode::HighRes,
+                        config::SamplingMode::UltraHighRes => bmp085::SamplingMode::UltraHighRes,
+                    };
+                    info!(
+                        "Adding BMP085 sensor named '{}' at i2c address {}",
+                        name, address
+                    );
+
+                    match bmp085::Device::new(name, address, self.i2c.clone(), trans_mode) {
+                        Ok(dev) => self.add_device(name, Box::new(dev)),
+                        Err(e) => error!("error adding bmp085: {}", e),
+                    };
+                }
+                config::Type::MCP9808 => {
+                    info!(
+                        "Adding MCP9808 sensor named '{}' at i2c address {}",
+                        name, address
+                    );
+                    match mcp9808::Device::new(name, address, self.i2c.clone()) {
+                        Ok(dev) => self.add_device(name, Box::new(dev)),
+                        Err(e) => error!("error adding mcp9808: {}", e),
+                    };
+                }
+                config::Type::MCP23017 {
                     ref bank0,
                     ref bank1,
                 } => {
@@ -110,40 +137,6 @@ impl State {
                             self.add_device(name, Box::new(dev));
                         }
                         Err(e) => error!("error adding mcp23017: {}", e),
-                    };
-                }
-            }
-        }
-    }
-
-    pub fn add_sensors_from_config(&mut self, sensor_config: HashMap<String, config::Sensor>) {
-        for (name, config) in sensor_config.iter() {
-            match config.device {
-                config::SensorType::BMP085 { address, mode } => {
-                    let trans_mode = match mode {
-                        config::SamplingMode::UltraLowPower => bmp085::SamplingMode::UltraLowPower,
-                        config::SamplingMode::Standard => bmp085::SamplingMode::Standard,
-                        config::SamplingMode::HighRes => bmp085::SamplingMode::HighRes,
-                        config::SamplingMode::UltraHighRes => bmp085::SamplingMode::UltraHighRes,
-                    };
-                    info!(
-                        "Adding BMP085 sensor named '{}' at i2c address {}",
-                        name, address
-                    );
-
-                    match bmp085::Device::new(name, address, self.i2c.clone(), trans_mode) {
-                        Ok(dev) => self.add_device(name, Box::new(dev)),
-                        Err(e) => error!("error adding bmp085: {}", e),
-                    };
-                }
-                config::SensorType::MCP9808 { address } => {
-                    info!(
-                        "Adding MCP9808 sensor named '{}' at i2c address {}",
-                        name, address
-                    );
-                    match mcp9808::Device::new(name, address, self.i2c.clone()) {
-                        Ok(dev) => self.add_device(name, Box::new(dev)),
-                        Err(e) => error!("error adding mcp9808: {}", e),
                     };
                 }
             }

@@ -127,22 +127,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             warn!("error parsing config: {}", e);
             Config {
+                database_path: None,
                 listen: None,
                 port: None,
-                sensors: None,
-                switches: None,
+                devices: None,
             }
         }
     };
 
     let listen = config.listen.unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
-    let sensor_config = config.sensors.unwrap_or(HashMap::new());
-    let switch_config = config.switches.unwrap_or(HashMap::new());
+    let device_config = config.devices.unwrap_or(HashMap::new());
 
     let mut app_raw = app::new();
-    app_raw.add_sensors_from_config(sensor_config);
-    app_raw.add_switches_from_config(switch_config);
+    app_raw.add_devices_from_config(device_config);
 
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
