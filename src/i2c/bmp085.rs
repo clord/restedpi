@@ -1,8 +1,6 @@
-use crate::config::value::Unit;
 use crate::i2c;
 use crate::i2c::util::{iv2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, Result};
-use crate::i2c::{Sensor, Switch};
+use crate::i2c::{bus::Address, bus::I2cBus, error::Error, DeviceType, Direction, Result, Unit};
 use std::thread;
 use std::time::Duration;
 
@@ -85,6 +83,7 @@ impl Coefficients {
 /// Represent access to a BMP085 device at some address
 #[derive(Clone, Debug)]
 pub struct Device {
+    name: String,
     address: Address,
     accuracy: SamplingMode,
     coefficients: Coefficients,
@@ -93,9 +92,10 @@ pub struct Device {
 
 impl Device {
     /// Construct a device with a given sampling mode on a given bus
-    pub fn new(address: Address, i2c: I2cBus, accuracy: SamplingMode) -> Result<Self> {
+    pub fn new(name: &str, address: Address, i2c: I2cBus, accuracy: SamplingMode) -> Result<Self> {
         let coefficients = Coefficients::new(address, &i2c)?;
         let device = Device {
+            name: name.to_string(),
             address,
             accuracy,
             coefficients,
@@ -209,34 +209,60 @@ impl Device {
 }
 
 impl i2c::Device for Device {
-    fn reset(&self) -> Result<()> {
+    fn reset(&mut self) -> Result<()> {
         Ok(())
     }
 
-    fn address(&self) -> Result<Address> {
-        return Ok(self.address)
+    fn address(&self) -> Address {
+        self.address
     }
 
-    fn sensors(&self) -> Vec<Box<dyn Sensor>> {
-        return vec![]
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn status(&self) -> String {
+        "ok".to_string()
     }
 
-    fn switches(&self) -> Vec<Box<dyn Switch>> {
-        return vec![]
+    fn description(&self) -> String {
+        "BMP temp and pressure".to_string()
     }
-}
 
-impl i2c::Sensor for Device {
-    fn read_sensor(&self, unit: Unit) -> Result<f64> {
-        match unit {
-            Unit::DegC => {
+    fn device_type(&self) -> DeviceType {
+        DeviceType::Bmp085
+    }
+
+    fn sensor_count(&self) -> usize {
+        return 2;
+    }
+
+    fn read_sensor(&self, index: usize) -> Result<(f64, Unit)> {
+        match index {
+            0 => {
                 let v = self.temperature_in_c()?;
-                Ok(v as f64)
+                Ok((v as f64, Unit::DegC))
             }
-            Unit::KPa => {
+            1 => {
                 let v = self.pressure_kpa()?;
-                Ok(v as f64)
+                Ok((v as f64, Unit::KPa))
             }
+            _ => Err(Error::OutOfBounds(index)),
         }
+    }
+
+    fn switch_count(&self) -> usize {
+        return 0;
+    }
+    fn set_direction(&mut self, index: usize, _dir: Direction) -> Result<()> {
+        Err(Error::OutOfBounds(index))
+    }
+    fn switch_direction(&mut self, index: usize) -> Result<Direction> {
+        Err(Error::OutOfBounds(index))
+    }
+    fn write_switch(&mut self, index: usize, _value: bool) -> Result<()> {
+        Err(Error::OutOfBounds(index))
+    }
+    fn read_switch(&mut self, index: usize) -> Result<bool> {
+        Err(Error::OutOfBounds(index))
     }
 }

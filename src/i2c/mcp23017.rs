@@ -1,7 +1,6 @@
 use crate::i2c;
 use crate::i2c::bus::{Address, I2cBus};
-use crate::i2c::{error::Error, Direction, Pullup, Result};
-use crate::i2c::{ Sensor, Switch };
+use crate::i2c::{error::Error, DeviceType, Direction, Pullup, Result, Unit};
 
 const REGISTER_GPIOA: u8 = 0x00;
 const REGISTER_GPIOB: u8 = 0x01;
@@ -126,6 +125,7 @@ const INITIAL_STATE: BankState<State> = BankState {
 
 #[derive(Debug, Clone)]
 pub struct Device {
+    name: String,
     address: Address,
     state: BankState<State>,
     i2c: I2cBus,
@@ -186,17 +186,18 @@ impl Device {
         Ok(())
     }
 
-    pub fn new(address: u16, i2c: I2cBus) -> Result<Self> {
+    pub fn new(name: &str, address: u16, i2c: I2cBus) -> Result<Self> {
         let mut device = Device {
+            name: name.to_string(),
             address,
             state: INITIAL_STATE,
             i2c,
         };
-        device.reset()?;
+        device.device_reset()?;
         Ok(device)
     }
 
-    pub fn reset(&mut self) -> Result<()> {
+    pub fn device_reset(&mut self) -> Result<()> {
         self.state = INITIAL_STATE;
         self.write_gpio_dir(Bank::A)?;
         self.write_gpio_dir(Bank::B)?;
@@ -243,6 +244,12 @@ impl Device {
         return Ok(());
     }
 
+    pub fn get_pin_direction(&mut self, bank: Bank, pin: Pin) -> Result<Direction> {
+        let pdex = pin_ordinal(pin);
+        let bank_state = self.state_for_bank(bank);
+        return Ok(bank_state.direction[pdex]);
+    }
+
     pub fn get_pin(&mut self, bank: Bank, pin: Pin) -> Result<bool> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
@@ -260,22 +267,37 @@ impl Device {
 }
 
 impl i2c::Device for Device {
-    fn reset(&self) -> Result<()> {
-        self.reset()
+    fn reset(&mut self) -> Result<()> {
+        self.device_reset()
     }
-    fn address(&self) -> Result<Address> {
-        return Ok(self.address)
-    }
-    fn sensors(&self) -> Vec<Box<dyn Sensor>> {
-        return vec![]
-    }
-    fn switches(&self) -> Vec<Box<dyn Switch>> {
-        return vec![]
-    }
-}
 
-impl i2c::Switch for Device {
-    fn pin_count(&self) -> usize {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn address(&self) -> Address {
+        self.address
+    }
+
+    fn status(&self) -> String {
+        "ok".to_string()
+    }
+
+    fn description(&self) -> String {
+        "MCP 23017 switch bank".to_string()
+    }
+
+    fn device_type(&self) -> DeviceType {
+        DeviceType::Mcp23017
+    }
+
+    fn sensor_count(&self) -> usize {
+        return 0;
+    }
+    fn read_sensor(&self, index: usize) -> Result<(f64, Unit)> {
+        Err(Error::OutOfBounds(index))
+    }
+
+    fn switch_count(&self) -> usize {
         16
     }
 
@@ -287,7 +309,19 @@ impl i2c::Switch for Device {
         };
         match ordinal_pin(index) {
             Some(pin) => self.set_pin_direction(bank, pin, dir),
-            None => Err(Error::InvalidPinIndex),
+            None => Err(Error::OutOfBounds(index)),
+        }
+    }
+
+    fn switch_direction(&mut self, index: usize) -> Result<Direction> {
+        let bank = if (index >> 3) & 1 == 0 {
+            Bank::A
+        } else {
+            Bank::B
+        };
+        match ordinal_pin(index) {
+            Some(pin) => self.get_pin_direction(bank, pin),
+            None => Err(Error::OutOfBounds(index)),
         }
     }
 
@@ -299,7 +333,7 @@ impl i2c::Switch for Device {
         };
         match ordinal_pin(index) {
             Some(pin) => self.set_pin(bank, pin, value),
-            None => Err(Error::InvalidPinIndex),
+            None => Err(Error::OutOfBounds(index)),
         }
     }
 
@@ -311,7 +345,7 @@ impl i2c::Switch for Device {
         };
         match ordinal_pin(index) {
             Some(pin) => self.get_pin(bank, pin),
-            None => Err(Error::InvalidPinIndex),
+            None => Err(Error::OutOfBounds(index)),
         }
     }
 }

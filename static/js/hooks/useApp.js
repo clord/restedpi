@@ -12,11 +12,10 @@ const [useAppStore, api] = create(set => {
       s(state => void (state.serverConfig = response.serverConfig));
     },
     devices: {
-      configured: new Map([]),
+      configured: [],
       read: async () => {
         const response = await apiGet(`/devices/configured`);
-        const m = new Map(response);
-        s(state => void (state.devices.configured = m));
+        s(state => void (state.devices.configured = response));
       },
       add: async details => {
         const response = await apiPost("/devices/configured", details);

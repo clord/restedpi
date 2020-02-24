@@ -9,6 +9,7 @@ use crate::i2c::{
     mcp23017::{Bank, Pin},
     mcp9808, Device, Result,
 };
+use crate::webapp::slugify::slugify;
 use chrono::prelude::*;
 use std::collections::HashMap;
 
@@ -21,11 +22,14 @@ pub struct State {
 
 unsafe impl Send for State {}
 
-
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub fn add_device(&mut self, name: String, sensor: Box<dyn Device>) {
-        self.devices.insert(name, sensor);
+    pub fn add_device(&mut self, name: &str, device: Box<dyn Device>) {
+        let mut inc: usize = 0;
+        while self.devices.contains_key(&slugify(name, inc)) {
+            inc += 1;
+        }
+        self.devices.insert(slugify(name, inc), device);
     }
 
     pub fn devices(&self) -> &HashMap<String, Box<dyn Device>> {
@@ -47,28 +51,24 @@ impl State {
         self.dt
     }
 
-    pub fn switch_set(&mut self, name: String, switch: usize, pin: usize, value: bool) {
+    pub fn switch_set(&mut self, name: String, switch: usize, value: bool) {
         if let Some(m) = self.devices.get_mut(&name) {
-            let mut switches = m.switches();
-            switches[switch].write_switch(pin, value)
-                .expect("send write switch");
+            m.write_switch(switch, value).expect("send write switch");
         }
     }
 
-    pub fn switch_toggle(&mut self, name: String, switch: usize, pin: usize) {
+    pub fn switch_toggle(&mut self, name: String, switch: usize) {
         if let Some(m) = self.devices.get_mut(&name) {
-            let mut switches = m.switches();
-            match switches[switch].read_switch(pin) {
-                Ok(cur_value) => self.switch_set(name, switch, pin, !cur_value),
+            match m.read_switch(switch) {
+                Ok(cur_value) => self.switch_set(name, switch, !cur_value),
                 Err(_e) => (),
             };
         }
     }
 
-    pub fn read_sensor(&mut self, name: String, sensor: usize, unit: Unit) -> Result<f64> {
+    pub fn read_sensor(&mut self, name: String, sensor: usize) -> Result<(f64, Unit)> {
         if let Some(m) = self.devices.get(&name) {
-            let sensors = m.sensors();
-            sensors[sensor].read_sensor(unit)
+            m.read_sensor(sensor)
         } else {
             Err(Error::NonExistant(name))
         }
@@ -86,7 +86,7 @@ impl State {
                         "Adding MCP23017 switch bank named '{}' at i2c address {}",
                         name, address
                     );
-                    match mcp23017::Device::new(address, self.i2c.clone()) {
+                    match mcp23017::Device::new(name, address, self.i2c.clone()) {
                         Ok(dev) => {
                             for (_bankcfg, _bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter()
                             {
@@ -107,7 +107,7 @@ impl State {
                                     // }
                                 }
                             }
-                            self.add_device(name.to_string(), Box::new(dev));
+                            self.add_device(name, Box::new(dev));
                         }
                         Err(e) => error!("error adding mcp23017: {}", e),
                     };
@@ -117,7 +117,6 @@ impl State {
     }
 
     pub fn add_sensors_from_config(&mut self, sensor_config: HashMap<String, config::Sensor>) {
-
         for (name, config) in sensor_config.iter() {
             match config.device {
                 config::SensorType::BMP085 { address, mode } => {
@@ -132,8 +131,8 @@ impl State {
                         name, address
                     );
 
-                    match bmp085::Device::new(address, self.i2c.clone(), trans_mode) {
-                        Ok(dev) => self.add_device(name.to_string(), Box::new(dev)),
+                    match bmp085::Device::new(name, address, self.i2c.clone(), trans_mode) {
+                        Ok(dev) => self.add_device(name, Box::new(dev)),
                         Err(e) => error!("error adding bmp085: {}", e),
                     };
                 }
@@ -142,8 +141,8 @@ impl State {
                         "Adding MCP9808 sensor named '{}' at i2c address {}",
                         name, address
                     );
-                    match mcp9808::Device::new(address, self.i2c.clone()) {
-                        Ok(dev) => self.add_device(name.to_string(), Box::new(dev)),
+                    match mcp9808::Device::new(name, address, self.i2c.clone()) {
+                        Ok(dev) => self.add_device(name, Box::new(dev)),
                         Err(e) => error!("error adding mcp9808: {}", e),
                     };
                 }

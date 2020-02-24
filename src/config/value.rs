@@ -5,7 +5,7 @@ use chrono::Duration;
 use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, PartialEq, Deserialize, Debug)]
 pub enum Unit {
     DegC,
     KPa,
@@ -117,8 +117,18 @@ pub fn evaluate(app: &mut State, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
-        Value::Sensor(name, index, unit) => match app.read_sensor(name.to_string(), *index, *unit) {
-            Ok(value) => value,
+        Value::Sensor(name, index, unit) => match app.read_sensor(name.to_string(), *index) {
+            Ok(value) => {
+                if *unit == value.1 {
+                    value.0
+                } else {
+                    error!(
+                        "type mismatch on sensor. provided {:?}, user demands {:?}",
+                        value.1, *unit
+                    );
+                    std::f64::NAN
+                }
+            }
             std::result::Result::Err(e) => {
                 error!("Failed to read sensor: {}", e);
                 std::f64::NAN

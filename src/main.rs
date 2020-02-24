@@ -1,15 +1,21 @@
 extern crate pretty_env_logger;
+
 #[macro_use]
 extern crate log;
+
+extern crate regex;
 extern crate serde;
 extern crate serde_derive;
 extern crate warp;
 
 #[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
 extern crate rust_embed;
 
 use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
-use crate::config::value::{evaluate as evaluate_val, Unit, Value};
+use crate::config::value::{evaluate as evaluate_val, Value};
 use crate::config::Config;
 use i2c::error::Error;
 use rppal::system::DeviceInfo;
@@ -77,16 +83,14 @@ fn all_sensors(_app: webapp::SharedAppState) -> Result<impl warp::Reply, warp::R
     Ok(warp::reply::json(&reply))
 }
 
-// GET /sensors/:name/:unit
+// GET /device/:name/sensor/read/:index
 fn read_sensor(
     app: webapp::SharedAppState,
-    sensor: String,
+    device: String,
     index: usize,
-    unit: Unit,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    debug!("sensor evaluate: {}", sensor);
     let mut app_l = app.lock().expect("failure");
-    match app_l.read_sensor(sensor, index, unit) {
+    match app_l.read_sensor(device, index) {
         Ok(reply) => Ok(warp::reply::json(&reply)),
         Err(_e) => Err(warp::reject::not_found()),
     }
@@ -178,9 +182,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(path!("sensors"))
         .and_then(all_sensors);
 
-    let r_sensor = warp::get2()
+    let r_read = warp::get2()
         .and(app.clone())
-        .and(path!("sensors" / String / usize / Unit))
+        .and(path!(String / "sensor" / usize))
         .and_then(read_sensor);
 
     let mut nocache_header = HeaderMap::new();
@@ -210,12 +214,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r_configured = warp::path("configured").and(r_adding_configured.or(r_fetching_configured));
 
-    let r_devices = warp::path("devices").and(r_available.or(r_configured));
+    let r_devices = warp::path("devices").and(r_read.or(r_available.or(r_configured)));
 
     let api = r_static
         .or(path!("api").and(
             r_config
-                .or(r_sensor)
                 .or(r_sensors)
                 .or(r_devices)
                 .or(r_config_check)
@@ -238,11 +241,10 @@ fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejec
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {
             Error::Io(_) => 1001,
-            Error::InvalidPinIndex => 1004,
             Error::InvalidPinDirection => 1008,
             Error::I2cError(_) => 1016,
             Error::NonExistant(_) => 1017,
-            Error::UnsupportedUnit(_) => 1019,
+            Error::OutOfBounds(_) => 1019,
             Error::RecvError(_) => 1020,
             Error::SendError(_) => 1024,
         };

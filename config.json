@@ -1,7 +1,7 @@
 {
     "listen": "0.0.0.0",
     "sensors": {
-        "entryway": {
+        "Entry Way": {
             "description": "Sensor above door",
             "device": { "MCP9808": { "address": 24 } }
         }
