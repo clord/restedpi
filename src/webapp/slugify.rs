@@ -9,7 +9,12 @@ lazy_static! {
 
 // Convert arbitrary human name for something into a slug for url purposes
 pub fn slugify(name: &str, inc: usize) -> String {
-    let simplified = REMOVE.replace_all(name.trim(), " ").to_lowercase();
+    let mut replaced = String::new();
+    for c in name.trim().chars() {
+        replaced.push_str(&replace_char(c))
+    }
+
+    let simplified = REMOVE.replace_all(&replaced, " ").to_lowercase();
     let mut result: Vec<String> = Vec::new();
     for cap in SPLIT.captures_iter(&simplified) {
         let mut chunk = String::new();
@@ -27,18 +32,19 @@ pub fn slugify(name: &str, inc: usize) -> String {
 // Make some common unicode characters into more usable slug ascii
 fn replace_char(c: char) -> String {
     match c {
-        '$' => "dollar".to_string(),
-        '%' => "percent".to_string(),
-        '&' => "and".to_string(),
-        '<' => "less".to_string(),
-        '@' => "at".to_string(),
-        ':' => "colon".to_string(),
-        '>' => "greater".to_string(),
-        '|' => "or".to_string(),
-        '¢' => "cent".to_string(),
-        '£' => "pound".to_string(),
-        '¤' => "currency".to_string(),
-        '¥' => "yen".to_string(),
+        '$' => " dollar ".to_string(),
+        '#' => " number ".to_string(),
+        '%' => " percent ".to_string(),
+        '&' => " and ".to_string(),
+        '<' => " less ".to_string(),
+        '@' => " at ".to_string(),
+        ':' => " colon ".to_string(),
+        '>' => " greater ".to_string(),
+        '|' => " or ".to_string(),
+        '¢' => " cent ".to_string(),
+        '£' => " pound ".to_string(),
+        '¤' => " currency ".to_string(),
+        '¥' => " yen ".to_string(),
         '©' => "(c)".to_string(),
         'ª' => "a".to_string(),
         '®' => "(r)".to_string(),
@@ -516,47 +522,45 @@ fn replace_char(c: char) -> String {
         '†' => "+".to_string(),
         '•' => "*".to_string(),
         '…' => "...".to_string(),
-        '₠' => "ecu".to_string(),
-        '₢' => "cruzeiro".to_string(),
-        '₣' => "french franc".to_string(),
-        '₤' => "lira".to_string(),
-        '₥' => "mill".to_string(),
-        '₦' => "naira".to_string(),
-        '₧' => "peseta".to_string(),
-        '₨' => "rupee".to_string(),
-        '₩' => "won".to_string(),
-        '₪' => "new shequel".to_string(),
-        '₫' => "dong".to_string(),
-        '€' => "euro".to_string(),
-        '₭' => "kip".to_string(),
-        '₮' => "tugrik".to_string(),
-        '₯' => "drachma".to_string(),
-        '₰' => "penny".to_string(),
-        '₱' => "peso".to_string(),
-        '₲' => "guarani".to_string(),
-        '₳' => "austral".to_string(),
-        '₴' => "hryvnia".to_string(),
-        '₵' => "cedi".to_string(),
-        '₸' => "kazakhstani tenge".to_string(),
-        '₹' => "indian rupee".to_string(),
-        '₽' => "russian ruble".to_string(),
-        '₿' => "bitcoin".to_string(),
-        '℠' => "sm".to_string(),
-        '™' => "tm".to_string(),
-        '∂' => "d".to_string(),
-        '∆' => "delta".to_string(),
-        '∑' => "sum".to_string(),
-        '∞' => "infinity".to_string(),
-        '♥' => "love".to_string(),
-        '元' => "yuan".to_string(),
-        '円' => "yen".to_string(),
-        '﷼' => "rial".to_string(),
+        '₠' => " ecu ".to_string(),
+        '₢' => " cruzeiro ".to_string(),
+        '₣' => " french franc ".to_string(),
+        '₤' => " lira ".to_string(),
+        '₥' => " mill ".to_string(),
+        '₦' => " naira ".to_string(),
+        '₧' => " peseta ".to_string(),
+        '₨' => " rupee ".to_string(),
+        '₩' => " won ".to_string(),
+        '₪' => " new shequel ".to_string(),
+        '₫' => " dong ".to_string(),
+        '€' => " euro ".to_string(),
+        '₭' => " kip ".to_string(),
+        '₮' => " tugrik ".to_string(),
+        '₯' => " drachma ".to_string(),
+        '₰' => " penny ".to_string(),
+        '₱' => " peso ".to_string(),
+        '₲' => " guarani ".to_string(),
+        '₳' => " austral ".to_string(),
+        '₴' => " hryvnia ".to_string(),
+        '₵' => " cedi ".to_string(),
+        '₸' => " kazakhstani tenge ".to_string(),
+        '₹' => " indian rupee ".to_string(),
+        '₽' => " russian ruble ".to_string(),
+        '₿' => " bitcoin ".to_string(),
+        '℠' => " sm ".to_string(),
+        '™' => " tm ".to_string(),
+        '∂' => " d ".to_string(),
+        '∆' => " delta ".to_string(),
+        '∑' => " sum ".to_string(),
+        '∞' => " infinity ".to_string(),
+        '♥' => " love ".to_string(),
+        '元' => " yuan ".to_string(),
+        '円' => " yen ".to_string(),
+        '﷼' => " rial ".to_string(),
         x => x.to_string(),
     }
     .to_string()
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -564,16 +568,23 @@ mod tests {
     #[test]
     fn basic() {
         assert_eq!(slugify("hello world", 0), "hello-world");
+        assert_eq!(slugify("hello world", 1), "hello-world-1");
+        assert_eq!(slugify("hello world", 2), "hello-world-2");
+        assert_eq!(slugify("hello world", 3), "hello-world-3");
     }
 
     #[test]
     fn test_email() {
-        assert_eq!(slugify("alice@bob.com", 0), "alice-bob.com");
+        assert_eq!(slugify("alice@bob.com", 0), "alice-at-bob.com");
+        assert_eq!(slugify("alice@bob.fo.bar", 0), "alice-at-bob.fo.bar");
     }
 
     #[test]
     fn test_starts_with_number() {
-        assert_eq!(slugify("10 amazing secrets", 0), "10-amazing-secrets");
+        assert_eq!(
+            slugify("10 amazing facts, #10 will shock you", 0),
+            "10-amazing-facts-number-10-will-shock-you"
+        );
     }
 
     #[test]
@@ -583,7 +594,10 @@ mod tests {
 
     #[test]
     fn test_ends_with_number() {
-        assert_eq!(slugify("lucky number 7", 0), "lucky-number-7");
+        assert_eq!(
+            slugify("lucky number 7 to win $500", 0),
+            "lucky-number-7-to-win-dollar-500"
+        );
     }
 
     #[test]
@@ -593,14 +607,15 @@ mod tests {
 
     #[test]
     fn test_numbers_and_symbols() {
-        assert_eq!(slugify("1000 reasons you are #1", 0),
-                   "1000-reasons-you-are-1");
+        assert_eq!(
+            slugify("100% is all you can do & find #1", 0),
+            "100-percent-is-all-you-can-do-and-find-number-1"
+        );
     }
-
 
     #[test]
     fn test_separator() {
-        assert_eq!(slugify("hello world", 0), "hello-world");
+        assert_eq!(slugify("how much is ¥300?", 0), "how-much-is-yen-300");
     }
 
     #[test]
