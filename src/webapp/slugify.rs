@@ -10,7 +10,7 @@ lazy_static! {
 // Convert arbitrary human name for something into a slug for url purposes
 pub fn slugify(name: &str, inc: usize) -> String {
     if name.trim().len() == 0 {
-        return format!("{}", inc)
+        return format!("{}", inc);
     }
     let mut replaced = String::new();
     for c in name.trim().chars() {

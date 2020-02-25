@@ -24,7 +24,9 @@ pub enum SunPosition {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Type {
     MCP9808,
-    BMP085 { mode: SamplingMode },
+    BMP085 {
+        mode: SamplingMode,
+    },
     MCP23017 {
         bank0: HashMap<usize, SwitchPin>,
         bank1: HashMap<usize, SwitchPin>,
