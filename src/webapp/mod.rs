@@ -1,7 +1,9 @@
 use crate::app;
+use crate::config;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use warp::{http::Response, reply, Rejection, Reply};
 pub mod slugify;
 
@@ -79,12 +81,8 @@ pub extern "C" fn all_devices(_app: SharedAppState) -> Result<impl Reply, Reject
     Ok(reply::json(&reply))
 }
 
-// GET /devices/configured
-//
-// configured devices in the system
-pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
-    let app_l = app.lock().expect("failure");
-    let d: serde_json::Value = app_l
+pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
+    let d: serde_json::Value = app
         .devices()
         .into_iter()
         .map(|(name, device)| {
@@ -94,18 +92,27 @@ pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, 
             , "type": device.device_type()
             , "description": device.description()
             , "status": device.status()
-            , "url": format!("/api/devices/configured/{}", name)
-            , "device_url": format!("/api/devices/available/{:?}", device.device_type())
             })
         })
         .collect();
-    let reply = json!(d);
+    return json!(d);
+}
+
+// GET /devices/configured
+//
+// configured devices in the system
+pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }
 
-pub extern "C" fn add_device(_app: SharedAppState) -> Result<impl Reply, Rejection> {
-    let reply = json!({
-        "result": []
-    });
+pub extern "C" fn add_device(
+    app: SharedAppState,
+    devices: HashMap<String, config::Device>,
+) -> Result<impl Reply, Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    app_l.add_devices_from_config(devices);
+    let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }

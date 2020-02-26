@@ -911,7 +911,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "restedpi-rust"
+name = "restedpi"
 version = "0.1.0"
 dependencies = [
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",

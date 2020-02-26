@@ -42,10 +42,11 @@ pub struct SwitchPin {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Device {
-    pub name: String,
+    pub slug_name: Option<String>,
+    pub disabled: Option<bool>,
     pub description: String,
     pub address: u16,
-    pub config: Type,
+    pub model: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

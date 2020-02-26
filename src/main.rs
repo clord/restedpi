@@ -102,9 +102,9 @@ fn read_sensor(
 /// application.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if env::var_os("RUST_LOG").is_none() {
-        // Set `RUST_LOG=restedpi_rust=debug` to see debug logs,
-        env::set_var("RUST_LOG", "restedpi_rust=info");
-        info!("defaulting to info level logging. RUST_LOG='restedpi_rust=info'");
+        // Set `RUST_LOG=restedpi=debug` to see debug logs,
+        env::set_var("RUST_LOG", "restedpi=info");
+        info!("defaulting to info level logging. RUST_LOG='restedpi=info'");
     }
     pretty_env_logger::init();
     let server_name = match DeviceInfo::new() {
@@ -204,7 +204,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let r_adding_configured = warp::post2()
         .and(app.clone())
-        .and_then(move |app| webapp::add_device(app));
+        .and(warp::body::json())
+        .and_then(move |app, body| webapp::add_device(app, body));
 
     let r_fetching_configured = warp::get2()
         .and(app.clone())
@@ -229,7 +230,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
 
     info!("RestedPi listening: http://{}", addr);
-    warp::serve(api.with(warp::log("restedpi_rust::access"))).run(addr);
+    warp::serve(api.with(warp::log("restedpi::access"))).run(addr);
 
     Ok(())
 }

@@ -9,7 +9,15 @@ function AddBmp085(props) {
   const handleSubmit = useCallback(
     form => {
       setSubmitting(true);
-      addDevice(form).finally(() => setSubmitting(false));
+
+      const params = {
+        [form.name]: {
+          description: "foo TODO",
+          address: Number(form.address),
+          model: { BMP085: { mode: form.resolution } }
+        }
+      };
+      addDevice(params).finally(() => setSubmitting(false));
     },
     [addDevice]
   );
@@ -34,9 +42,18 @@ function AddBmp085(props) {
       }
     }),
     h(Select, { name: "resolution", label: "Resolution" }, [
-      h(Select.Choice, { value: "high" }, "High Resolution (slow)"),
-      h(Select.Choice, { value: "med", selected: true }, "Medium Resolution"),
-      h(Select.Choice, { value: "low" }, "Low Resolution (fast)")
+      h(
+        Select.Choice,
+        { value: "UltraHighRes" },
+        "Ultra High Resolution (slow and power-hungry)"
+      ),
+      h(Select.Choice, { value: "HighRes" }, "High Resolution (slow)"),
+      h(
+        Select.Choice,
+        { value: "Standard", selected: true },
+        "Standard Resolution"
+      ),
+      h(Select.Choice, { value: "UltraLowPower" }, "Low Power, Low Resolution")
     ]),
     h(Submit, { submitting }, "Create")
   ]);

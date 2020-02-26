@@ -19,10 +19,7 @@ const [useAppStore, api] = create(set => {
       },
       add: async details => {
         const response = await apiPost("/devices/configured", details);
-        console.log("response: ", response);
-        switch (response.type) {
-        }
-        s(state => void state.devices.configured.set(response[0], response[1]));
+        s(state => void (state.devices.configured = response));
       },
       edit: async (source, details) => {
         s(state => void state.devices.configured.set(source, details));

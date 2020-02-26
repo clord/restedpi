@@ -75,9 +75,15 @@ impl State {
     }
 
     pub fn add_devices_from_config(&mut self, configuration: HashMap<String, config::Device>) {
+        //let result : HashMap<String, Result<()> = Hash::new;
         for (name, config) in configuration.iter() {
+            if config.disabled.unwrap_or(false) {
+                //result.add(name, Error::Disabled)
+                continue;
+            }
             let address = config.address;
-            match config.config {
+            let slug = config.slug_name.as_ref().unwrap_or(name);
+            match config.model {
                 config::Type::BMP085 { mode } => {
                     let trans_mode = match mode {
                         config::SamplingMode::UltraLowPower => bmp085::SamplingMode::UltraLowPower,
@@ -91,7 +97,7 @@ impl State {
                     );
 
                     match bmp085::Device::new(name, address, self.i2c.clone(), trans_mode) {
-                        Ok(dev) => self.add_device(name, Box::new(dev)),
+                        Ok(dev) => self.add_device(&slug, Box::new(dev)),
                         Err(e) => error!("error adding bmp085: {}", e),
                     };
                 }
@@ -101,7 +107,7 @@ impl State {
                         name, address
                     );
                     match mcp9808::Device::new(name, address, self.i2c.clone()) {
-                        Ok(dev) => self.add_device(name, Box::new(dev)),
+                        Ok(dev) => self.add_device(&slug, Box::new(dev)),
                         Err(e) => error!("error adding mcp9808: {}", e),
                     };
                 }
@@ -134,7 +140,7 @@ impl State {
                                     // }
                                 }
                             }
-                            self.add_device(name, Box::new(dev));
+                            self.add_device(&slug, Box::new(dev));
                         }
                         Err(e) => error!("error adding mcp23017: {}", e),
                     };

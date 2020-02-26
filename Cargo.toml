@@ -1,6 +1,6 @@
 # Instructions on cross-compiling for armv6: https://github.com/japaric/rust-cross/issues/42
 [package]
-name = "restedpi-rust"
+name = "restedpi"
 version = "0.1.0"
 authors = ["Christopher Lord <christopher@lord.ac>"]
 edition = "2018"

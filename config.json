@@ -1,9 +1,21 @@
 {
     "listen": "0.0.0.0",
-    "sensors": {
-        "Entry Way": {
+    "devices": {
+        "Main Entrance": {
+            "disabled": true,
+            "model": { "BMP085": { "mode": "Standard" } },
             "description": "Sensor above door",
-            "device": { "MCP9808": { "address": 24 } }
+            "address": 22
+        },
+        "Nestboxes": {
+            "model": "MCP9808",
+            "description": "Inside one of the nestboxes",
+            "address": 23
+        },
+        "Inside Coop": {
+            "model": "MCP9808",
+            "description": "Main coop sensor",
+            "address": 24
         }
     }
 }
