@@ -1,23 +1,28 @@
 import { useCallback, useState } from "/js/depend/react/";
 import { h } from "/js/html.js";
 import { Form, Text, Submit, Select } from "/js/Forms/Form.js";
+import { useLocation } from "/js/depend/wouter/";
 import { useAppStore } from "/js/hooks/useApp.js";
 
-function AddBmp085(props) {
+function AddMcp23017(props) {
   const [submitting, setSubmitting] = useState(false);
   const addDevice = useAppStore(x => x.devices.add);
+  const [location, setLocation] = useLocation();
   const handleSubmit = useCallback(
     form => {
       setSubmitting(true);
 
       const params = {
-        [form.name]: {
-          description: "foo TODO",
-          address: Number(form.address),
-          model: { BMP085: { mode: form.resolution } }
-        }
+        model: { MCP23017: { bank0: {}, bank1: {} } },
+        description: form.description,
+        name: form.name,
+        address: Number(form.address)
       };
-      addDevice(params).finally(() => setSubmitting(false));
+      addDevice(params)
+        .then(result => {
+          setLocation("/devices");
+        })
+        .finally(() => setSubmitting(false));
     },
     [addDevice]
   );
@@ -26,11 +31,103 @@ function AddBmp085(props) {
     h(Text, {
       id: "name",
       label: "Sensor Name",
+      required: "Required"
+    }),
+    h(Text, {
+      id: "description",
+      label: "Description"
+    }),
+    h(Text, {
+      id: "address",
+      label: "I2C Bus Address",
       required: "Required",
       pattern: {
-        value: /^[ \w]+$/,
-        message: "Name must be alphanumeric"
+        value: /^\d+$/,
+        message: "Address must be decimal number"
       }
+    }),
+    h(Submit, { submitting }, "Create")
+  ]);
+}
+
+function AddMcp9808(props) {
+  const [submitting, setSubmitting] = useState(false);
+  const addDevice = useAppStore(x => x.devices.add);
+  const [location, setLocation] = useLocation();
+  const handleSubmit = useCallback(
+    form => {
+      setSubmitting(true);
+
+      const params = {
+        model: "MCP9808",
+        description: form.description,
+        name: form.name,
+        address: Number(form.address)
+      };
+      addDevice(params)
+        .then(result => {
+          setLocation("/devices");
+        })
+        .finally(() => setSubmitting(false));
+    },
+    [addDevice]
+  );
+
+  return h(Form, { onSubmit: handleSubmit }, [
+    h(Text, {
+      id: "name",
+      label: "Sensor Name",
+      required: "Required"
+    }),
+    h(Text, {
+      id: "description",
+      label: "Description"
+    }),
+    h(Text, {
+      id: "address",
+      label: "I2C Bus Address",
+      required: "Required",
+      pattern: {
+        value: /^\d+$/,
+        message: "Address must be decimal number"
+      }
+    }),
+    h(Submit, { submitting }, "Create")
+  ]);
+}
+
+function AddBmp085(props) {
+  const [submitting, setSubmitting] = useState(false);
+  const addDevice = useAppStore(x => x.devices.add);
+  const [location, setLocation] = useLocation();
+  const handleSubmit = useCallback(
+    form => {
+      setSubmitting(true);
+
+      const params = {
+        model: { BMP085: { mode: form.resolution } },
+        description: form.description,
+        name: form.name,
+        address: Number(form.address)
+      };
+      addDevice(params)
+        .then(result => {
+          setLocation("/devices");
+        })
+        .finally(() => setSubmitting(false));
+    },
+    [addDevice]
+  );
+
+  return h(Form, { onSubmit: handleSubmit }, [
+    h(Text, {
+      id: "name",
+      label: "Sensor Name",
+      required: "Required"
+    }),
+    h(Text, {
+      id: "description",
+      label: "Description"
     }),
     h(Text, {
       id: "address",
@@ -67,8 +164,16 @@ export function AddDevice({
   let component;
 
   switch (name) {
+    case "MCP23017": {
+      component = h(AddMcp23017, {});
+      break;
+    }
+    case "MCP9808": {
+      component = h(AddMcp9808, {});
+      break;
+    }
     case "BMP085": {
-      component = h(AddBmp085, { name });
+      component = h(AddBmp085, {});
       break;
     }
   }

@@ -1,5 +1,11 @@
 use crate::config;
 use crate::i2c::{bmp085, bus::I2cBus, error::Error, mcp23017, mcp9808, Result};
+use serde_derive::Serialize;
+
+#[derive(Clone, Serialize, Debug)]
+pub enum Status {
+    Ok,
+}
 
 #[derive(Clone, Debug)]
 pub struct Device {
@@ -17,6 +23,10 @@ impl Device {
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),
         }
+    }
+
+    pub fn status(&self) -> Status {
+        Status::Ok
     }
 
     pub fn config(&self) -> config::Device {

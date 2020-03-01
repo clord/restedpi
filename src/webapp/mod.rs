@@ -1,5 +1,6 @@
 use crate::app;
 use crate::config;
+use crate::i2c::device::Status;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
@@ -82,10 +83,10 @@ pub extern "C" fn all_devices(_app: SharedAppState) -> Result<impl Reply, Reject
 }
 
 pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
-    let d: serde_json::Value = app
+    let d: HashMap<String, (config::Device, Status)> = app
         .devices()
         .into_iter()
-        .map(|(name, device)| json!((name, device.config())))
+        .map(|(name, device)| (name.to_string(), (device.config(), device.status())))
         .collect();
     return json!(d);
 }
@@ -99,12 +100,21 @@ pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, 
     Ok(reply::json(&reply))
 }
 
-pub extern "C" fn add_device(
+pub extern "C" fn remove_device(
     app: SharedAppState,
-    devices: HashMap<String, config::Device>,
+    name: String,
 ) -> Result<impl Reply, Rejection> {
     let mut app_l = app.lock().expect("failure");
-    app_l.add_devices_from_config(devices);
+    app_l.remove_device(&name);
+    let reply = devices_as_json(app_l);
+    Ok(reply::json(&reply))
+}
+pub extern "C" fn add_device(
+    app: SharedAppState,
+    device: config::Device,
+) -> Result<impl Reply, Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    app_l.add_device(&device);
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }

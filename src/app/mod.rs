@@ -18,12 +18,22 @@ pub struct State {
 
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub fn add_device(&mut self, name: &str, device: Device) {
+    pub fn add_device(&mut self, config: &config::Device) {
+        let device = Device::new(config, self.i2c.clone());
+        info!(
+            "Adding device: '{}' at I2C address: {}",
+            config.name, config.address
+        );
         let mut inc: usize = 0;
-        while self.devices.contains_key(&slugify(name, inc)) {
+        while self.devices.contains_key(&slugify(&config.name, inc)) {
             inc += 1;
         }
-        self.devices.insert(slugify(name, inc), device);
+        self.devices.insert(slugify(&config.name, inc), device);
+    }
+
+    pub fn remove_device(&mut self, name: &str) {
+        info!("Remove device: '{}'", name);
+        self.devices.remove(name);
     }
 
     pub fn devices(&self) -> &HashMap<String, Device> {
@@ -67,79 +77,6 @@ impl State {
             m.read_sensor(sensor)
         } else {
             Err(Error::NonExistant(name))
-        }
-    }
-
-    pub fn add_devices_from_config(&mut self, configuration: HashMap<String, config::Device>) {
-        //let result : HashMap<String, Result<()> = Hash::new;
-        for (name, config) in configuration.iter() {
-            if config.disabled.unwrap_or(false) {
-                //result.add(name, Error::Disabled)
-                continue;
-            }
-
-            let device = Device::new(config, self.i2c.clone());
-            let slug = config.slug_name.as_ref().unwrap_or(name);
-            self.add_device(&slug, device);
-
-            // let address = config.address;
-            // match config.model {
-            //     config::Type::BMP085 { mode } => {
-            //         info!(
-            //             "Adding BMP085 sensor named '{}' at i2c address {}",
-            //             name, address
-            //         );
-
-            //         match bmp085::Device::new(name, address, self.i2c.clone(), mode) {
-            //             Ok(dev) => self.add_device(&slug, dev),
-            //             Err(e) => error!("error adding bmp085: {}", e),
-            //         };
-            //     }
-            //     config::Type::MCP9808 => {
-            //         info!(
-            //             "Adding MCP9808 sensor named '{}' at i2c address {}",
-            //             name, address
-            //         );
-            //         match mcp9808::Device::new(name, address, self.i2c.clone()) {
-            //             Ok(dev) => self.add_device(&slug, dev),
-            //             Err(e) => error!("error adding mcp9808: {}", e),
-            //         };
-            //     }
-            //     config::Type::MCP23017 {
-            //         ref bank0,
-            //         ref bank1,
-            //     } => {
-            //         info!(
-            //             "Adding MCP23017 switch bank named '{}' at i2c address {}",
-            //             name, address
-            //         );
-            //         match mcp23017::Device::new(name, address, self.i2c.clone()) {
-            //             Ok(dev) => {
-            //                 for (_bankcfg, _bankname) in [(bank0, Bank::A), (bank1, Bank::B)].iter()
-            //                 {
-            //                     for _pin in [
-            //                         Pin::Pin0,
-            //                         Pin::Pin1,
-            //                         Pin::Pin2,
-            //                         Pin::Pin3,
-            //                         Pin::Pin4,
-            //                         Pin::Pin5,
-            //                         Pin::Pin6,
-            //                         Pin::Pin7,
-            //                     ]
-            //                     .iter()
-            //                     {
-            //                         // if (bankcfg[ordinal(pin)]) {
-            //                         // set up
-            //                         // }
-            //                     }
-            //                 }
-            //                 self.add_device(&slug, dev);
-            //             }
-            //             Err(e) => error!("error adding mcp23017: {}", e),
-            //         };
-            //     }
-            // }
         }
     }
 }

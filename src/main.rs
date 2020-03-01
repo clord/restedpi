@@ -20,7 +20,6 @@ use crate::config::Config;
 use i2c::error::Error;
 use rppal::system::DeviceInfo;
 use serde_json::json;
-use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -137,10 +136,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listen = config.listen.unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
-    let device_config = config.devices.unwrap_or(HashMap::new());
+    let device_config = config.devices.unwrap_or(Vec::new());
 
     let mut app_raw = app::new();
-    app_raw.add_devices_from_config(device_config);
+    for config in device_config.iter() {
+        app_raw.add_device(config);
+    }
 
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
@@ -207,11 +208,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::body::json())
         .and_then(move |app, body| webapp::add_device(app, body));
 
+    let r_remove_configured = warp::delete2()
+        .and(app.clone())
+        .and(warp::path::param())
+        .and_then(move |app, name| webapp::remove_device(app, name));
+
     let r_fetching_configured = warp::get2()
         .and(app.clone())
         .and_then(move |app| webapp::configured_devices(app));
 
-    let r_configured = warp::path("configured").and(r_adding_configured.or(r_fetching_configured));
+    let r_configured = warp::path("configured").and(
+        r_adding_configured
+            .or(r_fetching_configured)
+            .or(r_remove_configured),
+    );
 
     let r_devices = warp::path("devices").and(r_read.or(r_available.or(r_configured)));
 

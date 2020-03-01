@@ -1,7 +1,7 @@
 import { useEffect } from "/js/depend/react/";
 import produce from "/js/depend/immer.module.js";
 import create from "/js/depend/zustand.js";
-import { apiGet, apiPost } from "/js/hooks/network.js";
+import { apiGet, apiDelete, apiPut, apiPost } from "/js/hooks/network.js";
 
 const [useAppStore, api] = create(set => {
   const s = fn => set(produce(fn));
@@ -21,14 +21,13 @@ const [useAppStore, api] = create(set => {
         const response = await apiPost("/devices/configured", details);
         s(state => void (state.devices.configured = response));
       },
-      edit: async (source, details) => {
-        s(state => void state.devices.configured.set(source, details));
-        const response = await apiPut(source, details);
-        s(state => void state.devices.configured.set(source, response));
+      edit: async (slug, details) => {
+        const response = await apiPut(`/devices/configured/${slug}`, details);
+        s(state => void (state.devices.configured = response));
       },
-      remove: async source => {
-        const response = await apiDelete(source);
-        s(state => void state.devices.configured.delete(source));
+      remove: async slug => {
+        const response = await apiDelete(`/devices/configured/${slug}`);
+        s(state => void (state.devices.configured = response));
       }
     }
   };

@@ -44,10 +44,10 @@ pub struct SwitchPin {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Device {
     pub model: Type,
-    pub slug_name: Option<String>,
-    pub disabled: Option<bool>,
+    pub name: String,
     pub description: String,
     pub address: u16,
+    pub disabled: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,5 +55,5 @@ pub struct Config {
     pub listen: Option<String>,
     pub port: Option<u16>,
     pub database_path: Option<String>,
-    pub devices: Option<HashMap<String, Device>>,
+    pub devices: Option<Vec<Device>>,
 }

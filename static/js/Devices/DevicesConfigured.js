@@ -5,25 +5,22 @@ import { Table } from "/js/Table/";
 
 function DeviceStatus({ cell }) {
   switch (cell.value) {
-    case "ok":
+    case "Ok":
       return h("span", {}, "OK");
-    case "connected":
-      return h("span", {}, "Connected");
-    case "disconnected":
-      return h("span", {}, "Disconnected");
   }
   return null;
 }
 
 function ActionCol({ cell }) {
-  const url = cell.value;
+  const slug = cell.value;
+  const removeDevice = useAppStore(x => x.devices.remove);
   const handleRemove = useCallback(() => {
-    console.log("handle remove ", url);
-  }, [url]);
+    removeDevice(slug);
+  }, [slug]);
 
   const handleEdit = useCallback(() => {
-    console.log("handle edit ", url);
-  }, [url]);
+    console.log("handle edit ", slug);
+  }, [slug]);
 
   return [
     h(
@@ -42,11 +39,15 @@ function ActionCol({ cell }) {
     )
   ];
 }
+function ModelCol({ cell }) {
+  const { value } = cell;
+  if (typeof value === "string") {
+    return value;
+  }
+  return Object.keys(value)[0];
+}
 
 function AddDevice({ cell }) {
-  const handleAdd = useCallback(() => {
-    console.log("handle add ");
-  }, []);
   return h(
     "a",
     {
@@ -64,13 +65,14 @@ function DevicesConfiguredTable({ data }) {
       { Header: "Name", accessor: "device.name" },
       {
         Header: "Status",
-        accessor: "device.status",
+        accessor: "status",
         Cell: DeviceStatus,
         style: { textAlign: "center" }
       },
+      { Header: "Model", accessor: "device.model", Cell: ModelCol },
       { Header: "Description", accessor: "device.description" },
       {
-        accessor: "url",
+        accessor: "slug",
         Cell: ActionCol,
         style: { textAlign: "right" }
       }
@@ -85,10 +87,10 @@ export function DevicesConfigured() {
     []
   );
   const configured = useAppStore(x => x.devices.configured);
-  const data = configured.map(device => ({
-    device,
-    key: device.url,
-    url: device.url
+  const data = Object.keys(configured).map(slug => ({
+    device: configured[slug][0],
+    status: configured[slug][1],
+    slug
   }));
 
   return h("article", { className: "max-w-sm w-full lg:max-w-full" }, [

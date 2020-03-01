@@ -1,37 +1,56 @@
-import { useState, useMemo, useEffect } from '/js/depend/react/';
+import { useState, useMemo, useEffect } from "/js/depend/react/";
 
 const JSON_HEADER = {
-  'Content-Type': 'application/json',
+  "Content-Type": "application/json"
 };
 
 export function usePost(url, body) {
   return useFetch(
     `${window.env.api}${url}`,
-    'POST',
-    'no-cache',
+    "POST",
+    "no-cache",
     JSON_HEADER,
     JSON.stringify(body)
   );
 }
 
 export function useGet(url) {
-  return useFetch(`${window.env.api}${url}`, 'GET', undefined, JSON_HEADER);
+  return useFetch(`${window.env.api}${url}`, "GET", undefined, JSON_HEADER);
 }
 
 export async function apiGet(url) {
   const result = await fetch(`${window.env.api}${url}`, {
-    method: 'GET',
-    headers: JSON_HEADER,
+    method: "GET",
+    headers: JSON_HEADER
+  });
+  return result.json();
+}
+
+export function apiPut(url, body) {
+  return useFetch(
+    `${window.env.api}${url}`,
+    "PUT",
+    "no-cache",
+    JSON_HEADER,
+    JSON.stringify(body)
+  );
+}
+
+export async function apiDelete(url, value) {
+  const result = await fetch(`${window.env.api}${url}`, {
+    method: "DELETE",
+    cache: "no-cache",
+    headers: JSON_HEADER
   });
   return result.json();
 }
 
 export async function apiPost(url, body) {
   const result = await fetch(`${window.env.api}${url}`, {
-    method: 'POST',
-    cache: 'no-cache',
+    method: "POST",
+    cache: "no-cache",
     headers: JSON_HEADER,
-    body: JSON.stringify(body),
+    body: JSON.stringify(body)
   });
   return result.json();
 }
