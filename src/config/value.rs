@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 #[derive(Copy, Clone, Serialize, PartialEq, Deserialize, Debug)]
 pub enum Unit {
+    Boolean,
     DegC,
     KPa,
 }

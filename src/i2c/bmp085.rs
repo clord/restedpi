@@ -1,16 +1,17 @@
-use crate::i2c;
+use crate::config;
 use crate::i2c::util::{iv2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, error::Error, DeviceType, Direction, Result, Unit};
+use crate::i2c::{bus::Address, bus::I2cBus, Result};
 use std::thread;
 use std::time::Duration;
 
 /// How long should we accumulate before returning a result?
-#[derive(Clone, Debug)]
-pub enum SamplingMode {
-    UltraLowPower = 0,
-    Standard = 1,
-    HighRes = 2,
-    UltraHighRes = 3,
+fn sampling_mode(accuracy: config::SamplingMode) -> u8 {
+    match accuracy {
+        config::SamplingMode::UltraLowPower => 0u8,
+        config::SamplingMode::Standard => 1u8,
+        config::SamplingMode::HighRes => 2u8,
+        config::SamplingMode::UltraHighRes => 3u8,
+    }
 }
 
 /// BMP085 command register addresses
@@ -36,7 +37,7 @@ enum Register {
 }
 
 #[derive(Clone, Debug)]
-struct Coefficients {
+pub struct Bmp085State {
     ac1: i16,
     ac2: i16,
     ac3: i16,
@@ -50,8 +51,25 @@ struct Coefficients {
     md: i16,
 }
 
-impl Coefficients {
-    pub fn new(address: Address, bus: &I2cBus) -> Result<Self> {
+impl Bmp085State {
+    pub fn new() -> Self {
+        Bmp085State {
+            ac1: 0,
+            ac2: 0,
+            ac3: 0,
+            ac4: 0,
+            ac5: 0,
+            ac6: 0,
+            b1: 0,
+            b2: 0,
+            mb: 0,
+            mc: 0,
+            md: 0,
+        }
+    }
+
+    pub fn reset(&mut self, address: Address, bus: &I2cBus) -> Result<()> {
+        // this sensor must be reset to be used...
         let ac1 = bus.read(address, Register::AC1 as u8, 2)?;
         let ac2 = bus.read(address, Register::AC2 as u8, 2)?;
         let ac3 = bus.read(address, Register::AC3 as u8, 2)?;
@@ -64,65 +82,45 @@ impl Coefficients {
         let mc = bus.read(address, Register::Mc as u8, 2)?;
         let md = bus.read(address, Register::Md as u8, 2)?;
 
-        Ok(Coefficients {
-            ac1: iv2be(&ac1) as i16,
-            ac2: iv2be(&ac2) as i16,
-            ac3: iv2be(&ac3) as i16,
-            ac4: uv2be(&ac4) as u16,
-            ac5: uv2be(&ac5) as u16,
-            ac6: uv2be(&ac6) as u16,
-            b1: iv2be(&b1) as i16,
-            b2: iv2be(&b2) as i16,
-            mb: iv2be(&mb) as i16,
-            mc: iv2be(&mc) as i16,
-            md: iv2be(&md) as i16,
-        })
-    }
-}
-
-/// Represent access to a BMP085 device at some address
-#[derive(Clone, Debug)]
-pub struct Device {
-    name: String,
-    address: Address,
-    accuracy: SamplingMode,
-    coefficients: Coefficients,
-    i2c: I2cBus,
-}
-
-impl Device {
-    /// Construct a device with a given sampling mode on a given bus
-    pub fn new(name: &str, address: Address, i2c: I2cBus, accuracy: SamplingMode) -> Result<Self> {
-        let coefficients = Coefficients::new(address, &i2c)?;
-        let device = Device {
-            name: name.to_string(),
-            address,
-            accuracy,
-            coefficients,
-            i2c,
-        };
-        Ok(device)
+        // No mutation until all succeed
+        self.ac1 = iv2be(&ac1) as i16;
+        self.ac2 = iv2be(&ac2) as i16;
+        self.ac3 = iv2be(&ac3) as i16;
+        self.ac4 = uv2be(&ac4) as u16;
+        self.ac5 = uv2be(&ac5) as u16;
+        self.ac6 = uv2be(&ac6) as u16;
+        self.b1 = iv2be(&b1) as i16;
+        self.b2 = iv2be(&b2) as i16;
+        self.mb = iv2be(&mb) as i16;
+        self.mc = iv2be(&mc) as i16;
+        self.md = iv2be(&md) as i16;
+        Ok(())
     }
 
     /// Read temperature in degrees c
-    pub fn temperature_in_c(&self) -> Result<f32> {
-        let (t, _) = self.read_raw_temp()?;
+    pub fn temperature_in_c(&self, address: Address, i2c: &I2cBus) -> Result<f32> {
+        let (t, _) = self.read_raw_temp(address, i2c)?;
         Ok((t as f32) * 0.1)
     }
 
     /// Read air pressure in kPa
-    pub fn pressure_kpa(&self) -> Result<f32> {
-        let (_, b5) = self.read_raw_temp()?;
-        let sampling = self.accuracy.clone() as u8;
+    pub fn pressure_kpa(
+        &self,
+        address: Address,
+        accuracy: config::SamplingMode,
+        i2c: &I2cBus,
+    ) -> Result<f32> {
+        let (_, b5) = self.read_raw_temp(address, i2c)?;
+        let sampling = sampling_mode(accuracy);
 
-        let up = self.read_raw_pressure()?;
+        let up = self.read_raw_pressure(address, accuracy, i2c)?;
 
-        let b1: i32 = self.coefficients.b1 as i32;
-        let b2: i32 = self.coefficients.b2 as i32;
-        let ac1: i32 = self.coefficients.ac1 as i32;
-        let ac2: i32 = self.coefficients.ac2 as i32;
-        let ac3: i32 = self.coefficients.ac3 as i32;
-        let ac4: u32 = self.coefficients.ac4 as u32;
+        let b1: i32 = self.b1 as i32;
+        let b2: i32 = self.b2 as i32;
+        let ac1: i32 = self.ac1 as i32;
+        let ac2: i32 = self.ac2 as i32;
+        let ac3: i32 = self.ac3 as i32;
+        let ac4: u32 = self.ac4 as u32;
 
         let b6: i32 = b5 - 4000i32;
 
@@ -152,20 +150,20 @@ impl Device {
     }
 
     /// Reads the raw temperature data and associated register
-    fn read_raw_temp(&self) -> Result<(i32, i32)> {
-        self.i2c.write(
-            self.address,
+    fn read_raw_temp(&self, address: Address, i2c: &I2cBus) -> Result<(i32, i32)> {
+        i2c.write(
+            address,
             Register::Control as u8,
             vec![Control::ReadTemp as u8],
         )?;
         thread::sleep(Duration::from_millis(5)); // sleep for 4.5 ms
-        let data = self.i2c.read(self.address, Register::Data as u8, 2)?;
+        let data = i2c.read(address, Register::Data as u8, 2)?;
 
         let ut: i32 = iv2be(&data) as i32;
-        let ac6: i32 = self.coefficients.ac6 as i32;
-        let ac5: i32 = self.coefficients.ac5 as i32;
-        let md: i32 = self.coefficients.md as i32;
-        let mc: i32 = self.coefficients.mc as i32;
+        let ac6: i32 = self.ac6 as i32;
+        let ac5: i32 = self.ac5 as i32;
+        let md: i32 = self.md as i32;
+        let mc: i32 = self.mc as i32;
 
         let _ac5 = ac5 as i64;
         let x1: i32 = ((ut - ac6) as i64 * _ac5 >> 15) as i32; // Note: X>>15 == X/(pow(2,15))
@@ -177,27 +175,32 @@ impl Device {
     }
 
     /// Reads the raw pressure data
-    fn read_raw_pressure(&self) -> Result<i32> {
+    fn read_raw_pressure(
+        &self,
+        address: Address,
+        accuracy: config::SamplingMode,
+        i2c: &I2cBus,
+    ) -> Result<i32> {
         let pressure_cmd = Control::ReadPressure as u8;
-        let sampling = self.accuracy.clone() as u8;
-        self.i2c.write(
-            self.address,
+        let sampling = sampling_mode(accuracy);
+        i2c.write(
+            address,
             Register::Control as u8,
             vec![pressure_cmd + (sampling << 6)],
         )?;
 
-        let duration = match self.accuracy {
-            SamplingMode::UltraLowPower => Duration::from_millis(5),
-            SamplingMode::Standard => Duration::from_millis(8),
-            SamplingMode::HighRes => Duration::from_millis(14),
-            SamplingMode::UltraHighRes => Duration::from_millis(26),
+        let duration = match accuracy {
+            config::SamplingMode::UltraLowPower => Duration::from_millis(5),
+            config::SamplingMode::Standard => Duration::from_millis(8),
+            config::SamplingMode::HighRes => Duration::from_millis(14),
+            config::SamplingMode::UltraHighRes => Duration::from_millis(26),
         };
 
         thread::sleep(duration);
 
-        let msbv = self.i2c.read(self.address, Register::Data as u8 + 0, 1)?;
-        let lsbv = self.i2c.read(self.address, Register::Data as u8 + 1, 1)?;
-        let xlsbv = self.i2c.read(self.address, Register::Data as u8 + 2, 1)?;
+        let msbv = i2c.read(address, Register::Data as u8 + 0, 1)?;
+        let lsbv = i2c.read(address, Register::Data as u8 + 1, 1)?;
+        let xlsbv = i2c.read(address, Register::Data as u8 + 2, 1)?;
         let msb = msbv[0] as u32;
         let lsb = lsbv[0] as u32;
         let xlsb = xlsbv[0] as u32;
@@ -205,64 +208,5 @@ impl Device {
         let up: i32 = ((msb << 16) + (lsb << 8) + xlsb >> (8 - sampling)) as i32;
 
         Ok(up)
-    }
-}
-
-impl i2c::Device for Device {
-    fn reset(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    fn address(&self) -> Address {
-        self.address
-    }
-
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn status(&self) -> String {
-        "ok".to_string()
-    }
-
-    fn description(&self) -> String {
-        "BMP temp and pressure".to_string()
-    }
-
-    fn device_type(&self) -> DeviceType {
-        DeviceType::Bmp085
-    }
-
-    fn sensor_count(&self) -> usize {
-        return 2;
-    }
-
-    fn read_sensor(&self, index: usize) -> Result<(f64, Unit)> {
-        match index {
-            0 => {
-                let v = self.temperature_in_c()?;
-                Ok((v as f64, Unit::DegC))
-            }
-            1 => {
-                let v = self.pressure_kpa()?;
-                Ok((v as f64, Unit::KPa))
-            }
-            _ => Err(Error::OutOfBounds(index)),
-        }
-    }
-
-    fn switch_count(&self) -> usize {
-        return 0;
-    }
-    fn set_direction(&mut self, index: usize, _dir: Direction) -> Result<()> {
-        Err(Error::OutOfBounds(index))
-    }
-    fn switch_direction(&mut self, index: usize) -> Result<Direction> {
-        Err(Error::OutOfBounds(index))
-    }
-    fn write_switch(&mut self, index: usize, _value: bool) -> Result<()> {
-        Err(Error::OutOfBounds(index))
-    }
-    fn read_switch(&mut self, index: usize) -> Result<bool> {
-        Err(Error::OutOfBounds(index))
     }
 }

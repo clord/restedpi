@@ -4,6 +4,7 @@ pub mod value;
 use boolean::BoolExpr;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+pub use value::Unit;
 
 pub mod sched;
 
@@ -21,7 +22,7 @@ pub enum SunPosition {
     High,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Type {
     MCP9808,
     BMP085 {
@@ -40,13 +41,13 @@ pub struct SwitchPin {
     pub schedule: Option<BoolExpr>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Device {
+    pub model: Type,
     pub slug_name: Option<String>,
     pub disabled: Option<bool>,
     pub description: String,
     pub address: u16,
-    pub model: Type,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

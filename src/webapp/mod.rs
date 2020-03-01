@@ -85,15 +85,7 @@ pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::va
     let d: serde_json::Value = app
         .devices()
         .into_iter()
-        .map(|(name, device)| {
-            json!(
-            { "name": device.name()
-            , "address": device.address()
-            , "type": device.device_type()
-            , "description": device.description()
-            , "status": device.status()
-            })
-        })
+        .map(|(name, device)| json!((name, device.config())))
         .collect();
     return json!(d);
 }
@@ -102,7 +94,7 @@ pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::va
 //
 // configured devices in the system
 pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
-    let mut app_l = app.lock().expect("failure");
+    let app_l = app.lock().expect("failure");
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }
