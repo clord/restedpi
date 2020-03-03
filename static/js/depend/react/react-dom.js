@@ -1,4 +1,4 @@
-import {a as react_production_min}from'./react.production.min-75551000.js';import {c as createCommonjsModule,u as unwrapExports}from'./_commonjsHelpers-62a4d7f9.js';import'./checkPropTypes-b5aa2e99.js';var react = createCommonjsModule(function (module) {
+import {a as react_production_min}from'./react.production.min-2585db34.js';import {c as createCommonjsModule,u as unwrapExports}from'./_commonjsHelpers-62a4d7f9.js';import'./checkPropTypes-b5aa2e99.js';var react = createCommonjsModule(function (module) {
 
 {
   module.exports = react_production_min;
@@ -49,85 +49,89 @@ if ("undefined" === typeof window || "function" !== typeof MessageChannel) {
   var w = window.performance,
       x = window.Date,
       y = window.setTimeout,
-      z = window.clearTimeout,
-      A = window.requestAnimationFrame,
-      B = window.cancelAnimationFrame;
-  "undefined" !== typeof console && ("function" !== typeof A && console.error("This browser doesn't support requestAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills"), "function" !== typeof B && console.error("This browser doesn't support cancelAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills"));
+      z = window.clearTimeout;
+
+  if ("undefined" !== typeof console) {
+    var A = window.cancelAnimationFrame;
+    "function" !== typeof window.requestAnimationFrame && console.error("This browser doesn't support requestAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills");
+    "function" !== typeof A && console.error("This browser doesn't support cancelAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills");
+  }
+
   if ("object" === typeof w && "function" === typeof w.now) exports.unstable_now = function () {
     return w.now();
   };else {
-    var C = x.now();
+    var B = x.now();
 
     exports.unstable_now = function () {
-      return x.now() - C;
+      return x.now() - B;
     };
   }
-  var D = !1,
-      E = null,
-      F = -1,
-      G = 5,
-      H = 0;
+  var C = !1,
+      D = null,
+      E = -1,
+      F = 5,
+      G = 0;
 
   k = function () {
-    return exports.unstable_now() >= H;
+    return exports.unstable_now() >= G;
   };
 
   l = function () {};
 
   exports.unstable_forceFrameRate = function (a) {
-    0 > a || 125 < a ? console.error("forceFrameRate takes a positive int between 0 and 125, forcing framerates higher than 125 fps is not unsupported") : G = 0 < a ? Math.floor(1E3 / a) : 33.33;
+    0 > a || 125 < a ? console.error("forceFrameRate takes a positive int between 0 and 125, forcing framerates higher than 125 fps is not unsupported") : F = 0 < a ? Math.floor(1E3 / a) : 5;
   };
 
-  var I = new MessageChannel(),
-      J = I.port2;
+  var H = new MessageChannel(),
+      I = H.port2;
 
-  I.port1.onmessage = function () {
-    if (null !== E) {
+  H.port1.onmessage = function () {
+    if (null !== D) {
       var a = exports.unstable_now();
-      H = a + G;
+      G = a + F;
 
       try {
-        E(!0, a) ? J.postMessage(null) : (D = !1, E = null);
+        D(!0, a) ? I.postMessage(null) : (C = !1, D = null);
       } catch (b) {
-        throw J.postMessage(null), b;
+        throw I.postMessage(null), b;
       }
-    } else D = !1;
+    } else C = !1;
   };
 
   f = function (a) {
-    E = a;
-    D || (D = !0, J.postMessage(null));
+    D = a;
+    C || (C = !0, I.postMessage(null));
   };
 
   g = function (a, b) {
-    F = y(function () {
+    E = y(function () {
       a(exports.unstable_now());
     }, b);
   };
 
   h = function () {
-    z(F);
-    F = -1;
+    z(E);
+    E = -1;
   };
 }
 
-function K(a, b) {
+function J(a, b) {
   var c = a.length;
   a.push(b);
 
   a: for (;;) {
     var d = Math.floor((c - 1) / 2),
         e = a[d];
-    if (void 0 !== e && 0 < L(e, b)) a[d] = b, a[c] = e, c = d;else break a;
+    if (void 0 !== e && 0 < K(e, b)) a[d] = b, a[c] = e, c = d;else break a;
   }
 }
 
-function M(a) {
+function L(a) {
   a = a[0];
   return void 0 === a ? null : a;
 }
 
-function N(a) {
+function M(a) {
   var b = a[0];
 
   if (void 0 !== b) {
@@ -141,7 +145,7 @@ function N(a) {
             n = a[m],
             v = m + 1,
             r = a[v];
-        if (void 0 !== n && 0 > L(n, c)) void 0 !== r && 0 > L(r, n) ? (a[d] = r, a[v] = c, d = v) : (a[d] = n, a[m] = c, d = m);else if (void 0 !== r && 0 > L(r, c)) a[d] = r, a[v] = c, d = v;else break a;
+        if (void 0 !== n && 0 > K(n, c)) void 0 !== r && 0 > K(r, n) ? (a[d] = r, a[v] = c, d = v) : (a[d] = n, a[m] = c, d = m);else if (void 0 !== r && 0 > K(r, c)) a[d] = r, a[v] = c, d = v;else break a;
       }
     }
 
@@ -151,72 +155,72 @@ function N(a) {
   return null;
 }
 
-function L(a, b) {
+function K(a, b) {
   var c = a.sortIndex - b.sortIndex;
   return 0 !== c ? c : a.id - b.id;
 }
 
-var O = [],
-    P = [],
-    Q = 1,
-    R = null,
-    S = 3,
+var N = [],
+    O = [],
+    P = 1,
+    Q = null,
+    R = 3,
+    S = !1,
     T = !1,
-    U = !1,
-    V = !1;
+    U = !1;
+
+function V(a) {
+  for (var b = L(O); null !== b;) {
+    if (null === b.callback) M(O);else if (b.startTime <= a) M(O), b.sortIndex = b.expirationTime, J(N, b);else break;
+    b = L(O);
+  }
+}
 
 function W(a) {
-  for (var b = M(P); null !== b;) {
-    if (null === b.callback) N(P);else if (b.startTime <= a) N(P), b.sortIndex = b.expirationTime, K(O, b);else break;
-    b = M(P);
-  }
-}
-
-function X(a) {
-  V = !1;
-  W(a);
-  if (!U) if (null !== M(O)) U = !0, f(Y);else {
-    var b = M(P);
-    null !== b && g(X, b.startTime - a);
-  }
-}
-
-function Y(a, b) {
   U = !1;
-  V && (V = !1, h());
-  T = !0;
-  var c = S;
+  V(a);
+  if (!T) if (null !== L(N)) T = !0, f(X);else {
+    var b = L(O);
+    null !== b && g(W, b.startTime - a);
+  }
+}
+
+function X(a, b) {
+  T = !1;
+  U && (U = !1, h());
+  S = !0;
+  var c = R;
 
   try {
-    W(b);
+    V(b);
 
-    for (R = M(O); null !== R && (!(R.expirationTime > b) || a && !k());) {
-      var d = R.callback;
+    for (Q = L(N); null !== Q && (!(Q.expirationTime > b) || a && !k());) {
+      var d = Q.callback;
 
       if (null !== d) {
-        R.callback = null;
-        S = R.priorityLevel;
-        var e = d(R.expirationTime <= b);
+        Q.callback = null;
+        R = Q.priorityLevel;
+        var e = d(Q.expirationTime <= b);
         b = exports.unstable_now();
-        "function" === typeof e ? R.callback = e : R === M(O) && N(O);
-        W(b);
-      } else N(O);
+        "function" === typeof e ? Q.callback = e : Q === L(N) && M(N);
+        V(b);
+      } else M(N);
 
-      R = M(O);
+      Q = L(N);
     }
 
-    if (null !== R) var m = !0;else {
-      var n = M(P);
-      null !== n && g(X, n.startTime - b);
+    if (null !== Q) var m = !0;else {
+      var n = L(O);
+      null !== n && g(W, n.startTime - b);
       m = !1;
     }
     return m;
   } finally {
-    R = null, S = c, T = !1;
+    Q = null, R = c, S = !1;
   }
 }
 
-function Z(a) {
+function Y(a) {
   switch (a) {
     case 1:
       return -1;
@@ -235,7 +239,7 @@ function Z(a) {
   }
 }
 
-var aa = l;
+var Z = l;
 exports.unstable_ImmediatePriority = 1;
 exports.unstable_UserBlockingPriority = 2;
 exports.unstable_NormalPriority = 3;
@@ -255,18 +259,18 @@ exports.unstable_runWithPriority = function (a, b) {
       a = 3;
   }
 
-  var c = S;
-  S = a;
+  var c = R;
+  R = a;
 
   try {
     return b();
   } finally {
-    S = c;
+    R = c;
   }
 };
 
 exports.unstable_next = function (a) {
-  switch (S) {
+  switch (R) {
     case 1:
     case 2:
     case 3:
@@ -274,16 +278,16 @@ exports.unstable_next = function (a) {
       break;
 
     default:
-      b = S;
+      b = R;
   }
 
-  var c = S;
-  S = b;
+  var c = R;
+  R = b;
 
   try {
     return a();
   } finally {
-    S = c;
+    R = c;
   }
 };
 
@@ -293,19 +297,19 @@ exports.unstable_scheduleCallback = function (a, b, c) {
   if ("object" === typeof c && null !== c) {
     var e = c.delay;
     e = "number" === typeof e && 0 < e ? d + e : d;
-    c = "number" === typeof c.timeout ? c.timeout : Z(a);
-  } else c = Z(a), e = d;
+    c = "number" === typeof c.timeout ? c.timeout : Y(a);
+  } else c = Y(a), e = d;
 
   c = e + c;
   a = {
-    id: Q++,
+    id: P++,
     callback: b,
     priorityLevel: a,
     startTime: e,
     expirationTime: c,
     sortIndex: -1
   };
-  e > d ? (a.sortIndex = e, K(P, a), null === M(O) && a === M(P) && (V ? h() : V = !0, g(X, e - d))) : (a.sortIndex = c, K(O, a), U || T || (U = !0, f(Y)));
+  e > d ? (a.sortIndex = e, J(O, a), null === L(N) && a === L(O) && (U ? h() : U = !0, g(W, e - d))) : (a.sortIndex = c, J(N, a), T || S || (T = !0, f(X)));
   return a;
 };
 
@@ -314,40 +318,40 @@ exports.unstable_cancelCallback = function (a) {
 };
 
 exports.unstable_wrapCallback = function (a) {
-  var b = S;
+  var b = R;
   return function () {
-    var c = S;
-    S = b;
+    var c = R;
+    R = b;
 
     try {
       return a.apply(this, arguments);
     } finally {
-      S = c;
+      R = c;
     }
   };
 };
 
 exports.unstable_getCurrentPriorityLevel = function () {
-  return S;
+  return R;
 };
 
 exports.unstable_shouldYield = function () {
   var a = exports.unstable_now();
-  W(a);
-  var b = M(O);
-  return b !== R && null !== R && null !== b && null !== b.callback && b.startTime <= a && b.expirationTime < R.expirationTime || k();
+  V(a);
+  var b = L(N);
+  return b !== Q && null !== Q && null !== b && null !== b.callback && b.startTime <= a && b.expirationTime < Q.expirationTime || k();
 };
 
-exports.unstable_requestPaint = aa;
+exports.unstable_requestPaint = Z;
 
 exports.unstable_continueExecution = function () {
-  U || T || (U = !0, f(Y));
+  T || S || (T = !0, f(X));
 };
 
 exports.unstable_pauseExecution = function () {};
 
 exports.unstable_getFirstCallbackNode = function () {
-  return M(O);
+  return L(N);
 };
 
 exports.unstable_Profiling = null;
@@ -1160,7 +1164,7 @@ var Zb = Yb("animationend"),
     $b = Yb("animationiteration"),
     ac = Yb("animationstart"),
     bc = Yb("transitionend"),
-    dc = "abort canplay canplaythrough durationchange emptied encrypted ended error loadeddata loadedmetadata loadstart pause play playing progress ratechange seeked seeking stalled suspend timeupdate volumechange waiting".split(" ");
+    cc = "abort canplay canplaythrough durationchange emptied encrypted ended error loadeddata loadedmetadata loadstart pause play playing progress ratechange seeked seeking stalled suspend timeupdate volumechange waiting".split(" ");
 
 function ec(a) {
   var b = a,
@@ -1654,7 +1658,7 @@ var cd = {
   Scroll: "ScrollLock",
   MozPrintableKey: "Unidentified"
 },
-    ed = {
+    dd = {
   8: "Backspace",
   9: "Tab",
   12: "Clear",
@@ -1692,7 +1696,7 @@ var cd = {
   145: "ScrollLock",
   224: "Meta"
 },
-    fd = {
+    ed = {
   Alt: "altKey",
   Control: "ctrlKey",
   Meta: "metaKey",
@@ -1701,7 +1705,7 @@ var cd = {
 
 function gd(a) {
   var b = this.nativeEvent;
-  return b.getModifierState ? b.getModifierState(a) : (a = fd[a]) ? !!b[a] : !1;
+  return b.getModifierState ? b.getModifierState(a) : (a = ed[a]) ? !!b[a] : !1;
 }
 
 function hd() {
@@ -1715,7 +1719,7 @@ var id = $c.extend({
       if ("Unidentified" !== b) return b;
     }
 
-    return "keypress" === a.type ? (a = bd(a), 13 === a ? "Enter" : String.fromCharCode(a)) : "keydown" === a.type || "keyup" === a.type ? ed[a.keyCode] || "Unidentified" : "";
+    return "keypress" === a.type ? (a = bd(a), 13 === a ? "Enter" : String.fromCharCode(a)) : "keydown" === a.type || "keyup" === a.type ? dd[a.keyCode] || "Unidentified" : "";
   },
   location: null,
   ctrlKey: null,
@@ -1812,10 +1816,10 @@ var id = $c.extend({
     td = [["blur", "blur", 0], ["cancel", "cancel", 0], ["click", "click", 0], ["close", "close", 0], ["contextmenu", "contextMenu", 0], ["copy", "copy", 0], ["cut", "cut", 0], ["auxclick", "auxClick", 0], ["dblclick", "doubleClick", 0], ["dragend", "dragEnd", 0], ["dragstart", "dragStart", 0], ["drop", "drop", 0], ["focus", "focus", 0], ["input", "input", 0], ["invalid", "invalid", 0], ["keydown", "keyDown", 0], ["keypress", "keyPress", 0], ["keyup", "keyUp", 0], ["mousedown", "mouseDown", 0], ["mouseup", "mouseUp", 0], ["paste", "paste", 0], ["pause", "pause", 0], ["play", "play", 0], ["pointercancel", "pointerCancel", 0], ["pointerdown", "pointerDown", 0], ["pointerup", "pointerUp", 0], ["ratechange", "rateChange", 0], ["reset", "reset", 0], ["seeked", "seeked", 0], ["submit", "submit", 0], ["touchcancel", "touchCancel", 0], ["touchend", "touchEnd", 0], ["touchstart", "touchStart", 0], ["volumechange", "volumeChange", 0], ["drag", "drag", 1], ["dragenter", "dragEnter", 1], ["dragexit", "dragExit", 1], ["dragleave", "dragLeave", 1], ["dragover", "dragOver", 1], ["mousemove", "mouseMove", 1], ["mouseout", "mouseOut", 1], ["mouseover", "mouseOver", 1], ["pointermove", "pointerMove", 1], ["pointerout", "pointerOut", 1], ["pointerover", "pointerOver", 1], ["scroll", "scroll", 1], ["toggle", "toggle", 1], ["touchmove", "touchMove", 1], ["wheel", "wheel", 1], ["abort", "abort", 2], [Zb, "animationEnd", 2], [$b, "animationIteration", 2], [ac, "animationStart", 2], ["canplay", "canPlay", 2], ["canplaythrough", "canPlayThrough", 2], ["durationchange", "durationChange", 2], ["emptied", "emptied", 2], ["encrypted", "encrypted", 2], ["ended", "ended", 2], ["error", "error", 2], ["gotpointercapture", "gotPointerCapture", 2], ["load", "load", 2], ["loadeddata", "loadedData", 2], ["loadedmetadata", "loadedMetadata", 2], ["loadstart", "loadStart", 2], ["lostpointercapture", "lostPointerCapture", 2], ["playing", "playing", 2], ["progress", "progress", 2], ["seeking", "seeking", 2], ["stalled", "stalled", 2], ["suspend", "suspend", 2], ["timeupdate", "timeUpdate", 2], [bc, "transitionEnd", 2], ["waiting", "waiting", 2]],
     ud = {},
     vd = {},
-    xd = 0;
+    wd = 0;
 
-for (; xd < td.length; xd++) {
-  var yd = td[xd],
+for (; wd < td.length; wd++) {
+  var yd = td[wd],
       zd = yd[0],
       Ad = yd[1],
       Bd = yd[2],
@@ -2118,7 +2122,7 @@ function yc(a, b, c) {
         break;
 
       default:
-        -1 === dc.indexOf(a) && F(a, b);
+        -1 === cc.indexOf(a) && F(a, b);
     }
 
     c.add(a);
@@ -5923,7 +5927,7 @@ function ek(a) {
 
                   case "video":
                   case "audio":
-                    for (h = 0; h < dc.length; h++) F(dc[h], d);
+                    for (h = 0; h < cc.length; h++) F(cc[h], d);
 
                     break;
 
@@ -6022,7 +6026,7 @@ function ek(a) {
 
                   case "video":
                   case "audio":
-                    for (d = 0; d < dc.length; d++) F(dc[d], k);
+                    for (d = 0; d < cc.length; d++) F(cc[d], k);
 
                     d = c;
                     break;
@@ -6223,7 +6227,7 @@ function ek(a) {
               }
             } else {
               if (!f) if (c = qh(k), null !== c) {
-                if (b.effectTag |= 64, f = !0, d = c.updateQueue, null !== d && (b.updateQueue = d, b.effectTag |= 4), Li(e, !0), null === e.tail && "hidden" === e.tailMode) {
+                if (b.effectTag |= 64, f = !0, d = c.updateQueue, null !== d && (b.updateQueue = d, b.effectTag |= 4), Li(e, !0), null === e.tail && "hidden" === e.tailMode && !k.alternate) {
                   b = b.lastEffect = e.lastEffect;
                   null !== b && (b.nextEffect = null);
                   break;
@@ -6301,7 +6305,8 @@ function Yj(a) {
 }
 
 function ik(a, b) {
-  Sj();
+  do Sj(); while (null !== Ej);
+
   if ((T & (oj | pj)) !== S) throw Error(u(327));
   var c = a.finishedWork,
       d = a.finishedExpirationTime;
@@ -6490,7 +6495,7 @@ function ik(a, b) {
         var Dh = Y.effectTag;
 
         if (Dh & 36) {
-          var cc = Y.alternate;
+          var dc = Y.alternate;
           t = Y;
           v = p;
 
@@ -6502,13 +6507,13 @@ function ik(a, b) {
               break;
 
             case 1:
-              var dd = t.stateNode;
-              if (t.effectTag & 4) if (null === cc) dd.componentDidMount();else {
-                var hk = t.elementType === t.type ? cc.memoizedProps : mg(t.type, cc.memoizedProps);
-                dd.componentDidUpdate(hk, cc.memoizedState, dd.__reactInternalSnapshotBeforeUpdate);
+              var fd = t.stateNode;
+              if (t.effectTag & 4) if (null === dc) fd.componentDidMount();else {
+                var hk = t.elementType === t.type ? dc.memoizedProps : mg(t.type, dc.memoizedProps);
+                fd.componentDidUpdate(hk, dc.memoizedState, fd.__reactInternalSnapshotBeforeUpdate);
               }
               var Eh = t.updateQueue;
-              null !== Eh && Kg(t, Eh, dd, v);
+              null !== Eh && Kg(t, Eh, fd, v);
               break;
 
             case 3:
@@ -6531,7 +6536,7 @@ function ik(a, b) {
 
             case 5:
               var xk = t.stateNode;
-              null === cc && t.effectTag & 4 && ne(t.type, t.memoizedProps) && xk.focus();
+              null === dc && t.effectTag & 4 && ne(t.type, t.memoizedProps) && xk.focus();
               break;
 
             case 6:
@@ -6572,9 +6577,9 @@ function ik(a, b) {
 
         if (Dh & 128) {
           t = void 0;
-          var wd = Y.ref;
+          var xd = Y.ref;
 
-          if (null !== wd) {
+          if (null !== xd) {
             var Gi = Y.stateNode;
 
             switch (Y.tag) {
@@ -6586,7 +6591,7 @@ function ik(a, b) {
                 t = Gi;
             }
 
-            "function" === typeof wd ? wd(t) : wd.current = t;
+            "function" === typeof xd ? xd(t) : xd.current = t;
           }
         }
 
@@ -7261,6 +7266,80 @@ function uk(a, b) {
 }
 
 function vk(a, b, c) {
+  c = null != c && !0 === c.hydrate;
+  var d = new qk(a, b, c),
+      e = gi(3, null, null, 2 === b ? 7 : 1 === b ? 3 : 0);
+  d.current = e;
+  e.stateNode = d;
+  a[we] = d.current;
+  c && 0 !== b && wc(9 === a.nodeType ? a : a.ownerDocument);
+  this._internalRoot = d;
+}
+
+vk.prototype.render = function (a, b) {
+  rk(a, this._internalRoot, null, void 0 === b ? null : b);
+};
+
+vk.prototype.unmount = function (a) {
+  var b = this._internalRoot,
+      c = void 0 === a ? null : a,
+      d = b.containerInfo;
+  rk(null, b, null, function () {
+    d[we] = null;
+    null !== c && c();
+  });
+};
+
+function wk(a) {
+  return !(!a || 1 !== a.nodeType && 9 !== a.nodeType && 11 !== a.nodeType && (8 !== a.nodeType || " react-mount-point-unstable " !== a.nodeValue));
+}
+
+function yk(a, b) {
+  b || (b = a ? 9 === a.nodeType ? a.documentElement : a.firstChild : null, b = !(!b || 1 !== b.nodeType || !b.hasAttribute("data-reactroot")));
+  if (!b) for (var c; c = a.lastChild;) a.removeChild(c);
+  return new vk(a, 0, b ? {
+    hydrate: !0
+  } : void 0);
+}
+
+function zk(a, b, c, d, e) {
+  var f = c._reactRootContainer;
+
+  if (f) {
+    var g = f._internalRoot;
+
+    if ("function" === typeof e) {
+      var h = e;
+
+      e = function () {
+        var a = sk(g);
+        h.call(a);
+      };
+    }
+
+    rk(b, g, a, e);
+  } else {
+    f = c._reactRootContainer = yk(c, d);
+    g = f._internalRoot;
+
+    if ("function" === typeof e) {
+      var k = e;
+
+      e = function () {
+        var a = sk(g);
+        k.call(a);
+      };
+    }
+
+    ck(function () {
+      rk(b, g, a, e);
+    });
+  }
+
+  return sk(g);
+}
+
+function Ak(a, b, c) {
   var d = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
   return {
     $$typeof: Ha,
@@ -7331,31 +7410,6 @@ Za = function (a, b, c) {
   }
 };
 
-function wk(a, b, c) {
-  c = null != c && !0 === c.hydrate;
-  var d = new qk(a, b, c),
-      e = gi(3, null, null, 2 === b ? 7 : 1 === b ? 3 : 0);
-  d.current = e;
-  e.stateNode = d;
-  a[we] = d.current;
-  c && 0 !== b && wc(9 === a.nodeType ? a : a.ownerDocument);
-  this._internalRoot = d;
-}
-
-wk.prototype.render = function (a, b) {
-  var c = this._internalRoot;
-  rk(a, c, null, void 0 === b ? null : b);
-};
-
-wk.prototype.unmount = function (a) {
-  var b = this._internalRoot;
-  rk(null, b, null, void 0 === a ? null : a);
-};
-
-function yk(a) {
-  return !(!a || 1 !== a.nodeType && 9 !== a.nodeType && 11 !== a.nodeType && (8 !== a.nodeType || " react-mount-point-unstable " !== a.nodeValue));
-}
-
 eb = bk;
 
 fb = function (a, b, c, d) {
@@ -7384,55 +7438,10 @@ hb = function (a, b) {
   }
 };
 
-function zk(a, b) {
-  b || (b = a ? 9 === a.nodeType ? a.documentElement : a.firstChild : null, b = !(!b || 1 !== b.nodeType || !b.hasAttribute("data-reactroot")));
-  if (!b) for (var c; c = a.lastChild;) a.removeChild(c);
-  return new wk(a, 0, b ? {
-    hydrate: !0
-  } : void 0);
-}
-
-function Ak(a, b, c, d, e) {
-  var f = c._reactRootContainer;
-
-  if (f) {
-    var g = f._internalRoot;
-
-    if ("function" === typeof e) {
-      var h = e;
-
-      e = function () {
-        var a = sk(g);
-        h.call(a);
-      };
-    }
-
-    rk(b, g, a, e);
-  } else {
-    f = c._reactRootContainer = zk(c, d);
-    g = f._internalRoot;
-
-    if ("function" === typeof e) {
-      var k = e;
-
-      e = function () {
-        var a = sk(g);
-        k.call(a);
-      };
-    }
-
-    ck(function () {
-      rk(b, g, a, e);
-    });
-  }
-
-  return sk(g);
-}
-
 function Bk(a, b) {
   var c = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
-  if (!yk(b)) throw Error(u(200));
-  return vk(a, b, null, c);
+  if (!wk(b)) throw Error(u(200));
+  return Ak(a, b, null, c);
 }
 
 var Ck = {
@@ -7452,23 +7461,24 @@ var Ck = {
     return a;
   },
   hydrate: function (a, b, c) {
-    if (!yk(b)) throw Error(u(200));
-    return Ak(null, a, b, !0, c);
+    if (!wk(b)) throw Error(u(200));
+    return zk(null, a, b, !0, c);
   },
   render: function (a, b, c) {
-    if (!yk(b)) throw Error(u(200));
-    return Ak(null, a, b, !1, c);
+    if (!wk(b)) throw Error(u(200));
+    return zk(null, a, b, !1, c);
   },
   unstable_renderSubtreeIntoContainer: function (a, b, c, d) {
-    if (!yk(c)) throw Error(u(200));
+    if (!wk(c)) throw Error(u(200));
     if (null == a || void 0 === a._reactInternalFiber) throw Error(u(38));
-    return Ak(a, b, c, !1, d);
+    return zk(a, b, c, !1, d);
   },
   unmountComponentAtNode: function (a) {
-    if (!yk(a)) throw Error(u(40));
+    if (!wk(a)) throw Error(u(40));
     return a._reactRootContainer ? (ck(function () {
-      Ak(null, null, a, !1, function () {
+      zk(null, null, a, !1, function () {
         a._reactRootContainer = null;
+        a[we] = null;
       });
     }), !0) : !1;
   },
@@ -7520,7 +7530,7 @@ var Ck = {
 })({
   findFiberByHostInstance: Fc,
   bundleType: 0,
-  version: "16.11.0",
+  version: "16.12.0",
   rendererPackageName: "react-dom"
 });
 

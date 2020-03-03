@@ -9,4 +9,4 @@ export {
   isValidElement,
   cloneElement,
   createElement
-} from "/js/depend/react/";
+} from "/react/";

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "/js/depend/react/";
+import { useState, useMemo, useEffect } from "/react/";
 
 const JSON_HEADER = {
   "Content-Type": "application/json"

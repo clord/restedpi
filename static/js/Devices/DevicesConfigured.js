@@ -1,5 +1,6 @@
-import { useCallback, useEffect } from "/js/depend/react/";
+import { useCallback, useEffect } from "/react/";
 import { h } from "/js/html.js";
+import { Link } from "/js/depend/wouter/";
 import { useAppStore } from "/js/hooks/useApp.js";
 import { Table } from "/js/Table/";
 
@@ -25,20 +26,26 @@ function ActionCol({ cell }) {
   return [
     h(
       "button",
-      { className: "text-sm text-gray-500 py-1 px-3", onClick: handleRemove },
+      {
+        className: "text-sm text-gray-500 py-1 px-3",
+        key: "1",
+        onClick: handleRemove
+      },
       "Remove"
     ),
     h(
       "button",
       {
         className:
-          "text-sm bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+          "text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+        key: "2",
         onClick: handleEdit
       },
       "Edit"
     )
   ];
 }
+
 function ModelCol({ cell }) {
   const { value } = cell;
   if (typeof value === "string") {
@@ -47,13 +54,13 @@ function ModelCol({ cell }) {
   return Object.keys(value)[0];
 }
 
-function AddDevice({ cell }) {
+function AddDeviceButton({ cell }) {
   return h(
-    "a",
+    Link,
     {
       className:
         "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
-      href: "/devices/available"
+      to: "/devices/available"
     },
     "Add Device"
   );
@@ -62,46 +69,60 @@ function AddDevice({ cell }) {
 function DevicesConfiguredTable({ data }) {
   return h(Table, {
     columns: [
-      { Header: "Name", accessor: "device.name" },
+      { Header: "Name", accessor: "device.name", className: "text-right" },
       {
         Header: "Status",
         accessor: "status",
         Cell: DeviceStatus,
-        style: { textAlign: "center" }
+        className: "text-right"
       },
-      { Header: "Model", accessor: "device.model", Cell: ModelCol },
-      { Header: "Description", accessor: "device.description" },
+      {
+        Header: "Model",
+        accessor: "device.model",
+        Cell: ModelCol,
+        className: "text-right"
+      },
+      {
+        Header: "Description",
+        accessor: "device.description",
+        className: "text-left"
+      },
       {
         accessor: "slug",
         Cell: ActionCol,
-        style: { textAlign: "right" }
+        className: "text-right"
       }
     ],
     data
   });
 }
 
-export function DevicesConfigured() {
-  useEffect(
-    useAppStore(x => x.devices.read),
-    []
-  );
+export default function DevicesConfigured() {
+  const read = useAppStore(x => x.devices.read);
+  useEffect(() => {
+    read();
+  }, []);
   const configured = useAppStore(x => x.devices.configured);
   const data = Object.keys(configured).map(slug => ({
     device: configured[slug][0],
     status: configured[slug][1],
+    key: slug,
     slug
   }));
 
   return h("article", { className: "max-w-sm w-full lg:max-w-full" }, [
-    h("div", { className: "flex mb-4 justify-between items-baseline" }, [
-      h(
-        "h1",
-        { className: "text-gray-900 font-bold text-xl mb-3" },
-        "Configured Devices"
-      ),
-      h(AddDevice, {})
-    ]),
-    h(DevicesConfiguredTable, { data })
+    h(
+      "div",
+      { className: "flex mb-4 justify-between items-baseline", key: 0 },
+      [
+        h(
+          "h1",
+          { className: "text-gray-900 font-bold text-xl mb-3", key: 0 },
+          "Configured Devices"
+        ),
+        h(AddDeviceButton, { key: 1 })
+      ]
+    ),
+    h(DevicesConfiguredTable, { data, key: 1 })
   ]);
 }

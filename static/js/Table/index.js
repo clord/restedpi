@@ -1,5 +1,5 @@
-import { h } from '/js/html.js';
-import { useTable } from '/js/depend/react-table.7.rc15.js';
+import { h } from "/js/html.js";
+import { useTable } from "/js/depend/react-table.7.rc15.js";
 
 const defaultPropGetter = () => ({});
 
@@ -9,71 +9,71 @@ export function Table({
   getHeaderProps = defaultPropGetter,
   getColumnProps = defaultPropGetter,
   getRowProps = defaultPropGetter,
-  getCellProps = defaultPropGetter,
+  getCellProps = defaultPropGetter
 }) {
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
     rows,
-    prepareRow,
+    prepareRow
   } = useTable({
     columns,
-    data,
+    data
   });
 
   return h(
-    'table',
-    { ...getTableProps(), class: 'border table-auto container' },
+    "table",
+    { ...getTableProps(), className: "border table-auto container" },
     [
       h(
-        'thead',
-        {},
+        "thead",
+        { key: "thead" },
         headerGroups.map(headerGroup =>
           h(
-            'tr',
+            "tr",
             headerGroup.getHeaderGroupProps(),
             headerGroup.headers.map(column =>
               h(
-                'th',
+                "th",
                 column.getHeaderProps([
                   {
-                    className: column.className,
-                    style: column.style,
+                    className: `${column.className} bg-gray-100 font-light text-gray-600 px-4 py-2`,
+                    style: column.style
                   },
                   getColumnProps(column),
-                  getHeaderProps(column),
+                  getHeaderProps(column)
                 ]),
-                column.render('Header')
+                column.render("Header")
               )
             )
           )
         )
       ),
       h(
-        'tbody',
-        getTableBodyProps(),
+        "tbody",
+        { key: "tbody", ...getTableBodyProps() },
         rows.map((row, i) => {
           prepareRow(row);
           return h(
-            'tr',
+            "tr",
             row.getRowProps(),
             row.cells.map(cell =>
               h(
-                'td',
+                "td",
                 cell.getCellProps([
                   {
                     className: `${cell.column.className} border-t px-4 py-2`,
-                    style: cell.column.style,
+                    style: cell.column.style
                   },
-                  getCellProps(cell),
+                  getCellProps(cell)
                 ]),
-                cell.render('Cell')
+                cell.render("Cell")
               )
             )
           );
         })
-      ),
+      )
     ]
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "/js/depend/react/";
+import { useEffect } from "/react/";
 import produce from "/js/depend/immer.module.js";
 import create from "/js/depend/zustand.js";
 import { apiGet, apiDelete, apiPut, apiPost } from "/js/hooks/network.js";
@@ -36,8 +36,8 @@ const [useAppStore, api] = create(set => {
 export { useAppStore, api };
 
 export function useApp() {
-  useEffect(
-    useAppStore(x => x.setup),
-    [useAppStore]
-  );
+  const setup = useAppStore(x => x.setup);
+  useEffect(() => {
+    setup();
+  }, [useAppStore]);
 }

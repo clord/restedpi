@@ -1,18 +1,21 @@
 import { h } from "/js/html.js";
-import { useState, useCallback } from "/js/depend/react/";
+import { useState, lazy, useCallback } from "/react/";
 import { Link } from "/js/depend/wouter/";
-import { AddDevice } from "/js/Devices/AddDevice.js";
+
+const AddDevice = lazy(() => import("/js/Devices/AddDevice.js"));
 
 function DtDd({ dt, dd, dds }) {
   if (dds != null) {
     return [
-      h("dt", { className: "font-bold col-start-1" }, dt),
-      dds.map(d => h("dd", { className: "col-start-2 col-span-2" }, d))
+      h("dt", { key: 0, className: "font-bold col-start-1" }, dt),
+      dds.map((d, index) =>
+        h("dd", { key: index, className: "col-start-2 col-span-2" }, d)
+      )
     ];
   }
   return [
-    h("dt", { className: "font-bold col-start-1" }, dt),
-    h("dd", { className: "col-start-2 col-span-2" }, dd)
+    h("dt", { key: 0, className: "font-bold col-start-1" }, dt),
+    h("dd", { key: 1, className: "col-start-2 col-span-2" }, dd)
   ];
 }
 
@@ -24,9 +27,12 @@ function SensorsOfDevice({ sensors }) {
   return [
     h(DtDd, {
       dt: "Sensors",
+      key: 0,
       dds: sensors.map(sen => [
         sen.type,
-        ...(sen.range == null ? [] : [h("br"), h("small", {}, sen.range)])
+        ...(sen.range == null
+          ? []
+          : [h("br", { key: 0 }), h("small", { key: 1 }, sen.range)])
       ])
     })
   ];
@@ -38,6 +44,7 @@ function SwitchesOfDevice({ switches }) {
   }
   return h(DtDd, {
     dt: "Switches",
+    key: 0,
     dd: switches.length.toString() + " switches"
   });
 }
@@ -52,18 +59,19 @@ function ShowDevice({
   onShowAddDevice: handleShowAddDevice
 }) {
   return [
-    h("div", { className: "" }, [
-      h("header", {}, [
-        h("h1", { className: "font-bold text-xl mb-2" }, name),
-        h("p", { className: "text-gray-700 text-base" }, description)
+    h("div", { key: 0, className: "" }, [
+      h("header", { key: "header" }, [
+        h("h1", { key: 0, className: "font-bold text-xl mb-2" }, name),
+        h("p", { key: 1, className: "text-gray-700 text-base" }, description)
       ]),
-      h("dl", { className: "grid grid-cols-3 gap-2 py-4" }, [
-        h(DtDd, { dt: "Bus", dd: bus }, []),
+      h("dl", { key: 1, className: "grid grid-cols-3 gap-2 py-4" }, [
+        h(DtDd, { key: "-1", dt: "Bus", dd: bus }, []),
         datasheet == null
           ? null
           : h(
               DtDd,
               {
+                key: 0,
                 dt: "Links",
                 dd: h(
                   "a",
@@ -72,16 +80,21 @@ function ShowDevice({
                     href: datasheet,
                     className: " underline text-blue-400"
                   },
-                  [h("i", { className: "fas fa-link text-xs" }), " datasheet"]
+                  [
+                    h("i", { key: 0, className: "fas fa-link text-xs" }),
+                    " datasheet"
+                  ]
                 )
               },
               []
             ),
-        h(SensorsOfDevice, { sensors: sensors || [] }, []),
-        h(SwitchesOfDevice, { switches: switches || [] }, [])
+        h(SensorsOfDevice, { key: 1, sensors: sensors || [] }, []),
+        h(SwitchesOfDevice, { key: 2, switches: switches || [] }, [])
       ])
     ]),
-    h("div", { className: "mx-auto px-3 py-3" }, [
+    h(
+      "div",
+      { key: 1, className: "mx-auto px-3 py-3" },
       h(
         "button",
         {
@@ -91,11 +104,11 @@ function ShowDevice({
         },
         "Add Device"
       )
-    ])
+    )
   ];
 }
 
-export function Device({
+export default function Device({
   name,
   description,
   sensors,
@@ -111,10 +124,12 @@ export function Device({
         setStep("add");
         break;
       }
+
       case "add": {
         setStep("info");
         break;
       }
+
       default: {
         throw new Error("unsupported");
       }
@@ -135,6 +150,7 @@ export function Device({
         bus
       });
       break;
+
     case "add":
       component = h(AddDevice, {
         name,
@@ -146,6 +162,7 @@ export function Device({
         bus
       });
       break;
+
     default:
       throw new Error("unsupported");
   }
@@ -156,6 +173,6 @@ export function Device({
       className:
         "max-w-sm rounded overflow-hidden shadow-lg border flex flex-col justify-between px-6 py-4"
     },
-    [component]
+    component
   );
 }

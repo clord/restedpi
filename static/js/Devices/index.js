@@ -1,33 +1,15 @@
-import { useCallback, useEffect } from "/js/depend/react/";
+import { lazy } from "/react/";
 import { Route, Switch } from "/js/depend/wouter/";
-import { useGet } from "/js/hooks/network.js";
 import { h } from "/js/html.js";
-import { useAppStore } from "/js/hooks/useApp.js";
 
-import { Device } from "./Device.js";
-import { AddDevice } from "./AddDevice.js";
-import { DevicesConfigured } from "./DevicesConfigured.js";
+const DevicesConfigured = lazy(() => import("./DevicesConfigured.js"));
+const AvailableDevices = lazy(() => import("./AvailableDevices.js"));
 
-function AvailableDevices(props) {
-  const { response, error } = useGet("/devices/available");
-
-  if (response == null) {
-    return null;
-  }
-
-  return h(
-    "div",
-    { className: "grid grid-flow-col grid-cols-3 gap-4" },
-    response.result.map(device => h(Device, device))
-  );
-}
-
-export function Devices(props) {
+export default function Devices(props) {
   return h(Switch, {}, [
-    h(Route, { path: "/devices/add/:item" }, p => h(AddDevice, p)),
-    h(Route, { path: "/devices/available", component: AvailableDevices }),
-    h(Route, { path: "/devices" }, p => h(DevicesConfigured, p))
+    h(Route, { key: 0, path: "/devices/available" }, p =>
+      h(AvailableDevices, p)
+    ),
+    h(Route, { key: 1, path: "/devices" }, p => h(DevicesConfigured, p))
   ]);
 }
-
-export { Devices as default };

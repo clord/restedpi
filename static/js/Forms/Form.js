@@ -1,4 +1,4 @@
-import { createContext, useContext, Fragment } from "/js/depend/react/";
+import { createContext, useContext, Fragment } from "/react/";
 import useForm, {
   FormContext,
   useFormContext
@@ -60,27 +60,30 @@ export function Group({ name, children }) {
 export function Text({ id, label, placeholder, ...validation }) {
   const { register, errors } = useFormContext();
   const hasError = errors.hasOwnProperty(id);
-  return [
-    h(Label, { for: id }, [
-      label,
-      h("input", {
-        type: "text",
-        placeholder,
-        className: `appearance-none block w-full text-gray-700 border bg-gray-200
+  return h(Label, { htmlFor: id }, [
+    label,
+    h("input", {
+      type: "text",
+      key: 1,
+      placeholder,
+      className: `appearance-none block w-full text-gray-700 border bg-gray-200
         ${
           hasError
             ? "border-red-500 focus:border-red-400"
             : "border-gray-200 focus:border-gray-500"
         } rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white`,
-        id,
-        name: id,
-        ref: register(validation)
-      }),
-      errors[id]
-        ? h("p", { className: "text-red-500 text-xs" }, errors[id].message)
-        : null
-    ])
-  ];
+      id,
+      name: id,
+      ref: register(validation)
+    }),
+    errors[id]
+      ? h(
+          "p",
+          { key: "err", className: "text-red-500 text-xs" },
+          errors[id].message
+        )
+      : null
+  ]);
 }
 
 const ChoiceContext = createContext(null);
@@ -100,7 +103,8 @@ export function RadioChoice({ name, label, children }) {
     h(
       "label",
       {
-        for: name,
+        htmlFor: name,
+        key: name,
         className:
           "block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
       },
@@ -109,6 +113,7 @@ export function RadioChoice({ name, label, children }) {
     h("input", {
       name: groupname,
       type: "radio",
+      key: `${name}-input`,
       value: name,
       ref: register({ required: true })
     }),
@@ -124,18 +129,19 @@ export function Select({ name, label, children }) {
     h(
       "label",
       {
-        for: name,
+        htmlFor: name,
+        key: name,
         className:
           "block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
       },
       [
-        label,
-
-        h("div", { className: "relative" }, [
+        h(Fragment, { key: "lab" }, label),
+        h("div", { key: "0", className: "relative" }, [
           h(
             "select",
             {
               ref: register({ required: true }),
+              key: `${name}-select`,
               name,
               className:
                 "block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
@@ -145,30 +151,27 @@ export function Select({ name, label, children }) {
           h(
             "div",
             {
+              key: "1",
               className:
                 "pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
             },
-            [
-              h(
-                "svg",
-                {
-                  className: "fill-current h-4 w-4",
-                  xmlns: "http://www.w3.org/2000/svg",
-                  viewBox: "0 0 20 20"
-                },
-                [
-                  h("path", {
-                    d:
-                      "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
-                  })
-                ]
-              )
-            ]
+            h(
+              "svg",
+              {
+                className: "fill-current h-4 w-4",
+                xmlns: "http://www.w3.org/2000/svg",
+                viewBox: "0 0 20 20"
+              },
+              h("path", {
+                d:
+                  "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+              })
+            )
           )
         ])
       ]
     ),
-    h("aside", {}, errors[name] ? "required" : null)
+    h("aside", { key: "err" }, errors[name] ? "required" : null)
   ]);
 }
 
