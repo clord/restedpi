@@ -126,10 +126,12 @@ fn next_message(
                     Ok(()) => (),
                     Err(e) => error!("Failed to send response: {:?}", e),
                 },
-                Err(e) => match response.send(Err(crate::i2c::error::Error::I2cError(e))) {
-                    Ok(()) => (),
-                    Err(e) => error!("Failed to send response: {:?}", e),
-                },
+                Err(e) => {
+                    match response.send(Err(crate::i2c::error::Error::I2cError(format!("{}", e)))) {
+                        Ok(()) => (),
+                        Err(e) => error!("Failed to send response: {:?}", e),
+                    }
+                }
             };
         }
     };

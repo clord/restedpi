@@ -249,7 +249,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
     if let Some(err) = err.find_cause::<Error>() {
         let code = match err {
-            Error::Io(_) => 1001,
+            Error::IoError(_) => 1001,
             Error::InvalidPinDirection => 1008,
             Error::I2cError(_) => 1016,
             Error::NonExistant(_) => 1017,
@@ -259,7 +259,7 @@ fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejec
         };
         let message = err.to_string();
 
-        let json = json!({ "code": code, "message": message });
+        let json = json!({ "type": "error", "code": code, "message": message });
 
         Ok(warp::reply::with_status(
             json.to_string(),
