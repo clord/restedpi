@@ -19,10 +19,6 @@ function ActionCol({ cell }) {
     removeDevice(slug);
   }, [slug]);
 
-  const handleEdit = useCallback(() => {
-    console.log("handle edit ", slug);
-  }, [slug]);
-
   return [
     h(
       "button",
@@ -34,12 +30,12 @@ function ActionCol({ cell }) {
       "Remove"
     ),
     h(
-      "button",
+      Link,
       {
         className:
           "text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
         key: "2",
-        onClick: handleEdit
+        to: `/devices/${slug}`
       },
       "Edit"
     )

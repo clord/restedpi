@@ -82,7 +82,34 @@ fn all_sensors(_app: webapp::SharedAppState) -> Result<impl warp::Reply, warp::R
     Ok(warp::reply::json(&reply))
 }
 
-// GET /device/:name/sensor/read/:index
+// POST /device/:name/toggle/:index
+fn toggle_switch(
+    app: webapp::SharedAppState,
+    device: String,
+    index: usize,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.switch_toggle(device, index) {
+        Ok(reply) => Ok(warp::reply::json(&reply)),
+        Err(_e) => Err(warp::reject::not_found()),
+    }
+}
+
+// PUT /device/:name/switch/:index
+fn write_switch(
+    app: webapp::SharedAppState,
+    device: String,
+    index: usize,
+    body: bool,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.switch_set(device, index, body) {
+        Ok(reply) => Ok(warp::reply::json(&reply)),
+        Err(_e) => Err(warp::reject::not_found()),
+    }
+}
+
+// GET /device/:name/sensor/:index
 fn read_sensor(
     app: webapp::SharedAppState,
     device: String,
@@ -140,8 +167,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut app_raw = app::new();
     for config in device_config.iter() {
-        app_raw.add_device(config);
+        app_raw.add_device(config)?;
     }
+    app_raw.reset();
 
     let app_m = Arc::new(Mutex::new(app_raw));
     let app = warp::any().map(move || app_m.clone());
@@ -186,6 +214,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(path!(String / "sensor" / usize))
         .and_then(read_sensor);
 
+    let r_write = warp::put2()
+        .and(app.clone())
+        .and(path!(String / "switch" / usize))
+        .and(warp::body::json())
+        .and_then(write_switch);
+
+    let r_toggle = warp::post2()
+        .and(app.clone())
+        .and(path!(String / "toggle" / usize))
+        .and_then(toggle_switch);
+
     let mut nocache_header = HeaderMap::new();
     nocache_header.insert("cache-control", HeaderValue::from_static("no-store"));
 
@@ -223,7 +262,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .or(r_remove_configured),
     );
 
-    let r_devices = warp::path("devices").and(r_read.or(r_available.or(r_configured)));
+    let r_devices = warp::path("devices").and(
+        r_read
+            .or(r_toggle)
+            .or(r_write)
+            .or(r_available)
+            .or(r_configured),
+    );
 
     let api = r_static
         .or(path!("api").and(
@@ -255,6 +300,7 @@ fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejec
             Error::NonExistant(_) => 1017,
             Error::OutOfBounds(_) => 1019,
             Error::RecvError(_) => 1020,
+            Error::UnitError(_) => 1021,
             Error::SendError(_) => 1024,
         };
         let message = err.to_string();

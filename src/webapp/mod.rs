@@ -109,12 +109,17 @@ pub extern "C" fn remove_device(
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }
+
 pub extern "C" fn add_device(
     app: SharedAppState,
     device: config::Device,
 ) -> Result<impl Reply, Rejection> {
     let mut app_l = app.lock().expect("failure");
-    app_l.add_device(&device);
-    let reply = devices_as_json(app_l);
-    Ok(reply::json(&reply))
+    match app_l.add_device(&device) {
+        Err(e) => Err(warp::reject::custom(e)),
+        Ok(()) => {
+            let reply = devices_as_json(app_l);
+            Ok(reply::json(&reply))
+        }
+    }
 }

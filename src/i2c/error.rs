@@ -1,3 +1,4 @@
+use crate::config::value::Unit;
 use rppal::i2c;
 use serde_derive::Serialize;
 use std::error;
@@ -11,6 +12,7 @@ pub enum Error {
     InvalidPinDirection,
     NonExistant(String),
     OutOfBounds(usize),
+    UnitError(Unit),
     I2cError(String),
     RecvError(String),
     SendError(String),
@@ -26,6 +28,7 @@ impl fmt::Display for Error {
                 write!(f, "Device does not support index {:#?}", index)
             }
             Error::I2cError(ref err) => write!(f, "I2C Error: {}", err),
+            Error::UnitError(ref err) => write!(f, "Unit Error: expected {:#?}", err),
             Error::RecvError(ref err) => write!(f, "Recv Error: {}", err),
             Error::SendError(ref err) => write!(f, "Send Error: {}", err),
         }

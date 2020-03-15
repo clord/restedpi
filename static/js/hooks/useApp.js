@@ -21,6 +21,9 @@ const [useAppStore, api] = create(set => {
         const response = await apiPost("/devices/configured", details);
         s(state => void (state.devices.configured = response));
       },
+      get: async slug => {
+        const response = await apiGet(`/devices/configured/${slug}`);
+      },
       edit: async (slug, details) => {
         const response = await apiPut(`/devices/configured/${slug}`, details);
         s(state => void (state.devices.configured = response));
