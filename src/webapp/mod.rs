@@ -4,8 +4,13 @@ use crate::i2c::device::Status;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
+use crate::i2c::error::Error;
 use std::collections::HashMap;
-use warp::{http::Response, reply, Rejection, Reply};
+use warp::{http::Response,
+    http::StatusCode,
+    reply, Rejection, Reply};
+use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
+use crate::config::value::{evaluate as evaluate_val, Value};
 pub mod slugify;
 
 // We have to share the app state since warp uses a thread pool
@@ -38,7 +43,7 @@ pub extern "C" fn serve(path: &str) -> Result<impl Reply, Rejection> {
 //
 // available devices that can be configured on this system
 // (not configured devices)
-pub extern "C" fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
+pub fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
     let reply = json!({ "result": [
         { "name": "BMP085"
         , "device": "/api/devices/available/Bmp085"
@@ -94,13 +99,13 @@ pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::va
 // GET /devices/configured
 //
 // configured devices in the system
-pub extern "C" fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
+pub fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
     let app_l = app.lock().expect("failure");
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }
 
-pub extern "C" fn remove_device(
+pub fn remove_device(
     app: SharedAppState,
     name: String,
 ) -> Result<impl Reply, Rejection> {
@@ -110,7 +115,7 @@ pub extern "C" fn remove_device(
     Ok(reply::json(&reply))
 }
 
-pub extern "C" fn add_device(
+pub fn add_device(
     app: SharedAppState,
     device: config::Device,
 ) -> Result<impl Reply, Rejection> {
@@ -121,5 +126,134 @@ pub extern "C" fn add_device(
             let reply = devices_as_json(app_l);
             Ok(reply::json(&reply))
         }
+    }
+}
+
+// GET /api/config
+pub fn server_config(_app: SharedAppState, server_name: String) -> impl warp::Reply {
+    let reply = json!({ "serverConfig":
+    {"deviceName": format!("restedpi on {}", server_name),
+    }});
+    warp::reply::json(&reply)
+}
+
+// POST /api/debug/check_config
+pub fn evaluate_config_check(
+    _app: SharedAppState,
+    expr: config::Config,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("config: {:?}", expr);
+    //let app_l = app.lock().expect("failure");
+    Ok(warp::reply::json(&expr))
+}
+
+// POST /api/debug/eval_bool
+pub fn evaulate_bool_expr(
+    app: SharedAppState,
+    expr: BoolExpr,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("boolean evaluate: {:?}", expr);
+    let reply_bool = evaluate_bool(&mut app.lock().expect("failure"), &expr);
+    let reply = json!({ "result": reply_bool });
+    Ok(warp::reply::json(&reply))
+}
+
+// POST /api/debug/eval_value
+pub fn evaulate_value_expr(
+    app: SharedAppState,
+    expr: Value,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    debug!("value evaluate: {:?}", expr);
+    let reply_value = evaluate_val(&mut app.lock().expect("failure"), &expr);
+    let reply = json!({ "result": reply_value });
+    Ok(warp::reply::json(&reply))
+}
+
+// GET /sensors
+pub fn all_sensors(_app: SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
+    let reply = json!({ "result": [] });
+    Ok(warp::reply::json(&reply))
+}
+
+// POST /device/:name/toggle/:index
+pub fn toggle_switch(
+    app: SharedAppState,
+    device: String,
+    index: usize,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.switch_toggle(device, index) {
+        Ok(reply) => Ok(warp::reply::json(&reply)),
+        Err(_e) => Err(warp::reject::not_found()),
+    }
+}
+
+// PUT /device/:name/switch/:index
+pub fn write_switch(
+    app: SharedAppState,
+    device: String,
+    index: usize,
+    body: bool,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.switch_set(device, index, body) {
+        Ok(reply) => Ok(warp::reply::json(&reply)),
+        Err(_e) => Err(warp::reject::not_found()),
+    }
+}
+
+// GET /device/:name/sensors
+pub fn device_sensors(
+    app: SharedAppState,
+    device: String,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.sensor_count(&device) {
+        Ok(count) => {
+            let range : Vec<crate::i2c::Result<(f64, crate::config::value::Unit)>> = (0..count).into_iter().map(|index| {
+                app_l.read_sensor(device.clone(), index)
+            }).collect();
+            Ok(warp::reply::json(&range))
+        },
+        Err(e) => Err(warp::reject::custom(e))
+    }
+}
+
+// GET /device/:name/sensors/:index
+pub fn read_sensor(
+    app: SharedAppState,
+    device: String,
+    index: usize,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.read_sensor(device, index) {
+        Ok(reply) => Ok(warp::reply::json(&reply)),
+        Err(_e) => Err(warp::reject::not_found()),
+    }
+}
+
+/// Produce a json-compatible error report
+pub fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
+    if let Some(err) = err.find_cause::<Error>() {
+        let code = match err {
+            Error::IoError(_) => 1001,
+            Error::InvalidPinDirection => 1008,
+            Error::I2cError(_) => 1016,
+            Error::NonExistant(_) => 1017,
+            Error::OutOfBounds(_) => 1019,
+            Error::RecvError(_) => 1020,
+            Error::UnitError(_) => 1021,
+            Error::SendError(_) => 1024,
+        };
+        let message = err.to_string();
+
+        let json = json!({ "type": "error", "code": code, "message": message });
+
+        Ok(warp::reply::with_status(
+            json.to_string(),
+            StatusCode::BAD_REQUEST,
+        ))
+    } else {
+        Err(err)
     }
 }

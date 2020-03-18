@@ -22,15 +22,15 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
-            Error::InvalidPinDirection => write!(f, "Can't set pin to direction"),
-            Error::NonExistant(ref name) => write!(f, "Device '{}' does not exist", name),
+            Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
+            Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
             Error::OutOfBounds(ref index) => {
-                write!(f, "Device does not support index {:#?}", index)
+                write!(f, "Index '{:#?}' out of bounds", index)
             }
-            Error::I2cError(ref err) => write!(f, "I2C Error: {}", err),
-            Error::UnitError(ref err) => write!(f, "Unit Error: expected {:#?}", err),
-            Error::RecvError(ref err) => write!(f, "Recv Error: {}", err),
-            Error::SendError(ref err) => write!(f, "Send Error: {}", err),
+            Error::I2cError(ref err) => write!(f, "I2C Bus Error: {}", err),
+            Error::UnitError(ref err) => write!(f, "Unit expected {:#?}", err),
+            Error::RecvError(ref err) => write!(f, "Failed to read: {}", err),
+            Error::SendError(ref err) => write!(f, "Failed to send: {}", err),
         }
     }
 }

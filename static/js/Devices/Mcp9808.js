@@ -31,7 +31,7 @@ export default function AddEditMcp9808(props) {
     h(Text, {
       id: "name",
       key: "name",
-      label: "Sensor Name",
+      label: "Device Name",
       required: "Required"
     }),
     h(Text, {

@@ -59,6 +59,20 @@ impl State {
         self.dt
     }
 
+    pub fn switch_count(&self, name: &str) -> Result<usize> {
+        match self.devices.get(name) {
+            Some(m) => Ok(m.switch_count()),
+            None => Err(Error::NonExistant(name.to_string())),
+        }
+    }
+
+    pub fn sensor_count(&self, name: &str) -> Result<usize> {
+        match self.devices.get(name) {
+            Some(m) => Ok(m.sensor_count()),
+            None => Err(Error::NonExistant(name.to_string())),
+        }
+    }
+
     pub fn switch_set(&mut self, name: String, switch: usize, value: bool) -> Result<()> {
         match self.devices.get_mut(&name) {
             Some(m) => {

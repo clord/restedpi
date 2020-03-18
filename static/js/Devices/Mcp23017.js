@@ -31,7 +31,7 @@ export default function AddEditMcp23017(props) {
     h(Text, {
       id: "name",
       key: "name",
-      label: "Sensor Name",
+      label: "Device name",
       required: "Required"
     }),
     h(Text, {
