@@ -4,6 +4,7 @@ pub mod value;
 use boolean::BoolExpr;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 pub use value::Unit;
 
 pub mod sched;
@@ -54,6 +55,6 @@ pub struct Device {
 pub struct Config {
     pub listen: Option<String>,
     pub port: Option<u16>,
-    pub database_path: Option<String>,
+    pub database: Option<PathBuf>,
     pub devices: Option<Vec<Device>>,
 }

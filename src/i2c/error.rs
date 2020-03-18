@@ -16,6 +16,8 @@ pub enum Error {
     I2cError(String),
     RecvError(String),
     SendError(String),
+    StorageError(String),
+    EncodingError(String),
 }
 
 impl fmt::Display for Error {
@@ -29,12 +31,29 @@ impl fmt::Display for Error {
             Error::UnitError(ref err) => write!(f, "Unit expected {:#?}", err),
             Error::RecvError(ref err) => write!(f, "Failed to read: {}", err),
             Error::SendError(ref err) => write!(f, "Failed to send: {}", err),
+            Error::StorageError(ref err) => write!(f, "Storage error: {}", err),
+            Error::EncodingError(ref err) => write!(f, "Encoding error: {}", err),
         }
     }
 }
 
 impl error::Error for Error {}
 
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Error {
+        Error::EncodingError(format!("{}", err))
+    }
+}
+impl From<sled::TransactionError> for Error {
+    fn from(err: sled::TransactionError) -> Error {
+        Error::StorageError(format!("Trasaction Error: {}", err))
+    }
+}
+impl From<sled::Error> for Error {
+    fn from(err: sled::Error) -> Error {
+        Error::StorageError(format!("{}", err))
+    }
+}
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::IoError(format!("{}", err))

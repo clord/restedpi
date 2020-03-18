@@ -1,6 +1,7 @@
 extern crate chrono;
 
 use crate::config;
+use crate::storage;
 use crate::config::value::Unit;
 use crate::i2c::{bus, device::Device, error::Error, Result};
 use crate::webapp::slugify::slugify;
@@ -12,6 +13,7 @@ pub struct State {
     dt: DateTime<Local>,
     devices: HashMap<String, Device>,
     i2c: bus::I2cBus,
+    storage: storage::Storage
 }
 
 // unsafe impl Send for State {}
@@ -25,18 +27,22 @@ impl State {
             config.name, config.address
         );
 
-        device.reset()?;
+        // TODO: Real raspberry pi can reset, but this is for debugging
+        //device.reset()?;
 
         let mut inc: usize = 0;
         while self.devices.contains_key(&slugify(&config.name, inc)) {
             inc += 1;
         }
-        self.devices.insert(slugify(&config.name, inc), device);
+        let sname = slugify(&config.name, inc);
+        self.storage.set_device(&sname, config)?;
+        self.devices.insert(sname, device);
         Ok(())
     }
 
     pub fn remove_device(&mut self, name: &str) {
         info!("Remove device: '{}'", name);
+        self.storage.remove_device(name).unwrap();
         self.devices.remove(name);
     }
 
@@ -44,11 +50,19 @@ impl State {
         &self.devices
     }
 
-    pub fn reset(&mut self) {
-        for v in self.devices.values_mut() {
-            v.reset().expect("reset");
+    pub fn reset(&mut self) -> Result<()> {
+        self.devices.clear();
+        for (sname, config) in self.storage.read_devices()? {
+            let device = Device::new(&config, self.i2c.clone());
+            info!(
+                "Adding device: '{}' at I2C address: {}",
+                config.name, config.address
+            );
+            self.devices.insert(sname, device);
         }
+
         self.dt = Local::now();
+        Ok(())
     }
 
     pub fn set_time(&mut self, t: DateTime<Local>) {
@@ -106,13 +120,17 @@ impl State {
     }
 }
 
-pub fn new() -> State {
+pub fn new(path: &std::path::Path) -> Result<State> {
     let dt = Local::now();
     let i2c = bus::start();
 
-    State {
+    info!("using database at {}", path.to_string_lossy());
+    let storage = storage::open(path)?;
+
+    Ok(State {
         i2c,
         dt,
+        storage,
         devices: HashMap::new(),
-    }
+    })
 }

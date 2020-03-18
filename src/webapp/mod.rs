@@ -237,9 +237,12 @@ pub fn customize_error(err: warp::Rejection) -> Result<impl warp::Reply, warp::R
             Error::RecvError(_) => 1020,
             Error::UnitError(_) => 1021,
             Error::SendError(_) => 1024,
+            Error::StorageError(_) => 1120,
+            Error::EncodingError(_) => 1121,
         };
         let message = err.to_string();
 
+        error!("Error code {}: {}", code, message);
         let json = json!({ "type": "error", "code": code, "message": message });
 
         Ok(warp::reply::with_status(
