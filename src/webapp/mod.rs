@@ -1,16 +1,14 @@
 use crate::app;
 use crate::config;
+use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
+use crate::config::value::{evaluate as evaluate_val, Value};
 use crate::i2c::device::Status;
+use crate::i2c::error::Error;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
-use crate::i2c::error::Error;
 use std::collections::HashMap;
-use warp::{http::Response,
-    http::StatusCode,
-    reply, Rejection, Reply};
-use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
-use crate::config::value::{evaluate as evaluate_val, Value};
+use warp::{http::Response, http::StatusCode, reply, Rejection, Reply};
 pub mod slugify;
 
 // We have to share the app state since warp uses a thread pool
@@ -105,20 +103,14 @@ pub fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> 
     Ok(reply::json(&reply))
 }
 
-pub fn remove_device(
-    app: SharedAppState,
-    name: String,
-) -> Result<impl Reply, Rejection> {
+pub fn remove_device(app: SharedAppState, name: String) -> Result<impl Reply, Rejection> {
     let mut app_l = app.lock().expect("failure");
     app_l.remove_device(&name);
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
 }
 
-pub fn add_device(
-    app: SharedAppState,
-    device: config::Device,
-) -> Result<impl Reply, Rejection> {
+pub fn add_device(app: SharedAppState, device: config::Device) -> Result<impl Reply, Rejection> {
     let mut app_l = app.lock().expect("failure");
     match app_l.add_device(&device) {
         Err(e) => Err(warp::reject::custom(e)),
@@ -210,12 +202,13 @@ pub fn device_sensors(
     let mut app_l = app.lock().expect("failure");
     match app_l.sensor_count(&device) {
         Ok(count) => {
-            let range : Vec<crate::i2c::Result<(f64, crate::config::value::Unit)>> = (0..count).into_iter().map(|index| {
-                app_l.read_sensor(device.clone(), index)
-            }).collect();
+            let range: Vec<crate::i2c::Result<(f64, crate::config::value::Unit)>> = (0..count)
+                .into_iter()
+                .map(|index| app_l.read_sensor(device.clone(), index))
+                .collect();
             Ok(warp::reply::json(&range))
-        },
-        Err(e) => Err(warp::reject::custom(e))
+        }
+        Err(e) => Err(warp::reject::custom(e)),
     }
 }
 

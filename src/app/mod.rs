@@ -88,8 +88,9 @@ impl State {
             Some(m) => {
                 let value = m.read_sensor(switch)?;
                 match value {
-                    (cur_value, Unit::Boolean) =>
-                        self.switch_set(name, switch, if cur_value > 0f64 { false } else { true }),
+                    (cur_value, Unit::Boolean) => {
+                        self.switch_set(name, switch, if cur_value > 0f64 { false } else { true })
+                    }
                     _ => Err(Error::UnitError(Unit::Boolean)),
                 }
             }

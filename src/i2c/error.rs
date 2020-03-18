@@ -24,9 +24,7 @@ impl fmt::Display for Error {
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
-            Error::OutOfBounds(ref index) => {
-                write!(f, "Index '{:#?}' out of bounds", index)
-            }
+            Error::OutOfBounds(ref index) => write!(f, "Index '{:#?}' out of bounds", index),
             Error::I2cError(ref err) => write!(f, "I2C Bus Error: {}", err),
             Error::UnitError(ref err) => write!(f, "Unit expected {:#?}", err),
             Error::RecvError(ref err) => write!(f, "Failed to read: {}", err),
