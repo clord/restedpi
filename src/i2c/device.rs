@@ -37,11 +37,6 @@ impl Device {
         self.config = config.clone();
     }
 
-    pub fn set_config_and_reset(&mut self, config: &config::Device) -> Result<()> {
-        self.set_config(config);
-        self.reset()
-    }
-
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
             config::Type::MCP9808 => Ok(()),

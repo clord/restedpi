@@ -31,7 +31,7 @@ export function Submit({ disabled, submitting, children }) {
     {
       type: "submit",
       disabled: hasErrors || disabled,
-      className: `mx-auto mt-4 ${
+      className: `mt-2 ${
         hasErrors
           ? "bg-gray-300 text-gray-500"
           : "bg-blue-500 hover:bg-blue-700 text-white"

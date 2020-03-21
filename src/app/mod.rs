@@ -20,6 +20,7 @@ pub struct State {
 
 // Internal State machine for the application. this is core logic.
 impl State {
+
     pub fn add_device(&mut self, config: &config::Device) -> Result<()> {
         let mut device = Device::new(config, self.i2c.clone());
         info!(
@@ -74,10 +75,6 @@ impl State {
         &self.devices
     }
 
-    pub fn device_config(&self, name: &str) -> Option<config::Device> {
-        self.devices.get(name).map(|x| x.config())
-    }
-
     pub fn reset(&mut self) -> Result<()> {
         self.devices.clear();
         for (sname, config) in self.storage.read_devices()? {
@@ -94,10 +91,6 @@ impl State {
 
         self.dt = Local::now();
         Ok(())
-    }
-
-    pub fn set_time(&mut self, t: DateTime<Local>) {
-        self.dt = t;
     }
 
     pub fn current_dt(&self) -> DateTime<Local> {

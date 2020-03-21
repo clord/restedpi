@@ -57,9 +57,22 @@ export default function AddEditMcp9808(props) {
       }
     }),
     h(
-      Submit,
-      { key: "sub", submitting },
-      props.device == null ? "Create" : "Edit"
+      "div",
+      { key: 1, className: "mx-auto px-3 py-3" },
+      h(
+        Submit,
+        { key: "sub", submitting },
+        props.device == null ? "Create" : "Edit"
+      ),
+      h(
+        "a",
+        {
+          href: "/devices",
+          key: 0,
+          className: "font-bold py-2 px-4 text-sm"
+        },
+        "Back"
+      )
     )
   ]);
 }

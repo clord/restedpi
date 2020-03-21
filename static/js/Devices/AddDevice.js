@@ -5,11 +5,7 @@ const AddEditMcp23017 = lazy(() => import("./Mcp23017.js"));
 const AddEditMcp9808 = lazy(() => import("./Mcp9808.js"));
 const AddEditBmp085 = lazy(() => import("./Bmp085.js"));
 
-export default function AddDevice({
-  name,
-  description,
-  onHideAddDevice: handleHideDevice
-}) {
+export default function AddDevice({ name, description }) {
   let component;
 
   switch (name) {
@@ -34,17 +30,6 @@ export default function AddDevice({
         h("p", { key: 1, className: "text-gray-700 text-base" }, description)
       ]),
       [component]
-    ]),
-    h("div", { key: 1, className: "mx-auto px-3 py-3" }, [
-      h(
-        "button",
-        {
-          onClick: handleHideDevice,
-          key: 0,
-          className: "font-bold py-2 px-4 text-sm"
-        },
-        "Back"
-      )
     ])
   ];
 }

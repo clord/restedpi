@@ -9,9 +9,26 @@ export default function AvailableDevices(props) {
     return null;
   }
 
-  return h(
-    "div",
-    { className: "grid grid-flow-col grid-cols-3 gap-4" },
-    response.result.map(device => h(Device, { key: device.name, ...device }))
-  );
+  return h("main", {}, [
+    h("div", { className: "flex mb-4 justify-between items-baseline" }, [
+      h(
+        "h1",
+        { key: 0, className: "text-gray-900 font-bold text-xl mb-3" },
+        "Available Devices"
+      ),
+      h(
+        "a",
+        { key: 1, className: "font-bold py-2 px-4", href: "/devices" },
+        "Back"
+      )
+    ]),
+    h(
+      "div",
+      {
+        key: 1,
+        className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+      },
+      response.result.map(device => h(Device, { key: device.name, ...device }))
+    )
+  ]);
 }
