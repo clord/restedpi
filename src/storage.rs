@@ -3,7 +3,7 @@ use crate::i2c::Result;
 use std::collections::HashMap;
 
 pub struct Storage {
-    db: sled::Db
+    db: sled::Db,
 }
 
 fn make_device_key(name: &str) -> Vec<u8> {

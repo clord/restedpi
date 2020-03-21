@@ -1,9 +1,9 @@
 extern crate chrono;
 
 use crate::config;
-use crate::storage;
 use crate::config::value::Unit;
 use crate::i2c::{bus, device::Device, error::Error, Result};
+use crate::storage;
 use crate::webapp::slugify::slugify;
 use chrono::prelude::*;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ pub struct State {
     dt: DateTime<Local>,
     devices: HashMap<String, Device>,
     i2c: bus::I2cBus,
-    storage: storage::Storage
+    storage: storage::Storage,
 }
 
 // unsafe impl Send for State {}
@@ -44,9 +44,7 @@ impl State {
 
     pub fn device(&self, name: &str) -> Result<&Device> {
         match self.devices.get(name) {
-            Some(d) => {
-                Ok(d)
-            }
+            Some(d) => Ok(d),
             None => Err(Error::NonExistant(name.to_string())),
         }
     }

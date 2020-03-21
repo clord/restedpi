@@ -3,10 +3,10 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-extern crate sled;
 extern crate regex;
 extern crate serde;
 extern crate serde_derive;
+extern crate sled;
 extern crate warp;
 
 #[macro_use]
@@ -29,8 +29,8 @@ use warp::{
 
 mod app;
 mod config;
-mod storage;
 mod i2c;
+mod storage;
 mod webapp;
 
 /// big picture:
@@ -72,7 +72,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let db_path = config.database.unwrap_or(std::path::PathBuf::from("rested-pi.db"));
+    let db_path = config
+        .database
+        .unwrap_or(std::path::PathBuf::from("rested-pi.db"));
 
     let listen = config.listen.unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
@@ -80,7 +82,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut app_raw = app::new(&db_path).expect("app failed to start");
     for config in device_config.iter() {
-        app_raw.add_device(config).expect("pre-configured device to not fail to reset");
+        app_raw
+            .add_device(config)
+            .expect("pre-configured device to not fail to reset");
     }
     app_raw.reset()?;
 
