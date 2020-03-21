@@ -5,8 +5,8 @@ import useForm, {
 } from "/js/depend/react-hook-form.js";
 import { h } from "/js/html.js";
 
-export function Form({ onSubmit, children }) {
-  const methods = useForm({ mode: "onBlur" });
+export function Form({ onSubmit, children, defaultValues }) {
+  const methods = useForm({ mode: "onBlur", defaultValues });
   const { handleSubmit } = methods;
   return h(
     FormContext,

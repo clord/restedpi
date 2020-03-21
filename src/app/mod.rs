@@ -27,8 +27,10 @@ impl State {
             config.name, config.address
         );
 
-        // TODO: Real raspberry pi can reset, but this is for debugging
-        //device.reset()?;
+        if cfg!(raspberry_pi) {
+            // TODO: Real raspberry pi can reset, but this is for debugging
+            device.reset()?;
+        }
 
         let mut inc: usize = 0;
         while self.devices.contains_key(&slugify(&config.name, inc)) {
@@ -38,6 +40,30 @@ impl State {
         self.storage.set_device(&sname, config)?;
         self.devices.insert(sname, device);
         Ok(())
+    }
+
+    pub fn device(&self, name: &str) -> Result<&Device> {
+        match self.devices.get(name) {
+            Some(d) => {
+                Ok(d)
+            }
+            None => Err(Error::NonExistant(name.to_string())),
+        }
+    }
+
+    pub fn edit_device(&mut self, name: &str, config: &config::Device) -> Result<&Device> {
+        match self.devices.get_mut(name) {
+            Some(d) => {
+                info!("Edit device: '{}'", name);
+                d.set_config(config);
+                if cfg!(raspberry_pi) {
+                    d.reset()?;
+                }
+                self.storage.set_device(name, config)?;
+                Ok(d)
+            }
+            None => Err(Error::NonExistant(name.to_string())),
+        }
     }
 
     pub fn remove_device(&mut self, name: &str) {
@@ -50,14 +76,21 @@ impl State {
         &self.devices
     }
 
+    pub fn device_config(&self, name: &str) -> Option<config::Device> {
+        self.devices.get(name).map(|x| x.config())
+    }
+
     pub fn reset(&mut self) -> Result<()> {
         self.devices.clear();
         for (sname, config) in self.storage.read_devices()? {
-            let device = Device::new(&config, self.i2c.clone());
+            let mut device = Device::new(&config, self.i2c.clone());
             info!(
                 "Adding device: '{}' at I2C address: {}",
                 config.name, config.address
             );
+            if cfg!(raspberry_pi) {
+                device.reset()?;
+            }
             self.devices.insert(sname, device);
         }
 

@@ -12,7 +12,7 @@ const [useAppStore, api] = create(set => {
       s(state => void (state.serverConfig = response.serverConfig));
     },
     devices: {
-      configured: [],
+      configured: {},
       read: async () => {
         const response = await apiGet(`/devices/configured`);
         s(state => void (state.devices.configured = response));
@@ -23,10 +23,11 @@ const [useAppStore, api] = create(set => {
       },
       get: async slug => {
         const response = await apiGet(`/devices/configured/${slug}`);
+        s(state => void (state.devices.configured[slug] = response));
       },
       edit: async (slug, details) => {
         const response = await apiPut(`/devices/configured/${slug}`, details);
-        s(state => void (state.devices.configured = response));
+        s(state => void (state.devices.configured[slug] = response));
       },
       remove: async slug => {
         const response = await apiDelete(`/devices/configured/${slug}`);

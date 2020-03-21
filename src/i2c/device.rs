@@ -33,8 +33,12 @@ impl Device {
         self.config.clone()
     }
 
-    pub fn set_config_and_reset(&mut self, config: config::Device) -> Result<()> {
-        self.config = config;
+    pub fn set_config(&mut self, config: &config::Device) {
+        self.config = config.clone();
+    }
+
+    pub fn set_config_and_reset(&mut self, config: &config::Device) -> Result<()> {
+        self.set_config(config);
         self.reset()
     }
 

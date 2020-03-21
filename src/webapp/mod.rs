@@ -2,7 +2,7 @@ use crate::app;
 use crate::config;
 use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
 use crate::config::value::{evaluate as evaluate_val, Value};
-use crate::i2c::device::Status;
+use crate::i2c::device::{Status, Device};
 use crate::i2c::error::Error;
 use mime_guess::from_path;
 use serde_json::json;
@@ -85,13 +85,17 @@ pub fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
     Ok(reply::json(&reply))
 }
 
+pub fn device_as_json(device: &Device) -> (config::Device, Status) {
+    (device.config(), device.status())
+}
+
 pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
-    let d: HashMap<String, (config::Device, Status)> = app
+    let d: HashMap<String,(config::Device, Status) > = app
         .devices()
         .into_iter()
-        .map(|(name, device)| (name.to_string(), (device.config(), device.status())))
+        .map(|(name, device)| (name.to_owned(), device_as_json(&device)))
         .collect();
-    return json!(d);
+    json!(d)
 }
 
 // GET /devices/configured
@@ -101,6 +105,36 @@ pub fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> 
     let app_l = app.lock().expect("failure");
     let reply = devices_as_json(app_l);
     Ok(reply::json(&reply))
+}
+
+// PUT /devices/configured/:name
+//
+// update some configured device in the system
+pub fn edit_configured_device(app: SharedAppState, name: String, new_config: config::Device) -> Result<impl Reply, Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    match app_l.edit_device(&name, &new_config) {
+        Ok(d) => {
+            let reply = device_as_json(&d);
+            Ok(reply::json(&reply))
+        },
+        Err(Error::NonExistant(_)) => Err(warp::reject::not_found()),
+        Err(e) => Err(warp::reject::custom(e))
+    }
+}
+
+// GET /devices/configured/:name
+//
+// configured device in the system
+pub fn configured_device(app: SharedAppState, name: String) -> Result<impl Reply, Rejection> {
+    let app_l = app.lock().expect("failure");
+    match app_l.device(&name) {
+        Ok(d) => {
+            let reply = device_as_json(&d);
+            Ok(reply::json(&reply))
+        },
+        Err(Error::NonExistant(_)) => Err(warp::reject::not_found()),
+        Err(e) => Err(warp::reject::custom(e))
+    }
 }
 
 pub fn remove_device(app: SharedAppState, name: String) -> Result<impl Reply, Rejection> {

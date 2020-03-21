@@ -26,14 +26,14 @@ export async function apiGet(url) {
   return result.json();
 }
 
-export function apiPut(url, body) {
-  return useFetch(
-    `${window.env.api}${url}`,
-    "PUT",
-    "no-cache",
-    JSON_HEADER,
-    JSON.stringify(body)
-  );
+export async function apiPut(url, body) {
+  const result = await fetch(`${window.env.api}${url}`, {
+    method: "PUT",
+    cache: "no-cache",
+    headers: JSON_HEADER,
+    body: JSON.stringify(body)
+  });
+  return result.json();
 }
 
 export async function apiDelete(url, value) {

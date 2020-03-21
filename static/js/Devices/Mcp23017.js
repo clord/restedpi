@@ -7,6 +7,7 @@ import { h } from "/js/html.js";
 export default function AddEditMcp23017(props) {
   const [submitting, setSubmitting] = useState(false);
   const addDevice = useAppStore(x => x.devices.add);
+  const editDevice = useAppStore(x => x.devices.edit);
   const [location, setLocation] = useLocation();
   const handleSubmit = useCallback(
     form => {
@@ -18,16 +19,22 @@ export default function AddEditMcp23017(props) {
         name: form.name,
         address: Number(form.address)
       };
-      addDevice(params)
+      let method;
+      if (props.device == null) {
+        method = addDevice(params);
+      } else {
+        method = editDevice(props.name, params);
+      }
+      method
         .then(result => {
           setLocation("/devices");
         })
         .finally(() => setSubmitting(false));
     },
-    [addDevice]
+    [addDevice, editDevice, props.name]
   );
 
-  return h(Form, { onSubmit: handleSubmit }, [
+  return h(Form, { onSubmit: handleSubmit, defaultValues: props.device }, [
     h(Text, {
       id: "name",
       key: "name",
@@ -49,6 +56,10 @@ export default function AddEditMcp23017(props) {
         message: "Address must be decimal number"
       }
     }),
-    h(Submit, { key: "sub", submitting }, "Create")
+    h(
+      Submit,
+      { key: "sub", submitting },
+      props.device == null ? "Create" : "Edit"
+    )
   ]);
 }

@@ -170,13 +170,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path::param())
         .and_then(webapp::remove_device);
 
-    let r_fetching_configured = warp::get2()
+    let r_fetching_all_configured = warp::get2()
         .and(app.clone())
         .and_then(webapp::configured_devices);
 
+    let r_update_configured_device = warp::put2()
+        .and(app.clone())
+        .and(warp::path::param())
+        .and(warp::body::json())
+        .and_then(webapp::edit_configured_device);
+
+    let r_fetching_configured_device = warp::get2()
+        .and(app.clone())
+        .and(warp::path::param())
+        .and_then(webapp::configured_device);
+
     let r_configured = warp::path("configured").and(
         r_adding_configured
-            .or(r_fetching_configured)
+            .or(r_fetching_configured_device)
+            .or(r_update_configured_device)
+            .or(r_fetching_all_configured)
             .or(r_remove_configured),
     );
 
