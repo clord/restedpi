@@ -62,13 +62,13 @@ export default function EditDevice({ path }) {
             { key: 1, className: "text-gray-700 text-base" },
             device.description
           ),
-          h("div", { key: 2, className: "mx-auto px-3 py-3" }, [
+          h("div", { key: 2, className: " py-3" }, [
             h(
               Link,
               {
                 to: "/devices",
                 key: 0,
-                className: "font-bold py-2 px-4 text-sm"
+                className: "font-bold py-2 text-sm"
               },
               "Back to Devices"
             )
