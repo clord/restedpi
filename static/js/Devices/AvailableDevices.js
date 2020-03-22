@@ -1,5 +1,6 @@
 import { useGet } from "/js/hooks/network.js";
 import { h } from "/js/html.js";
+import { Link } from "/js/depend/wouter/";
 import Device from "./Device.js";
 
 export default function AvailableDevices(props) {
@@ -10,18 +11,22 @@ export default function AvailableDevices(props) {
   }
 
   return h("main", {}, [
-    h("div", { className: "flex mb-4 justify-between items-baseline" }, [
-      h(
-        "h1",
-        { key: 0, className: "text-gray-900 font-bold text-xl mb-3" },
-        "Available Devices"
-      ),
-      h(
-        "a",
-        { key: 1, className: "font-bold py-2 px-4", href: "/devices" },
-        "Back"
-      )
-    ]),
+    h(
+      "div",
+      { key: 0, className: "flex mb-4 justify-between items-baseline" },
+      [
+        h(
+          "h1",
+          { key: 0, className: "text-gray-900 font-bold text-xl mb-3" },
+          "Available Devices"
+        ),
+        h(
+          Link,
+          { key: 1, className: "font-bold py-2 px-4", to: "/devices" },
+          "Back"
+        )
+      ]
+    ),
     h(
       "div",
       {

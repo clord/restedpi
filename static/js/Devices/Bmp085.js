@@ -76,18 +76,13 @@ export default function AddBmp085(props) {
         "Low Power, Low Resolution"
       )
     ]),
-    h(Submit, { key: 5, submitting }, props.device == null ? "Create" : "Edit"),
     h(
       "div",
       { key: 1, className: "mx-auto px-3 py-3" },
       h(
-        "a",
-        {
-          href: "/devices",
-          key: 0,
-          className: "font-bold py-2 px-4 text-sm color-black"
-        },
-        "Back"
+        Submit,
+        { key: 5, submitting },
+        props.device == null ? "Create" : "Edit"
       )
     )
   ]);
