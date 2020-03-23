@@ -20,7 +20,6 @@ pub struct State {
 
 // Internal State machine for the application. this is core logic.
 impl State {
-
     pub fn add_device(&mut self, config: &config::Device) -> Result<()> {
         let mut device = Device::new(config, self.i2c.clone());
         info!(
@@ -71,8 +70,8 @@ impl State {
         self.devices.remove(name);
     }
 
-    pub fn devices(&self) -> &HashMap<String, Device> {
-        &self.devices
+    pub fn devices(&mut self) -> &mut HashMap<String, Device> {
+        &mut self.devices
     }
 
     pub fn reset(&mut self) -> Result<()> {

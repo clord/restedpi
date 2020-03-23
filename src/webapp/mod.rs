@@ -89,7 +89,7 @@ pub fn device_as_json(device: &Device) -> (config::Device, Status) {
     (device.config(), device.status())
 }
 
-pub fn devices_as_json(app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
+pub fn devices_as_json(mut app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
     let d: HashMap<String, (config::Device, Status)> = app
         .devices()
         .into_iter()
@@ -200,8 +200,24 @@ pub fn evaulate_value_expr(
 }
 
 // GET /sensors
-pub fn all_sensors(_app: SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
-    let reply = json!({ "result": [] });
+pub fn all_sensors(app: SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut app_l = app.lock().expect("failure");
+    let mut sensor_values: HashMap<&str, Vec<std::result::Result<(f64, config::Unit), String>>> =
+        HashMap::new();
+
+    for (name, device) in app_l.devices() {
+        for i in 0..device.sensor_count() {
+            let res = match device.read_sensor(i) {
+                Ok(vu) => Ok(vu),
+                Err(e) => Err(format!("Sensor Error: {:#?}", e)),
+            };
+            sensor_values
+                .entry(name)
+                .and_modify(|e| e.push(res.clone()))
+                .or_insert(vec![res]);
+        }
+    }
+    let reply = json!(sensor_values);
     Ok(warp::reply::json(&reply))
 }
 
