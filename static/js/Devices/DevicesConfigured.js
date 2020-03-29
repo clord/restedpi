@@ -50,7 +50,7 @@ function ConfirmRemove({ onRemove, children }) {
                 "div",
                 {
                   key: "b",
-                  className: "bg-gray-500 text-white p-2 rounded-sm"
+                  className: "bg-gray-500 text-white p-3 rounded"
                 },
                 [
                   h("h2", { key: "h", className: "mb-4" }, "Are you sure?"),
@@ -60,7 +60,8 @@ function ConfirmRemove({ onRemove, children }) {
                       {
                         key: "c",
                         onClick: () => setShowConfirm(false),
-                        className: "text-sm text-white py-1 px-3 mr-3"
+                        className:
+                          "text-sm text-white hover:bg-gray-600 py-1 px-3 mr-3 rounded"
                       },
                       "Don’t"
                     ),
