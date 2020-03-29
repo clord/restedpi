@@ -24,6 +24,7 @@ pub enum SunPosition {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "name")]
 pub enum Type {
     MCP9808,
     BMP085 {

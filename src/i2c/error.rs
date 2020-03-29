@@ -39,8 +39,8 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
-impl From<bincode::Error> for Error {
-    fn from(err: bincode::Error) -> Error {
+impl From<serde_json::error::Error> for Error {
+    fn from(err: serde_json::error::Error) -> Error {
         Error::EncodingError(format!("{}", err))
     }
 }

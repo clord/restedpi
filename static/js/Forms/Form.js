@@ -123,7 +123,7 @@ export function RadioChoice({ name, label, children }) {
 
 Radio.Choice = RadioChoice;
 
-export function Select({ name, label, children }) {
+export function Select({ name, label, defaultValue, children }) {
   const { errors, register } = useFormContext();
   return h(ChoiceContext.Provider, { value: name }, [
     h(
@@ -142,6 +142,7 @@ export function Select({ name, label, children }) {
             {
               ref: register({ required: true }),
               key: `${name}-select`,
+              defaultValue,
               name,
               className:
                 "block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
@@ -175,8 +176,8 @@ export function Select({ name, label, children }) {
   ]);
 }
 
-export function SelectChoice({ value, selected, children }) {
-  return h("option", { value, selected }, children);
+export function SelectChoice({ value, children }) {
+  return h("option", { value }, children);
 }
 
 Select.Choice = SelectChoice;

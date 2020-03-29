@@ -14,7 +14,7 @@ export default function AddBmp085(props) {
       setSubmitting(true);
 
       const params = {
-        model: { BMP085: { mode: form.resolution } },
+        model: { name: "BMP085", mode: form.resolution },
         description: form.description,
         name: form.name,
         address: Number(form.address)
@@ -24,7 +24,7 @@ export default function AddBmp085(props) {
       if (props.device == null) {
         method = addDevice(params);
       } else {
-        method = editDevice(props.name, params);
+        method = editDevice({ slug: props.name }, params);
       }
 
       method
@@ -58,24 +58,33 @@ export default function AddBmp085(props) {
         message: "Address must be decimal number"
       }
     }),
-    h(Select, { key: "select", name: "resolution", label: "Resolution" }, [
-      h(
-        Select.Choice,
-        { key: 0, value: "UltraHighRes" },
-        "Ultra High Resolution (slow and power-hungry)"
-      ),
-      h(Select.Choice, { key: 1, value: "HighRes" }, "High Resolution (slow)"),
-      h(
-        Select.Choice,
-        { key: 2, value: "Standard", selected: true },
-        "Standard Resolution"
-      ),
-      h(
-        Select.Choice,
-        { key: 3, value: "UltraLowPower" },
-        "Low Power, Low Resolution"
-      )
-    ]),
+    h(
+      Select,
+      {
+        key: "select",
+        name: "resolution",
+        defaultValue: "Standard",
+        label: "Resolution"
+      },
+      [
+        h(
+          Select.Choice,
+          { key: 0, value: "UltraHighRes" },
+          "Ultra High Resolution (slow and power-hungry)"
+        ),
+        h(
+          Select.Choice,
+          { key: 1, value: "HighRes" },
+          "High Resolution (slow)"
+        ),
+        h(Select.Choice, { key: 2, value: "Standard" }, "Standard Resolution"),
+        h(
+          Select.Choice,
+          { key: 3, value: "UltraLowPower" },
+          "Low Power, Low Resolution"
+        )
+      ]
+    ),
     h(
       "div",
       { key: 1, className: "mx-auto px-3 py-3" },

@@ -8,11 +8,8 @@ const AddEditMcp9808 = lazy(() => import("./Mcp9808.js"));
 const AddEditBmp085 = lazy(() => import("./Bmp085.js"));
 
 export default function EditDevice({ path }) {
-  const get = useAppStore(x => x.devices.get);
-  useEffect(() => {
-    get(path);
-  }, [get]);
   const deviceStatus = useAppStore(x => x.devices.configured[path]);
+  const refreshDevices = useAppStore(x => x.devices.read);
 
   let component;
 
@@ -21,28 +18,30 @@ export default function EditDevice({ path }) {
   }
   const [device] = deviceStatus;
 
-  if (typeof device.model === "string") {
-    switch (device.model) {
-      case "MCP23017": {
-        component = h(AddEditMcp23017, {
-          key: device.model,
-          name: path,
-          device
-        });
-        break;
-      }
-      case "MCP9808": {
-        component = h(AddEditMcp9808, {
-          key: device.model,
-          name: path,
-          device
-        });
-        break;
-      }
+  switch (device.model.name) {
+    case "BMP085": {
+      component = h(AddEditBmp085, {
+        key: device.model.name,
+        name: path,
+        device
+      });
+      break;
     }
-  } else {
-    if (device.model.BMP085 != null) {
-      component = h(AddEditBmp085, { key: "BMP085", name: path, device });
+    case "MCP23017": {
+      component = h(AddEditMcp23017, {
+        key: device.model.name,
+        name: path,
+        device
+      });
+      break;
+    }
+    case "MCP9808": {
+      component = h(AddEditMcp9808, {
+        key: device.model.name,
+        name: path,
+        device
+      });
+      break;
     }
   }
 
@@ -68,6 +67,7 @@ export default function EditDevice({ path }) {
               {
                 to: "/devices",
                 key: 0,
+                onClick: refreshDevices,
                 className: "font-bold py-2 text-sm"
               },
               "Back to Devices"

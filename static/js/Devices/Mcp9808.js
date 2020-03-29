@@ -14,7 +14,7 @@ export default function AddEditMcp9808(props) {
       setSubmitting(true);
 
       const params = {
-        model: "MCP9808",
+        model: { name: "MCP9808" },
         description: form.description,
         name: form.name,
         address: Number(form.address)
@@ -23,7 +23,7 @@ export default function AddEditMcp9808(props) {
       if (props.device == null) {
         method = addDevice(params);
       } else {
-        method = editDevice(props.name, params);
+        method = editDevice({ slug: props.name }, params);
       }
       method
         .then(result => {

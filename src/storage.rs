@@ -15,6 +15,7 @@ fn make_device_key(name: &str) -> Vec<u8> {
 }
 
 impl Storage {
+
     /**
      * Read all devices stored in db.
      */
@@ -22,7 +23,7 @@ impl Storage {
         let mut result: HashMap<String, config::Device> = HashMap::new();
         for item in self.db.scan_prefix(b"devices/") {
             let (key, value) = item?;
-            let decoded = bincode::deserialize(&value)?;
+            let decoded = serde_json::from_slice(&value)?;
             result.insert(String::from_utf8_lossy(&key[8..]).into_owned(), decoded);
         }
         Ok(result)
@@ -33,7 +34,7 @@ impl Storage {
      */
     pub fn set_device(&mut self, name: &str, device: &config::Device) -> Result<()> {
         let key = make_device_key(name);
-        let encoded = bincode::serialize(device)?;
+        let encoded = serde_json::to_vec(device)?;
         self.db.insert(key, encoded)?;
         Ok(())
     }

@@ -1,14 +1,11 @@
 import { useGet } from "/js/hooks/network.js";
 import { h } from "/js/html.js";
 import { Link } from "/js/depend/wouter/";
+import { useAppStore } from "/js/hooks/useApp.js";
 import Device from "./Device.js";
 
 export default function AvailableDevices(props) {
-  const { response, error } = useGet("/devices/available");
-
-  if (response == null) {
-    return null;
-  }
+  const available = useAppStore(x => x.devices.available);
 
   return h("main", {}, [
     h(
@@ -33,7 +30,7 @@ export default function AvailableDevices(props) {
         key: 1,
         className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       },
-      response.result.map(device => h(Device, { key: device.name, ...device }))
+      available.map(device => h(Device, { key: device.name, ...device }))
     )
   ]);
 }

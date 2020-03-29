@@ -111,7 +111,7 @@ pub fn index_to_bank_pin(index: usize) -> Result<(Bank, Pin)> {
     } else {
         Bank::B
     };
-    match ordinal_pin(index) {
+    match ordinal_pin(index % 8) {
         Some(pin) => Ok((bank, pin)),
         None => Err(Error::OutOfBounds(index)),
     }
@@ -179,7 +179,11 @@ impl Mcp23017State {
             Bank::A => WRITE_GPIOA_ADDR,
             Bank::B => WRITE_GPIOB_ADDR,
         };
-        i2c.write(address, register, vec![as_word(values)])
+        if cfg!(raspberry_pi) {
+            i2c.write(address, register, vec![as_word(values)])
+        } else {
+            Ok(())
+        }
     }
 
     // Unconditionally reads values from the device and stores in device state
@@ -189,8 +193,12 @@ impl Mcp23017State {
             Bank::B => READ_GPIOB_ADDR,
         };
 
-        let result = i2c.read(address, register, 1)?;
-        Ok(read_word(result[0]))
+        if cfg!(raspberry_pi) {
+            let result = i2c.read(address, register, 1)?;
+            Ok(read_word(result[0]))
+        } else {
+            Ok([true, false, true, true, false, true, true, false])
+        }
     }
 
     // Unconditionally writes current direction to device
@@ -200,8 +208,10 @@ impl Mcp23017State {
             Bank::A => (REGISTER_GPIOA, REGISTER_GPIOA_PULLUP),
             Bank::B => (REGISTER_GPIOB, REGISTER_GPIOB_PULLUP),
         };
-        i2c.write(address, dir_reg, vec![direction_as_inout_word(dir)])?;
-        i2c.write(address, pullup_reg, vec![direction_as_pullup_word(dir)])?;
+        if cfg!(raspberry_pi) {
+            i2c.write(address, dir_reg, vec![direction_as_inout_word(dir)])?;
+            i2c.write(address, pullup_reg, vec![direction_as_pullup_word(dir)])?;
+        }
 
         Ok(())
     }
@@ -264,7 +274,7 @@ impl Mcp23017State {
         };
         self.set_state_for_bank(bank, new_state);
         self.write_gpio_value(address, bank, i2c)?;
-        return Ok(());
+        Ok(())
     }
 
     pub fn get_pin_direction(&mut self, bank: Bank, pin: Pin) -> Result<Direction> {

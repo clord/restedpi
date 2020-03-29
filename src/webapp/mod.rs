@@ -5,6 +5,7 @@ use crate::config::value::{evaluate as evaluate_val, Value};
 use crate::i2c::device::{Device, Status};
 use crate::i2c::error::Error;
 use mime_guess::from_path;
+use serde_derive::Serialize;
 use serde_json::json;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -42,7 +43,7 @@ pub extern "C" fn serve(path: &str) -> Result<impl Reply, Rejection> {
 // available devices that can be configured on this system
 // (not configured devices)
 pub fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
-    let reply = json!({ "result": [
+    let reply = json!([
         { "name": "BMP085"
         , "device": "/api/devices/available/Bmp085"
         , "description": "High accuracy temperature and pressure"
@@ -81,7 +82,7 @@ pub fn all_devices(_app: SharedAppState) -> Result<impl Reply, Rejection> {
         , "bus": "I2C"
         , "sensors": [{ "type": "temperature", "range": "-40°C to +125°C ±0.5°C" }]
         }
-    ] });
+    ]);
     Ok(reply::json(&reply))
 }
 
@@ -161,9 +162,11 @@ pub fn add_device(app: SharedAppState, device: config::Device) -> Result<impl Re
 
 // GET /api/config
 pub fn server_config(_app: SharedAppState, server_name: String) -> impl warp::Reply {
-    let reply = json!({ "serverConfig":
-    {"deviceName": format!("restedpi on {}", server_name),
-    }});
+    let reply = json!(
+        {"serverConfig": {
+        "deviceName": format!("restedpi on {}", server_name),
+        }
+    });
     warp::reply::json(&reply)
 }
 
@@ -199,17 +202,25 @@ pub fn evaulate_value_expr(
     Ok(warp::reply::json(&reply))
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "status")]
+enum SensorResult {
+    Ok { value: f64, unit: config::Unit },
+    Err { error: String },
+}
+
 // GET /sensors
 pub fn all_sensors(app: SharedAppState) -> Result<impl warp::Reply, warp::Rejection> {
     let mut app_l = app.lock().expect("failure");
-    let mut sensor_values: HashMap<&str, Vec<std::result::Result<(f64, config::Unit), String>>> =
-        HashMap::new();
+    let mut sensor_values: HashMap<&str, Vec<SensorResult>> = HashMap::new();
 
     for (name, device) in app_l.devices() {
         for i in 0..device.sensor_count() {
             let res = match device.read_sensor(i) {
-                Ok(vu) => Ok(vu),
-                Err(e) => Err(format!("Sensor Error: {:#?}", e)),
+                Ok((f, u)) => SensorResult::Ok { value: f, unit: u },
+                Err(e) => SensorResult::Err {
+                    error: format!("Sensor Error: {:#?}", e),
+                },
             };
             sensor_values
                 .entry(name)

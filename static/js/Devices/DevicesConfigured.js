@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "/react/";
+import { useCallback, useState, useEffect } from "/react/";
 import { h } from "/js/html.js";
 import { Link } from "/js/depend/wouter/";
 import { useAppStore } from "/js/hooks/useApp.js";
@@ -12,20 +12,92 @@ function DeviceStatus({ cell }) {
   return null;
 }
 
-function ActionCol({ cell }) {
-  const slug = cell.value;
-  const removeDevice = useAppStore(x => x.devices.remove);
-  const handleRemove = useCallback(() => {
-    removeDevice(slug);
-  }, [slug]);
-
-  return [
+function ConfirmRemove({ onRemove, children }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+  return h("span", { className: "relative" }, [
     h(
       "button",
       {
         className: "text-sm text-gray-500 py-1 px-3",
+        key: "r",
+        onClick: () => setShowConfirm(x => !x)
+      },
+      children
+    ),
+    ...(showConfirm
+      ? [
+          h(
+            "aside",
+            {
+              key: "a",
+              className:
+                "flex flex-col items-end z-40 text-gray-500 top-1 right-0 absolute"
+            },
+            [
+              h(
+                "svg",
+                {
+                  key: "s",
+                  className: "fill-current mr-5",
+                  width: "14",
+                  height: "6",
+                  viewBox: "0 0 14 6",
+                  xmlns: "http://www.w3.org/2000/svg"
+                },
+                h("path", { d: "M7 0l6.928 6H.072L7 0z" })
+              ),
+              h(
+                "div",
+                {
+                  key: "b",
+                  className: "bg-gray-500 text-white p-2 rounded-sm"
+                },
+                [
+                  h("h2", { key: "h", className: "mb-4" }, "Are you sure?"),
+                  h("div", { key: "d", className: "flex" }, [
+                    h(
+                      "button",
+                      {
+                        key: "c",
+                        onClick: () => setShowConfirm(false),
+                        className: "text-sm text-white py-1 px-3 mr-3"
+                      },
+                      "Don’t"
+                    ),
+                    h(
+                      "button",
+                      {
+                        key: "r",
+                        onClick: onRemove,
+                        className:
+                          "text-sm bg-red-400 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
+                      },
+                      "Remove"
+                    )
+                  ])
+                ]
+              )
+            ]
+          )
+        ]
+      : [])
+  ]);
+}
+
+function ActionCol({ cell }) {
+  const slug = cell.value;
+  const getDevice = useAppStore(x => x.devices.get);
+  const removeDevice = useAppStore(x => x.devices.remove);
+  const handleRemove = useCallback(() => {
+    removeDevice({ slug });
+  }, [slug]);
+
+  return h("div", { className: "relative" }, [
+    h(
+      ConfirmRemove,
+      {
         key: "1",
-        onClick: handleRemove
+        onRemove: handleRemove
       },
       "Remove"
     ),
@@ -35,11 +107,14 @@ function ActionCol({ cell }) {
         className:
           "text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
         key: "2",
-        to: `/devices/${slug}`
+        to: `/devices/${slug}`,
+        onClick: () => {
+          getDevice({ slug });
+        }
       },
       "Edit"
     )
-  ];
+  ]);
 }
 
 function ModelCol({ cell }) {
@@ -47,16 +122,21 @@ function ModelCol({ cell }) {
   if (typeof value === "string") {
     return value;
   }
+  if (value == null) {
+    return null;
+  }
   return Object.keys(value)[0];
 }
 
 function AddDeviceButton({ cell }) {
+  const readAvailable = useAppStore(x => x.devices.readAvailable);
   return h(
     Link,
     {
       className:
         "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
-      to: "/devices/available"
+      to: "/devices/available",
+      onClick: readAvailable
     },
     "Add Device"
   );
@@ -74,7 +154,7 @@ function DevicesConfiguredTable({ data }) {
       },
       {
         Header: "Model",
-        accessor: "device.model",
+        accessor: "device.model.name",
         Cell: ModelCol,
         className: "text-right"
       },
@@ -94,10 +174,6 @@ function DevicesConfiguredTable({ data }) {
 }
 
 export default function DevicesConfigured() {
-  const read = useAppStore(x => x.devices.read);
-  useEffect(() => {
-    read();
-  }, []);
   const configured = useAppStore(x => x.devices.configured);
   const data = Object.keys(configured).map(slug => ({
     device: configured[slug][0],

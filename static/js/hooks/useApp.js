@@ -11,8 +11,27 @@ const [useAppStore, api] = create(set => {
       const response = await apiGet(`/config`);
       s(state => void (state.serverConfig = response.serverConfig));
     },
+    sensors: {
+      all: {},
+      read: async () => {
+        const response = await apiGet(`/sensors`);
+        s(state => void (state.sensors.all = response));
+      }
+    },
+    switches: {
+      all: {},
+      read: async () => {
+        const response = await apiGet(`/switches`);
+        s(state => void (state.switches.all = response));
+      }
+    },
     devices: {
+      available: [],
       configured: {},
+      readAvailable: async () => {
+        const response = await apiGet(`/devices/available`);
+        s(state => void (state.devices.available = response));
+      },
       read: async () => {
         const response = await apiGet(`/devices/configured`);
         s(state => void (state.devices.configured = response));
@@ -21,15 +40,17 @@ const [useAppStore, api] = create(set => {
         const response = await apiPost("/devices/configured", details);
         s(state => void (state.devices.configured = response));
       },
-      get: async slug => {
+      get: async ({ slug }) => {
         const response = await apiGet(`/devices/configured/${slug}`);
         s(state => void (state.devices.configured[slug] = response));
       },
-      edit: async (slug, details) => {
+      edit: async ({ slug }, details) => {
         const response = await apiPut(`/devices/configured/${slug}`, details);
         s(state => void (state.devices.configured[slug] = response));
+        const all = await apiGet(`/devices/configured`);
+        s(state => void (state.devices.configured = all));
       },
-      remove: async slug => {
+      remove: async ({ slug }) => {
         const response = await apiDelete(`/devices/configured/${slug}`);
         s(state => void (state.devices.configured = response));
       }

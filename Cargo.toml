@@ -1,4 +1,5 @@
 # Instructions on cross-compiling for armv6: https://github.com/japaric/rust-cross/issues/42
+# Also, there are scripts that do the job
 [package]
 name = "restedpi"
 version = "0.1.0"
@@ -9,6 +10,7 @@ edition = "2018"
 rppal = "0.11.3"
 rust-crypto = "^0.2"
 warp = "0.1.19"
+rand = "0.6.0"
 mime_guess = "2.0"
 regex = "1"
 lazy_static = "1.4.0"
@@ -20,4 +22,3 @@ serde_derive = "1.0.101"
 pretty_env_logger = "0.3"
 rust-embed = "5.1.0"
 sled = "0.31"
-bincode = "1.2.1"

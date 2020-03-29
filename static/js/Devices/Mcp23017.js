@@ -14,7 +14,7 @@ export default function AddEditMcp23017(props) {
       setSubmitting(true);
 
       const params = {
-        model: { MCP23017: { bank0: {}, bank1: {} } },
+        model: { name: "MCP23017", bank0: {}, bank1: {} },
         description: form.description,
         name: form.name,
         address: Number(form.address)
@@ -23,7 +23,7 @@ export default function AddEditMcp23017(props) {
       if (props.device == null) {
         method = addDevice(params);
       } else {
-        method = editDevice(props.name, params);
+        method = editDevice({ slug: props.name }, params);
       }
       method
         .then(result => {

@@ -1,5 +1,6 @@
 import { h } from "/js/html.js";
-import { useTable } from "/js/depend/react-table.7.rc15.js";
+import { Fragment } from "/react/";
+import { useTable, useSortBy } from "/js/depend/react-table.7.rc15.js";
 
 const defaultPropGetter = () => ({});
 
@@ -17,10 +18,13 @@ export function Table({
     headerGroups,
     rows,
     prepareRow
-  } = useTable({
-    columns,
-    data
-  });
+  } = useTable(
+    {
+      columns,
+      data
+    },
+    useSortBy
+  );
 
   return h(
     "table",
@@ -38,13 +42,23 @@ export function Table({
                 "th",
                 column.getHeaderProps([
                   {
-                    className: `${column.className} bg-gray-100 font-light text-gray-600 px-4 py-2`,
+                    className: `bg-gray-100 font-light text-gray-600 px-4 py-2 text-left ${
+                      column.className == null ? "" : column.className
+                    }`,
                     style: column.style
                   },
+                  column.getSortByToggleProps(),
                   getColumnProps(column),
                   getHeaderProps(column)
                 ]),
-                column.render("Header")
+                [
+                  h(Fragment, { key: "h" }, column.render("Header")),
+                  h(
+                    "span",
+                    { key: "sort" },
+                    column.isSorted ? (column.isSortedDesc ? " ⇟" : " ⇞") : "  "
+                  )
+                ]
               )
             )
           )
