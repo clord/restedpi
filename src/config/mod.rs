@@ -26,11 +26,15 @@ pub enum SunPosition {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "name")]
 pub enum Type {
-    MCP9808,
+    MCP9808 {
+        address: u16,
+    },
     BMP085 {
+        address: u16,
         mode: SamplingMode,
     },
     MCP23017 {
+        address: u16,
         bank0: HashMap<usize, SwitchPin>,
         bank1: HashMap<usize, SwitchPin>,
     },
@@ -48,7 +52,6 @@ pub struct Device {
     pub model: Type,
     pub name: String,
     pub description: String,
-    pub address: u16,
     pub disabled: Option<bool>,
 }
 

@@ -39,57 +39,57 @@ impl Device {
 
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
-            config::Type::MCP9808 => Ok(()),
-            config::Type::MCP23017 { bank0: _, bank1: _ } => {
-                self.mcp23017_state.reset(self.config.address, &self.i2c)
+            config::Type::MCP9808 { address } => Ok(()),
+            config::Type::MCP23017 { address, bank0: _, bank1: _ } => {
+                self.mcp23017_state.reset(*address, &self.i2c)
             }
-            config::Type::BMP085 { mode: _ } => {
-                self.bmp085_state.reset(self.config.address, &self.i2c)
+            config::Type::BMP085 { address, mode: _ } => {
+                self.bmp085_state.reset(*address, &self.i2c)
             }
         }
     }
 
     pub fn sensor_count(&self) -> usize {
         match &self.config.model {
-            config::Type::BMP085 { mode: _ } => 2,
-            config::Type::MCP9808 => 1,
-            config::Type::MCP23017 { bank0: _, bank1: _ } => 16,
+            config::Type::BMP085 {address: _, mode: _ } => 2,
+            config::Type::MCP9808 { address: _ } => 1,
+            config::Type::MCP23017 {address: _ , bank0: _, bank1: _ } => 16,
         }
     }
 
     pub fn switch_count(&self) -> usize {
         match self.config.model {
-            config::Type::BMP085 { mode: _ } => 0,
-            config::Type::MCP9808 => 0,
-            config::Type::MCP23017 { bank0: _, bank1: _ } => 16,
+            config::Type::BMP085 { address: _, mode: _ } => 0,
+            config::Type::MCP9808 { address: _ } => 0,
+            config::Type::MCP23017 { address: _, bank0: _, bank1: _ } => 16,
         }
     }
 
     pub fn read_sensor(&mut self, index: usize) -> Result<(f64, config::Unit)> {
         match &self.config.model {
-            config::Type::BMP085 { mode } => match index {
+            config::Type::BMP085 { address, mode } => match index {
                 0 => {
                     let v = self
                         .bmp085_state
-                        .temperature_in_c(self.config.address, &self.i2c)?;
+                        .temperature_in_c(*address, &self.i2c)?;
                     Ok((v as f64, config::Unit::DegC))
                 }
                 1 => {
                     let v =
                         self.bmp085_state
-                            .pressure_kpa(self.config.address, *mode, &self.i2c)?;
+                            .pressure_kpa(*address, *mode, &self.i2c)?;
                     Ok((v as f64, config::Unit::KPa))
                 }
                 _ => Err(Error::OutOfBounds(index)),
             },
-            config::Type::MCP9808 => match index {
+            config::Type::MCP9808 { address } => match index {
                 0 => {
-                    let temp = mcp9808::read_temp(&self.i2c, self.config.address)?;
+                    let temp = mcp9808::read_temp(&self.i2c, *address)?;
                     Ok((temp as f64, config::Unit::DegC))
                 }
                 _ => Err(Error::OutOfBounds(index)),
             },
-            config::Type::MCP23017 { bank0, bank1 } => {
+            config::Type::MCP23017 { address, bank0, bank1 } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
                 let active_low = match bank {
                     mcp23017::Bank::A => bank0,
@@ -99,7 +99,7 @@ impl Device {
                 .map_or(false, |v| v.active_low);
                 let pin = self
                     .mcp23017_state
-                    .get_pin(self.config.address, bank, pin, &self.i2c)?;
+                    .get_pin(*address, bank, pin, &self.i2c)?;
                 if active_low {
                     Ok((if pin { 1.0f64 } else { 0.0f64 }, config::Unit::Boolean))
                 } else {
@@ -111,9 +111,9 @@ impl Device {
 
     pub fn write_switch(&mut self, index: usize, value: bool) -> Result<()> {
         match &self.config.model {
-            config::Type::BMP085 { mode: _ } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP9808 => Err(Error::OutOfBounds(index)),
-            config::Type::MCP23017 { bank0, bank1 } => {
+            config::Type::BMP085 { address:_, mode: _ } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP9808 { address:_ } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP23017 { address,  bank0, bank1 } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
                 let active_low = match bank {
                     mcp23017::Bank::A => bank0,
@@ -123,10 +123,10 @@ impl Device {
                 .map_or(false, |v| v.active_low);
                 if active_low {
                     self.mcp23017_state
-                        .set_pin(self.config.address, bank, pin, value, &self.i2c)
+                        .set_pin(*address, bank, pin, value, &self.i2c)
                 } else {
                     self.mcp23017_state
-                        .set_pin(self.config.address, bank, pin, !value, &self.i2c)
+                        .set_pin(*address, bank, pin, !value, &self.i2c)
                 }
             }
         }

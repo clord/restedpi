@@ -22,10 +22,7 @@ pub struct State {
 impl State {
     pub fn add_device(&mut self, config: &config::Device) -> Result<()> {
         let mut device = Device::new(config, self.i2c.clone());
-        info!(
-            "Adding device: '{}' at I2C address: {}",
-            config.name, config.address
-        );
+        info!("Adding device: '{}'", config.name);
 
         if cfg!(raspberry_pi) {
             // TODO: Real raspberry pi can reset, but this is for debugging
@@ -78,10 +75,6 @@ impl State {
         self.devices.clear();
         for (sname, config) in self.storage.read_devices()? {
             let mut device = Device::new(&config, self.i2c.clone());
-            info!(
-                "Adding device: '{}' at I2C address: {}",
-                config.name, config.address
-            );
             if cfg!(raspberry_pi) {
                 device.reset()?;
             }

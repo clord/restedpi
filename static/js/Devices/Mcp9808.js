@@ -14,10 +14,12 @@ export default function AddEditMcp9808(props) {
       setSubmitting(true);
 
       const params = {
-        model: { name: "MCP9808" },
-        description: form.description,
-        name: form.name,
-        address: Number(form.address)
+        ...form,
+        model: {
+          ...form.model,
+          name: "MCP9808",
+          address: Number(form.model.address)
+        }
       };
       let method;
       if (props.device == null) {
@@ -47,8 +49,8 @@ export default function AddEditMcp9808(props) {
       label: "Description"
     }),
     h(Text, {
-      id: "address",
-      key: "address",
+      id: "model.address",
+      key: "model.address",
       label: "I2C Bus Address",
       required: "Required",
       pattern: {

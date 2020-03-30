@@ -18,7 +18,7 @@ function ConfirmRemove({ onRemove, children }) {
     h(
       "button",
       {
-        className: "text-sm text-gray-500 py-1 px-3",
+        className: "text-sm text-gray-500 py-1 px-3 mx-1 ",
         key: "r",
         onClick: () => setShowConfirm(x => !x)
       },
@@ -93,29 +93,49 @@ function ActionCol({ cell }) {
     removeDevice({ slug });
   }, [slug]);
 
-  return h("div", { className: "relative" }, [
-    h(
-      ConfirmRemove,
-      {
-        key: "1",
-        onRemove: handleRemove
-      },
-      "Remove"
-    ),
-    h(
-      Link,
-      {
-        className:
-          "text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
-        key: "2",
-        to: `/devices/${slug}`,
-        onClick: () => {
-          getDevice({ slug });
-        }
-      },
-      "Edit"
-    )
-  ]);
+  return h(
+    "div",
+    {
+      className:
+        "relative flex flex-row flex-no-wrap content-end items-center flex-auto"
+    },
+    [
+      h(
+        ConfirmRemove,
+        {
+          key: "1",
+          onRemove: handleRemove
+        },
+        "Remove"
+      ),
+      h(
+        Link,
+        {
+          className:
+            "mx-1 text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+          key: "2",
+          to: `/devices/${slug}`,
+          onClick: () => {
+            getDevice({ slug });
+          }
+        },
+        "Edit"
+      ),
+      h(
+        Link,
+        {
+          className:
+            "mx-1 text-sm bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+          key: "history",
+          to: `/devices/${slug}/history`,
+          onClick: () => {
+            getDevice({ slug });
+          }
+        },
+        "History"
+      )
+    ]
+  );
 }
 
 function ModelCol({ cell }) {
@@ -167,7 +187,7 @@ function DevicesConfiguredTable({ data }) {
       {
         accessor: "slug",
         Cell: ActionCol,
-        className: "text-right"
+        columnClass: "bg-gray-100"
       }
     ],
     data

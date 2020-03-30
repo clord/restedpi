@@ -14,10 +14,14 @@ export default function AddEditMcp23017(props) {
       setSubmitting(true);
 
       const params = {
-        model: { name: "MCP23017", bank0: {}, bank1: {} },
-        description: form.description,
-        name: form.name,
-        address: Number(form.address)
+        ...form,
+        model: {
+          ...form.model,
+          name: "MCP23017",
+          bank0: {},
+          bank1: {},
+          address: Number(form.model.address)
+        }
       };
       let method;
       if (props.device == null) {
@@ -47,8 +51,8 @@ export default function AddEditMcp23017(props) {
       label: "Description"
     }),
     h(Text, {
-      id: "address",
-      key: "address",
+      id: "model.address",
+      key: "model.address",
       label: "I2C Bus Address",
       required: "Required",
       pattern: {

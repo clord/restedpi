@@ -14,10 +14,12 @@ export default function AddBmp085(props) {
       setSubmitting(true);
 
       const params = {
-        model: { name: "BMP085", mode: form.resolution },
-        description: form.description,
-        name: form.name,
-        address: Number(form.address)
+        ...form,
+        model: {
+          ...form.model,
+          name: "BMP085",
+          address: Number(form.model.address)
+        }
       };
 
       let method;
@@ -49,10 +51,11 @@ export default function AddBmp085(props) {
       label: "Description"
     }),
     h(Text, {
-      id: "address",
-      key: "address",
+      id: "model.address",
+      key: "model.address",
       label: "I2C Bus Address",
       required: "Required",
+      type: "number",
       pattern: {
         value: /^\d+$/,
         message: "Address must be decimal number"
@@ -61,8 +64,8 @@ export default function AddBmp085(props) {
     h(
       Select,
       {
-        key: "select",
-        name: "resolution",
+        key: "model.mode",
+        name: "model.mode",
         defaultValue: "Standard",
         label: "Resolution"
       },
