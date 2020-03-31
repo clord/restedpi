@@ -25,11 +25,34 @@ export function Table({
     },
     useSortBy
   );
+  let aid = 0;
+  let id = 0;
 
   return h(
     "table",
     { ...getTableProps(), className: "border table-auto container" },
     [
+      ...headerGroups.map(headerGroup =>
+        h(
+          "colgroup",
+          {
+            key: aid++,
+            span:
+              headerGroup.headers.length > 1
+                ? headerGroup.headers.length
+                : undefined
+          },
+          headerGroup.headers.map(col =>
+            h("col", {
+              key: id++,
+              className: `${col.isSorted ? "bg-gray-100" : ""} ${
+                col.columnClass == null ? "" : col.columnClass
+              }`,
+              style: col.columnStyle
+            })
+          )
+        )
+      ),
       h(
         "thead",
         { key: "thead" },

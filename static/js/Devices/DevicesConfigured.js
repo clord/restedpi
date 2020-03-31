@@ -18,7 +18,7 @@ function ConfirmRemove({ onRemove, children }) {
     h(
       "button",
       {
-        className: "text-sm text-gray-500 py-1 px-3 mx-1 ",
+        className: "text-gray-500 py-1 px-3 mx-1 ",
         key: "r",
         onClick: () => setShowConfirm(x => !x)
       },
@@ -61,7 +61,7 @@ function ConfirmRemove({ onRemove, children }) {
                         key: "c",
                         onClick: () => setShowConfirm(false),
                         className:
-                          "text-sm text-white hover:bg-gray-600 py-1 px-3 mr-3 rounded"
+                          "text-white hover:bg-gray-600 py-1 px-3 mr-3 rounded"
                       },
                       "Don’t"
                     ),
@@ -71,7 +71,7 @@ function ConfirmRemove({ onRemove, children }) {
                         key: "r",
                         onClick: onRemove,
                         className:
-                          "text-sm bg-red-400 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
+                          "bg-red-400 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
                       },
                       "Remove"
                     )
@@ -112,7 +112,7 @@ function ActionCol({ cell }) {
         Link,
         {
           className:
-            "mx-1 text-sm bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+            "mx-1 bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
           key: "2",
           to: `/devices/${slug}`,
           onClick: () => {
@@ -125,7 +125,7 @@ function ActionCol({ cell }) {
         Link,
         {
           className:
-            "mx-1 text-sm bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
+            "mx-1 bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
           key: "history",
           to: `/devices/${slug}/history`,
           onClick: () => {
@@ -187,7 +187,8 @@ function DevicesConfiguredTable({ data }) {
       {
         accessor: "slug",
         Cell: ActionCol,
-        columnClass: "bg-gray-100"
+        className: "text-xs",
+        columnStyle: { width: "300px" }
       }
     ],
     data
