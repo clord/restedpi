@@ -1,21 +1,21 @@
-import { createContext, useContext, Fragment } from "/react/";
+import { createContext, useContext, Fragment } from '/react/';
 import useForm, {
   FormContext,
-  useFormContext
-} from "/js/depend/react-hook-form.js";
-import { h } from "/js/html.js";
+  useFormContext,
+} from '/js/depend/react-hook-form.js';
+import { h } from '/js/html.js';
 
 export function Form({ onSubmit, children, defaultValues }) {
-  const methods = useForm({ mode: "onBlur", defaultValues });
+  const methods = useForm({ mode: 'onBlur', defaultValues });
   const { handleSubmit } = methods;
   return h(
     FormContext,
     methods,
     h(
-      "form",
+      'form',
       {
-        className: "w-full max-w-sm flex flex-col",
-        onSubmit: handleSubmit(onSubmit)
+        className: 'w-full max-w-sm flex flex-col',
+        onSubmit: handleSubmit(onSubmit),
       },
       children
     )
@@ -27,15 +27,15 @@ export function Submit({ disabled, submitting, children }) {
   const hasErrors = Object.entries(errors).length > 0;
 
   return h(
-    "button",
+    'button',
     {
-      type: "submit",
+      type: 'submit',
       disabled: hasErrors || disabled,
       className: `mt-2 ${
         hasErrors
-          ? "bg-gray-300 text-gray-500"
-          : "bg-blue-500 hover:bg-blue-700 text-white"
-      } font-bold py-2 px-4 rounded`
+          ? 'bg-gray-300 text-gray-500'
+          : 'bg-blue-500 hover:bg-blue-700 text-white'
+      } font-bold py-2 px-4 rounded`,
     },
     children
   );
@@ -43,18 +43,18 @@ export function Submit({ disabled, submitting, children }) {
 
 export function Label({ children, ...props }) {
   return h(
-    "label",
+    'label',
     {
       ...props,
       className:
-        "block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+        'block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2',
     },
     children
   );
 }
 
 export function Group({ name, children }) {
-  return h("fieldset", {}, [h("legend", {}, name), h(Fragment, {}, children)]);
+  return h('fieldset', {}, [h('legend', {}, name), h(Fragment, {}, children)]);
 }
 
 export function Text({ id, label, placeholder, ...validation }) {
@@ -62,27 +62,27 @@ export function Text({ id, label, placeholder, ...validation }) {
   const hasError = errors.hasOwnProperty(id);
   return h(Label, { htmlFor: id }, [
     label,
-    h("input", {
-      type: "text",
+    h('input', {
+      type: 'text',
       key: 1,
       placeholder,
       className: `appearance-none block w-full text-gray-700 border bg-gray-200
         ${
           hasError
-            ? "border-red-500 focus:border-red-400"
-            : "border-gray-200 focus:border-gray-500"
+            ? 'border-red-500 focus:border-red-400'
+            : 'border-gray-200 focus:border-gray-500'
         } rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white`,
       id,
       name: id,
-      ref: register(validation)
+      ref: register(validation),
     }),
     errors[id]
       ? h(
-          "p",
-          { key: "err", className: "text-red-500 text-xs" },
+          'p',
+          { key: 'err', className: 'text-red-500 text-xs' },
           errors[id].message
         )
-      : null
+      : null,
   ]);
 }
 
@@ -92,7 +92,7 @@ export function Radio({ name, children }) {
   const { errors } = useFormContext();
   return h(ChoiceContext.Provider, { value: name }, [
     h(Fragment, {}, children),
-    h("aside", {}, errors[name] ? "required" : null)
+    h('aside', {}, errors[name] ? 'required' : null),
   ]);
 }
 
@@ -101,23 +101,23 @@ export function RadioChoice({ name, label, children }) {
   const { register } = useFormContext();
   return [
     h(
-      "label",
+      'label',
       {
         htmlFor: name,
         key: name,
         className:
-          "block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+          'block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2',
       },
       [label]
     ),
-    h("input", {
+    h('input', {
       name: groupname,
-      type: "radio",
+      type: 'radio',
       key: `${name}-input`,
       value: name,
-      ref: register({ required: true })
+      ref: register({ required: true }),
     }),
-    h(Fragment, {}, children)
+    h(Fragment, {}, children),
   ];
 }
 
@@ -127,57 +127,57 @@ export function Select({ name, label, defaultValue, children }) {
   const { errors, register } = useFormContext();
   return h(ChoiceContext.Provider, { value: name }, [
     h(
-      "label",
+      'label',
       {
         htmlFor: name,
         key: name,
         className:
-          "block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+          'block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2',
       },
       [
-        h(Fragment, { key: "lab" }, label),
-        h("div", { key: "0", className: "relative" }, [
+        h(Fragment, { key: 'lab' }, label),
+        h('div', { key: '0', className: 'relative' }, [
           h(
-            "select",
+            'select',
             {
               ref: register({ required: true }),
               key: `${name}-select`,
               defaultValue,
               name,
               className:
-                "block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+                'block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500',
             },
             children
           ),
           h(
-            "div",
+            'div',
             {
-              key: "1",
+              key: '1',
               className:
-                "pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700"
+                'pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700',
             },
             h(
-              "svg",
+              'svg',
               {
-                className: "fill-current h-4 w-4",
-                xmlns: "http://www.w3.org/2000/svg",
-                viewBox: "0 0 20 20"
+                className: 'fill-current h-4 w-4',
+                xmlns: 'http://www.w3.org/2000/svg',
+                viewBox: '0 0 20 20',
               },
-              h("path", {
+              h('path', {
                 d:
-                  "M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"
+                  'M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z',
               })
             )
-          )
-        ])
+          ),
+        ]),
       ]
     ),
-    h("aside", { key: "err" }, errors[name] ? "required" : null)
+    h('aside', { key: 'err' }, errors[name] ? 'required' : null),
   ]);
 }
 
 export function SelectChoice({ value, children }) {
-  return h("option", { value }, children);
+  return h('option', { value }, children);
 }
 
 Select.Choice = SelectChoice;

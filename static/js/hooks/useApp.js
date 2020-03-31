@@ -1,7 +1,7 @@
-import { useEffect } from "/react/";
-import produce from "/js/depend/immer.module.js";
-import create from "/js/depend/zustand.js";
-import { apiGet, apiDelete, apiPut, apiPost } from "/js/hooks/network.js";
+import { useEffect } from '/react/';
+import produce from '/js/depend/immer.module.js';
+import create from '/js/depend/zustand.js';
+import { apiGet, apiDelete, apiPut, apiPost } from '/js/hooks/network.js';
 
 const [useAppStore, api] = create(set => {
   const s = fn => set(produce(fn));
@@ -16,14 +16,14 @@ const [useAppStore, api] = create(set => {
       read: async () => {
         const response = await apiGet(`/sensors`);
         s(state => void (state.sensors.all = response));
-      }
+      },
     },
     switches: {
       all: {},
       read: async () => {
         const response = await apiGet(`/switches`);
         s(state => void (state.switches.all = response));
-      }
+      },
     },
     devices: {
       available: [],
@@ -37,7 +37,7 @@ const [useAppStore, api] = create(set => {
         s(state => void (state.devices.configured = response));
       },
       add: async details => {
-        const response = await apiPost("/devices/configured", details);
+        const response = await apiPost('/devices/configured', details);
         s(state => void (state.devices.configured = response));
       },
       get: async ({ slug }) => {
@@ -53,8 +53,8 @@ const [useAppStore, api] = create(set => {
       remove: async ({ slug }) => {
         const response = await apiDelete(`/devices/configured/${slug}`);
         s(state => void (state.devices.configured = response));
-      }
-    }
+      },
+    },
   };
 });
 

@@ -1,6 +1,6 @@
-import { useAppStore } from "/js/hooks/useApp.js";
-import { useRoute } from "/js/depend/wouter/";
-import { useEffect } from "/react/";
+import { useAppStore } from '/js/hooks/useApp.js';
+import { useRoute } from '/js/depend/wouter/';
+import { useEffect } from '/react/';
 
 export function useRefreshOnMount(path, accessor, props = []) {
   const getter = useAppStore(accessor);

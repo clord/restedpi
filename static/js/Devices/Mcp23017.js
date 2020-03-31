@@ -1,8 +1,8 @@
-import { useCallback, useState } from "/react/";
-import { useAppStore } from "/js/hooks/useApp.js";
-import { useLocation } from "/js/depend/wouter/";
-import { Form, Text, Submit } from "/js/Forms/Form.js";
-import { h } from "/js/html.js";
+import { useCallback, useState } from '/react/';
+import { useAppStore } from '/js/hooks/useApp.js';
+import { useLocation } from '/js/depend/wouter/';
+import { Form, Text, Submit } from '/js/Forms/Form.js';
+import { h } from '/js/html.js';
 
 export default function AddEditMcp23017(props) {
   const [submitting, setSubmitting] = useState(false);
@@ -17,11 +17,11 @@ export default function AddEditMcp23017(props) {
         ...form,
         model: {
           ...form.model,
-          name: "MCP23017",
+          name: 'MCP23017',
           bank0: {},
           bank1: {},
-          address: Number(form.model.address)
-        }
+          address: Number(form.model.address),
+        },
       };
       let method;
       if (props.device == null) {
@@ -31,7 +31,7 @@ export default function AddEditMcp23017(props) {
       }
       method
         .then(result => {
-          setLocation("/devices");
+          setLocation('/devices');
         })
         .finally(() => setSubmitting(false));
     },
@@ -40,34 +40,34 @@ export default function AddEditMcp23017(props) {
 
   return h(Form, { onSubmit: handleSubmit, defaultValues: props.device }, [
     h(Text, {
-      id: "name",
-      key: "name",
-      label: "Device name",
-      required: "Required"
+      id: 'name',
+      key: 'name',
+      label: 'Device name',
+      required: 'Required',
     }),
     h(Text, {
-      id: "description",
-      key: "description",
-      label: "Description"
+      id: 'description',
+      key: 'description',
+      label: 'Description',
     }),
     h(Text, {
-      id: "model.address",
-      key: "model.address",
-      label: "I2C Bus Address",
-      required: "Required",
+      id: 'model.address',
+      key: 'model.address',
+      label: 'I2C Bus Address',
+      required: 'Required',
       pattern: {
         value: /^\d+$/,
-        message: "Address must be decimal number"
-      }
+        message: 'Address must be decimal number',
+      },
     }),
     h(
-      "div",
-      { key: 1, className: "mx-auto px-3 py-3" },
+      'div',
+      { key: 1, className: 'mx-auto px-3 py-3' },
       h(
         Submit,
-        { key: "sub", submitting },
-        props.device == null ? "Create" : "Edit"
+        { key: 'sub', submitting },
+        props.device == null ? 'Create' : 'Edit'
       )
-    )
+    ),
   ]);
 }

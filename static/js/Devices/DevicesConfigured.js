@@ -1,87 +1,87 @@
-import { useCallback, useState, useEffect } from "/react/";
-import { h } from "/js/html.js";
-import { Link } from "/js/depend/wouter/";
-import { useAppStore } from "/js/hooks/useApp.js";
-import { Table } from "/js/Table/";
+import { useCallback, useState, useEffect } from '/react/';
+import { h } from '/js/html.js';
+import { Link } from '/js/depend/wouter/';
+import { useAppStore } from '/js/hooks/useApp.js';
+import { Table } from '/js/Table/';
 
 function DeviceStatus({ cell }) {
   switch (cell.value) {
-    case "Ok":
-      return h("span", {}, "OK");
+    case 'Ok':
+      return h('span', {}, 'OK');
   }
   return null;
 }
 
 function ConfirmRemove({ onRemove, children }) {
   const [showConfirm, setShowConfirm] = useState(false);
-  return h("span", { className: "relative" }, [
+  return h('span', { className: 'relative' }, [
     h(
-      "button",
+      'button',
       {
-        className: "text-gray-500 py-1 px-3 mx-1 ",
-        key: "r",
-        onClick: () => setShowConfirm(x => !x)
+        className: 'text-gray-500 py-1 px-3 mx-1 ',
+        key: 'r',
+        onClick: () => setShowConfirm(x => !x),
       },
       children
     ),
     ...(showConfirm
       ? [
           h(
-            "aside",
+            'aside',
             {
-              key: "a",
+              key: 'a',
               className:
-                "flex flex-col items-end z-40 text-gray-500 top-1 right-0 absolute"
+                'flex flex-col items-end z-40 text-gray-500 top-1 right-0 absolute',
             },
             [
               h(
-                "svg",
+                'svg',
                 {
-                  key: "s",
-                  className: "fill-current mr-5",
-                  width: "14",
-                  height: "6",
-                  viewBox: "0 0 14 6",
-                  xmlns: "http://www.w3.org/2000/svg"
+                  key: 's',
+                  className: 'fill-current mr-5',
+                  width: '14',
+                  height: '6',
+                  viewBox: '0 0 14 6',
+                  xmlns: 'http://www.w3.org/2000/svg',
                 },
-                h("path", { d: "M7 0l6.928 6H.072L7 0z" })
+                h('path', { d: 'M7 0l6.928 6H.072L7 0z' })
               ),
               h(
-                "div",
+                'div',
                 {
-                  key: "b",
-                  className: "bg-gray-500 text-white p-3 rounded"
+                  key: 'b',
+                  className: 'bg-gray-500 text-white p-3 rounded',
                 },
                 [
-                  h("h2", { key: "h", className: "mb-4" }, "Are you sure?"),
-                  h("div", { key: "d", className: "flex" }, [
+                  h('h2', { key: 'h', className: 'mb-4' }, 'Are you sure?'),
+                  h('div', { key: 'd', className: 'flex' }, [
                     h(
-                      "button",
+                      'button',
                       {
-                        key: "c",
+                        key: 'c',
                         onClick: () => setShowConfirm(false),
                         className:
-                          "text-white hover:bg-gray-600 py-1 px-3 mr-3 rounded"
+                          'text-white hover:bg-gray-600 py-1 px-3 mr-3 rounded',
                       },
-                      "Don’t"
+                      'Don’t'
                     ),
                     h(
-                      "button",
+                      'button',
                       {
-                        key: "r",
+                        key: 'r',
                         onClick: onRemove,
                         className:
-                          "bg-red-400 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
+                          'bg-red-400 hover:bg-red-700 text-white font-bold py-1 px-3 rounded',
                       },
-                      "Remove"
-                    )
-                  ])
+                      'Remove'
+                    ),
+                  ]),
                 ]
-              )
+              ),
             ]
-          )
+          ),
         ]
-      : [])
+      : []),
   ]);
 }
 
@@ -94,53 +94,53 @@ function ActionCol({ cell }) {
   }, [slug]);
 
   return h(
-    "div",
+    'div',
     {
       className:
-        "relative flex flex-row flex-no-wrap content-end items-center flex-auto"
+        'relative flex flex-row flex-no-wrap content-end items-center flex-auto',
     },
     [
       h(
         ConfirmRemove,
         {
-          key: "1",
-          onRemove: handleRemove
+          key: '1',
+          onRemove: handleRemove,
         },
-        "Remove"
+        'Remove'
       ),
       h(
         Link,
         {
           className:
-            "mx-1 bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
-          key: "2",
+            'mx-1 bg-blue-400 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded',
+          key: '2',
           to: `/devices/${slug}`,
           onClick: () => {
             getDevice({ slug });
-          }
+          },
         },
-        "Edit"
+        'Edit'
       ),
       h(
         Link,
         {
           className:
-            "mx-1 bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded",
-          key: "history",
+            'mx-1 bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded',
+          key: 'history',
           to: `/devices/${slug}/history`,
           onClick: () => {
             getDevice({ slug });
-          }
+          },
         },
-        "History"
-      )
+        'History'
+      ),
     ]
   );
 }
 
 function ModelCol({ cell }) {
   const { value } = cell;
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return value;
   }
   if (value == null) {
@@ -155,43 +155,43 @@ function AddDeviceButton({ cell }) {
     Link,
     {
       className:
-        "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded",
-      to: "/devices/available",
-      onClick: readAvailable
+        'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded',
+      to: '/devices/available',
+      onClick: readAvailable,
     },
-    "Add Device"
+    'Add Device'
   );
 }
 
 function DevicesConfiguredTable({ data }) {
   return h(Table, {
     columns: [
-      { Header: "Name", accessor: "device.name", className: "text-right" },
+      { Header: 'Name', accessor: 'device.name', className: 'text-right' },
       {
-        Header: "Status",
-        accessor: "status",
+        Header: 'Status',
+        accessor: 'status',
         Cell: DeviceStatus,
-        className: "text-right"
+        className: 'text-right',
       },
       {
-        Header: "Model",
-        accessor: "device.model.name",
+        Header: 'Model',
+        accessor: 'device.model.name',
         Cell: ModelCol,
-        className: "text-right"
+        className: 'text-right',
       },
       {
-        Header: "Description",
-        accessor: "device.description",
-        className: "text-left"
+        Header: 'Description',
+        accessor: 'device.description',
+        className: 'text-left',
       },
       {
-        accessor: "slug",
+        accessor: 'slug',
         Cell: ActionCol,
-        className: "text-xs",
-        columnStyle: { width: "300px" }
-      }
+        className: 'text-xs',
+        columnStyle: { width: '300px' },
+      },
     ],
-    data
+    data,
   });
 }
 
@@ -201,22 +201,22 @@ export default function DevicesConfigured() {
     device: configured[slug][0],
     status: configured[slug][1],
     key: slug,
-    slug
+    slug,
   }));
 
-  return h("article", { className: "max-w-sm w-full lg:max-w-full" }, [
+  return h('article', { className: 'max-w-sm w-full lg:max-w-full' }, [
     h(
-      "div",
-      { className: "flex mb-4 justify-between items-baseline", key: 0 },
+      'div',
+      { className: 'flex mb-4 justify-between items-baseline', key: 0 },
       [
         h(
-          "h1",
-          { className: "text-gray-900 font-bold text-xl mb-3", key: 0 },
-          "Configured Devices"
+          'h1',
+          { className: 'text-gray-900 font-bold text-xl mb-3', key: 0 },
+          'Configured Devices'
         ),
-        h(AddDeviceButton, { key: 1 })
+        h(AddDeviceButton, { key: 1 }),
       ]
     ),
-    h(DevicesConfiguredTable, { data, key: 1 })
+    h(DevicesConfiguredTable, { data, key: 1 }),
   ]);
 }

@@ -1,8 +1,8 @@
-import { useGet } from "/js/hooks/network.js";
-import { useEffect } from "/react/";
-import { html, render } from "/js/html.js";
-import { Link } from "/js/depend/wouter/";
-import { api } from "/js/hooks/useApp.js";
+import { useGet } from '/js/hooks/network.js';
+import { useEffect } from '/react/';
+import { html, render } from '/js/html.js';
+import { Link } from '/js/depend/wouter/';
+import { api } from '/js/hooks/useApp.js';
 
 export function Nav(props) {
   return html`

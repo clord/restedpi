@@ -1,15 +1,15 @@
-import { html, h } from "./html.js";
-import { Nav } from "./Nav.js";
-import { useAppStore } from "/js/hooks/useApp.js";
+import { html, h } from './html.js';
+import { Nav } from './Nav.js';
+import { useAppStore } from '/js/hooks/useApp.js';
 
 export function About() {
   const name = useAppStore(x => x.serverConfig.deviceName);
-  const className = "whitespace-no-wrap text-sm hidden md:block";
+  const className = 'whitespace-no-wrap text-sm hidden md:block';
 
   if (name == null) {
-    return h("aside", { className }, "loading");
+    return h('aside', { className }, 'loading');
   }
-  return h("aside", { className }, name);
+  return h('aside', { className }, name);
 }
 /**
 
