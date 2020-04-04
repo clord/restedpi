@@ -19,8 +19,22 @@
             };
         </script>
 
+        <!-- Preload api endpoints -->
+        <link rel="preload" href="/api/config" as="fetch">
+
         <!-- Preload dependencies async -->
+        <script type="module" src="/react/" async></script>
         <script type="module" src="/js/depend/react/" async></script>
+        <script type="module" src="/js/depend/react/react.production.min-2585db34.js" async></script>
+        <script type="module" src="/js/depend/react/react.js" async></script>
+        <script type="module" src="/js/depend/react/react-dom.js" async></script>
+        <script type="module" src="/js/depend/react/dev/react.js" async></script>
+        <script type="module" src="/js/depend/react/prop-types.js" async></script>
+        <script type="module" src="/react/react-dom.js" async></script>
+        <script type="module" src="/js/depend/react/dev/_commonjsHelpers-62a4d7f9.js" async></script>
+        <script type="module" src="/js/depend/react/dev/checkPropTypes-9f1f0edf.js" async></script>
+        <script type="module" src="/js/depend/react/dev/react.development-0624802a.js" async></script>
+        <script type="module" src="/js/depend/react/dev/react-dom.js" async></script>
 
         <script type="module" src="/js/depend/htm.js" async></script>
         <script type="module" src="/js/depend/zustand.js" async></script>
@@ -36,9 +50,11 @@
         <script type="module" src="/js/depend/wouter/matcher.js" async></script>
         <script type="module" src="/js/depend/wouter/use-location.js" async></script>
         <script type="module" src="/js/depend/wouter/react-deps.js" async></script>
+        
 
         <!-- Preload core internal modules async -->
         <script type="module" src="/js/hooks/network.js" async></script>
+        <script type="module" src="/js/useRefreshOnMount.js" async></script>
         <script type="module" src="/js/hooks/useApp.js" async></script>
         <script type="module" src="/js/html.js" async></script>
         <script type="module" src="/js/Nav.js" async></script>
@@ -47,7 +63,6 @@
         <script type="module" src="/js/Table/" async></script>
         <script type="module" src="/js/Devices/" async></script>
         <script type="module" src="/js/Devices/Device.js" async></script>
-
 
         <!-- Start main application -->
         <script type="module" src="/js/main.js"></script>

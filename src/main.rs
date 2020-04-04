@@ -94,11 +94,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
 
+    let mut short_cache_header = HeaderMap::new();
+    short_cache_header.insert("cache-control", HeaderValue::from_static("private, max-age=4"));
+
     let r_config = warp::get2()
         .and(app.clone())
         .and(warp::any().map(move || server_name.clone()))
         .and(path!("config"))
-        .map(webapp::server_config);
+        .map(webapp::server_config)
+        .with(warp::reply::with::headers(short_cache_header.clone()));
 
     let r_config_check = warp::post2()
         .and(app.clone())

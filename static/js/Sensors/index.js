@@ -1,4 +1,5 @@
 import { h } from '/js/html.js';
+import { Link } from '/js/depend/wouter/';
 import { useAppStore } from '/js/hooks/useApp.js';
 import { useCallback, useEffect } from '/react/';
 import { Table } from '/js/Table/';
@@ -14,6 +15,19 @@ function UnitValue({ row }) {
       return value == 1 ? 'On' : 'Off';
   }
   return value;
+}
+
+function ActionCol() {
+  return h(
+    Link,
+    {
+      className:
+        'mx-1 bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded',
+      key: 'history',
+      to: `/`,
+    },
+    'History'
+  );
 }
 
 function AllSensorsTable({ data }) {
@@ -38,6 +52,12 @@ function AllSensorsTable({ data }) {
         accessor: ({ unit, value }) => `${value} ${unit}`,
         Cell: UnitValue,
       },
+      {
+        accessor: 'slug',
+        Cell: ActionCol,
+        className: 'text-xs',
+        columnStyle: { width: '110px' },
+      },
     ],
     data,
   });
@@ -46,7 +66,7 @@ function AllSensorsTable({ data }) {
 export function Sensors(props) {
   const sensors = useAppStore(x => x.sensors.all);
   const data = Object.keys(sensors).flatMap(name =>
-    sensors[name].map(x => ({ ...x, name }))
+    sensors[name].map((x, i) => ({ ...x, name: i > 0 ? `${name}/${i}` : name }))
   );
 
   return h('article', { className: 'max-w-sm w-full lg:max-w-full' }, [

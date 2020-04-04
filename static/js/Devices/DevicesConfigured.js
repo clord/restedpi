@@ -121,19 +121,6 @@ function ActionCol({ cell }) {
         },
         'Edit'
       ),
-      h(
-        Link,
-        {
-          className:
-            'mx-1 bg-blue-300 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded',
-          key: 'history',
-          to: `/devices/${slug}/history`,
-          onClick: () => {
-            getDevice({ slug });
-          },
-        },
-        'History'
-      ),
     ]
   );
 }
@@ -188,7 +175,7 @@ function DevicesConfiguredTable({ data }) {
         accessor: 'slug',
         Cell: ActionCol,
         className: 'text-xs',
-        columnStyle: { width: '300px' },
+        columnStyle: { width: '200px' },
       },
     ],
     data,
