@@ -1,0 +1,43 @@
+header {
+  background: var(--prim-b);
+  color: var(--prim-0);
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+}
+
+h1 {
+  color: var(--prim-0);
+  font-size: 1.0rem;
+  font-weight: 600;
+}
+
+a {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  min-height: 44px;
+  padding: 4px;
+  margin: 0 4px;
+  max-width: max-content;
+  text-align: center;
+  color: var(--prim-c);
+}
+
+a.active {
+  color: var(--prim-a);
+  border-radius: 4px;
+  background-color: var(--prim-c);
+}
+
+nav {
+  display: flex;
+  align-items: center;
+}
+
+
+main {
+
+}

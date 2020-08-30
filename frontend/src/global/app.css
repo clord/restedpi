@@ -1,0 +1,38 @@
+/*
+  Global App CSS
+  ----------------------
+  Use this file for styles that should be applied to all components.
+  For example, "font-family" within the "body" selector is a CSS property
+  most apps will want applied to all components.
+
+  Any global CSS variables should also be applied here.
+*/
+
+:root {
+  --primary: 20;
+  --secondary: 110;
+  --prim-0: hsla(var(--primary), 50%, 97%, 100%);
+  --prim-1: hsla(var(--primary), 50%, 94%, 100%);
+  --prim-a: hsla(var(--primary), 50%, 75%, 100%);
+  --prim-b: hsla(var(--primary), 50%, 50%, 100%);
+  --prim-c: hsla(var(--primary), 50%, 30%, 100%);
+  --prim-d: hsla(var(--primary), 50%, 5%, 100%);
+  --sec-0: hsla(var(--secondary), 50%, 97%, 100%);
+  --sec-1: hsla(var(--secondary), 50%, 95%, 100%);
+  --sec-a: hsla(var(--secondary), 50%, 75%, 100%);
+  --sec-b: hsla(var(--secondary), 50%, 50%, 100%);
+  --sec-c: hsla(var(--secondary), 50%, 30%, 100%);
+  --sec-d: hsla(var(--secondary), 50%, 10%, 100%);
+
+  --sl-color-primary-hue: 87;
+  --sl-color-primary-saturation: 87%;
+  --sl-color-primary-text: var(--sl-color-white);
+}
+
+body {
+  margin: 0px;
+  padding: 0px;
+  background-color: var(--prim-0);
+  color: var(--prim-d);
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+}

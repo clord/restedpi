@@ -1,0 +1,26 @@
+{
+  "name": "rpi-fe",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Stencil App Starter",
+  "scripts": {
+    "build": "stencil build",
+    "start": "stencil build --dev --watch --serve",
+    "test": "stencil test --spec --e2e",
+    "test.watch": "stencil test --spec --e2e --watchAll",
+    "generate": "stencil generate"
+  },
+  "devDependencies": {
+    "@stencil/core": "^1.17.3",
+    "@stencil/router": "^1.0.1",
+    "@types/jest": "^26.0.10",
+    "puppeteer": "^5.2.1"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@shoelace-style/shoelace": "^2.0.0-beta.16",
+    "http": "0.0.1-security",
+    "http-proxy": "^1.18.1",
+    "node-http-proxy": "^0.2.3"
+  }
+}
