@@ -15,7 +15,6 @@ fn make_device_key(name: &str) -> Vec<u8> {
 }
 
 impl Storage {
-
     /**
      * Read all devices stored in db.
      */

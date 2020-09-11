@@ -54,12 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let contents = match fs::read_to_string("config.json") {
         Ok(cfg) => cfg,
         Err(e) => {
-            warn!("error reading config: {}", e);
+            warn!("invalid config file: {}", e);
             "".to_string()
         }
     };
 
-    let config: config::Config = match serde_json::from_str(&contents) {
+    let config = match serde_json::from_str(&contents) {
         Ok(cfg) => cfg,
         Err(e) => {
             warn!("error parsing config: {}", e);
@@ -95,7 +95,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     const LIMIT: u64 = 1024 * 16;
 
     let mut short_cache_header = HeaderMap::new();
-    short_cache_header.insert("cache-control", HeaderValue::from_static("private, max-age=4"));
+    short_cache_header.insert(
+        "cache-control",
+        HeaderValue::from_static("private, max-age=4"),
+    );
 
     let r_config = warp::get2()
         .and(app.clone())

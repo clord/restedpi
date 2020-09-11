@@ -16,8 +16,6 @@ pub struct State {
     storage: storage::Storage,
 }
 
-// unsafe impl Send for State {}
-
 // Internal State machine for the application. this is core logic.
 impl State {
     pub fn add_device(&mut self, config: &config::Device) -> Result<()> {
@@ -25,7 +23,6 @@ impl State {
         info!("Adding device: '{}'", config.name);
 
         if cfg!(raspberry_pi) {
-            // TODO: Real raspberry pi can reset, but this is for debugging
             device.reset()?;
         }
 
