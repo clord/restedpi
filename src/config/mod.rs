@@ -35,16 +35,44 @@ pub enum Type {
     },
     MCP23017 {
         address: u16,
-        bank0: HashMap<usize, SwitchPin>,
-        bank1: HashMap<usize, SwitchPin>,
+        pins: HashMap<usize, Pin>,
     },
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SwitchPin {
-    pub direction: String,
-    pub active_low: bool,
-    pub schedule: Option<BoolExpr>,
+pub enum Pin {
+    Input {
+        /**
+         * Indicates the pin is reading a device that is active low, hence, invert the input.
+         */
+        active_low: bool,
+    },
+    Output {
+        /**
+         * Indicates the pin is controlling a device that is active low, hence, invert the output.
+         */
+        active_low: bool,
+
+        /**
+         * Some: expression that is evaluated each tick to determine what the pin should be set to
+         * None: Value set by user via actions.
+         */
+        value: Option<BoolExpr>,
+
+        /**
+         * Some: (and value is Some) if expr is true, `value` will not be computed.
+         */
+        disable_automatic: Option<BoolExpr>,
+    },
+}
+
+impl Pin {
+    pub fn is_active_low(&self) -> bool {
+        match self {
+            Pin::Output { active_low, .. } => *active_low,
+            Pin::Input { active_low, .. } => *active_low,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

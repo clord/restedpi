@@ -7,6 +7,7 @@ use crate::storage;
 use crate::webapp::slugify::slugify;
 use chrono::prelude::*;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 // Keep current app state in memory, together with device state
 pub struct State {
@@ -86,6 +87,27 @@ impl State {
         self.dt
     }
 
+    pub fn tick(&mut self) {
+        let new_time = Local::now();
+        let past = new_time
+            .signed_duration_since(self.dt)
+            .to_std()
+            .unwrap_or(std::time::Duration::from_secs(0));
+        self.dt = new_time;
+
+        for device in self.devices.keys() {
+            self.process_device(device, past);
+        }
+    }
+
+    pub fn process_device(&mut self, name: &str, past: std::time::Duration) {
+        if let Some(d) = self.devices.get_mut(name) {
+            if !d.config().disabled.unwrap_or(false) {
+                d.process(self, past);
+            }
+        }
+    }
+
     pub fn switch_count(&self, name: &str) -> Result<usize> {
         match self.devices.get(name) {
             Some(m) => Ok(m.switch_count()),
@@ -133,17 +155,30 @@ impl State {
     }
 }
 
-pub fn new(path: &std::path::Path) -> Result<State> {
+pub fn new(config: config::Config) -> Result<Arc<Mutex<State>>> {
     let dt = Local::now();
     let i2c = bus::start();
 
+    let path = config
+        .database
+        .unwrap_or(std::path::PathBuf::from("rested-pi.db"));
     info!("using database at {}", path.to_string_lossy());
-    let storage = storage::open(path)?;
+    let storage = storage::open(&path)?;
 
-    Ok(State {
+    let mut state = State {
         i2c,
         dt,
         storage,
         devices: HashMap::new(),
-    })
+    };
+    let device_config = config.devices.unwrap_or(Vec::new());
+
+    for config in device_config.iter() {
+        state.add_device(config)
+            .expect("pre-configured device to not fail to reset");
+    }
+
+    state.reset()?;
+
+    Ok(Arc::new(Mutex::new(state)))
 }

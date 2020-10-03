@@ -129,6 +129,9 @@ struct BankState<T> {
     b: T,
 }
 
+/**
+ * the last-modified values
+ */
 #[derive(Debug, PartialEq, Clone, PartialOrd)]
 struct State {
     direction: [Direction; 8],

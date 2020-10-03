@@ -86,7 +86,7 @@ pub enum Value {
     // 1, 2, ... 30, 31
     DayOfMonth,
 
-    // Current value of a named sensor
+    // Current value of a sensor i of device x
     Sensor(String, usize, Unit),
 
     // linear interpolation  A * (1 - t) + B * t

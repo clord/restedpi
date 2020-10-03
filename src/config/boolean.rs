@@ -9,6 +9,8 @@ pub enum BoolExpr {
     MoreThan(Value, Value),
     LessThan(Value, Value),
     Between(Value, Value, Value),
+    EqZero(Value),
+    NeqZero(Value),
     And(Box<BoolExpr>, Box<BoolExpr>),
     Or(Box<BoolExpr>, Box<BoolExpr>),
     Not(Box<BoolExpr>),
@@ -17,6 +19,8 @@ pub enum BoolExpr {
 /// A very basic parser that evaluates an expression for truth. Can refer to values.
 pub fn evaluate(app: &mut State, expr: &BoolExpr) -> bool {
     match expr {
+        BoolExpr::EqZero(a) => evaluate_value(app, a) == 0.0f64,
+        BoolExpr::NeqZero(a) => evaluate_value(app, a) != 0.0f64,
         BoolExpr::Equal(a, b) => evaluate_value(app, a) == evaluate_value(app, b),
         BoolExpr::EqualPlusOrMinus(a, b, c) => {
             (evaluate_value(app, a) - evaluate_value(app, b)).abs() < evaluate_value(app, c)

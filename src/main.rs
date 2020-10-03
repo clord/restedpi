@@ -20,7 +20,7 @@ use rppal::system::DeviceInfo;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use warp::{
     filters::path::Tail,
     http::header::{HeaderMap, HeaderValue},
@@ -72,23 +72,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let db_path = config
-        .database
-        .unwrap_or(std::path::PathBuf::from("rested-pi.db"));
-
-    let listen = config.listen.unwrap_or("127.0.0.1".to_string());
+    let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
-    let device_config = config.devices.unwrap_or(Vec::new());
 
-    let mut app_raw = app::new(&db_path).expect("app failed to start");
-    for config in device_config.iter() {
-        app_raw
-            .add_device(config)
-            .expect("pre-configured device to not fail to reset");
-    }
-    app_raw.reset()?;
+    let app_m = app::new(config).expect("app failed to start");
 
-    let app_m = Arc::new(Mutex::new(app_raw));
+    let thread_app_m = app_m.clone();
+    let thread = std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+
+            // pump actions for the device
+            match &mut thread_app_m.lock() {
+                Ok(t) => {
+                    t.tick();
+                }
+                Err(e) => {
+                    error!("Thread failed to lock state: {}", e);
+                    unreachable!();
+                }
+            }
+        }
+    });
+
     let app = warp::any().map(move || app_m.clone());
 
     // Limit incoming body length to 16kb
@@ -229,6 +235,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("RestedPi listening: http://{}", addr);
     warp::serve(api.with(warp::log("restedpi::access"))).run(addr);
-
+    thread.join();
     Ok(())
 }

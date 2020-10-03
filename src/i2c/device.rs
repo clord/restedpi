@@ -1,4 +1,7 @@
+use crate::app::State;
 use crate::config;
+use crate::config::boolean::evaluate;
+use crate::config::Pin::{Input, Output};
 use crate::i2c::{bmp085, bus::I2cBus, error::Error, mcp23017, mcp9808, Result};
 use serde_derive::Serialize;
 
@@ -39,14 +42,50 @@ impl Device {
 
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
-            config::Type::MCP9808 { address } => Ok(()),
-            config::Type::MCP23017 {
-                address,
-                bank0: _,
-                bank1: _,
-            } => self.mcp23017_state.reset(*address, &self.i2c),
+            config::Type::MCP9808 { .. } => Ok(()),
+            config::Type::MCP23017 { address, pins: _ } => {
+                self.mcp23017_state.reset(*address, &self.i2c)
+            }
             config::Type::BMP085 { address, mode: _ } => {
                 self.bmp085_state.reset(*address, &self.i2c)
+            }
+        }
+    }
+
+    pub fn process(&mut self, state: Arc<Mutex<State>>, _delta: std::time::Duration) {
+        match &self.config.model {
+            // sensors will have to have their data captured and recorded?
+            config::Type::MCP9808 { .. } => {}
+            config::Type::BMP085 { .. } => {}
+            config::Type::MCP23017 { address, pins } => {
+                for (index, pin_state) in pins {
+                    if let Ok((bank, pin)) = mcp23017::index_to_bank_pin(*index) {
+                        match pin_state {
+                            Input { .. } => { /* nothing to do */ }
+                            Output {
+                                active_low,
+                                value,
+                                disable_automatic,
+                            } => {
+                                if disable_automatic
+                                    .as_ref()
+                                    .map_or(false, |d| evaluate(state, &d))
+                                {
+                                    if let Some(pv) = value {
+                                        let new_pin = evaluate(state, pv);
+                                        self.mcp23017_state.set_pin(
+                                            *address,
+                                            bank,
+                                            pin,
+                                            *active_low ^ new_pin,
+                                            &self.i2c,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -60,8 +99,7 @@ impl Device {
             config::Type::MCP9808 { address: _ } => 1,
             config::Type::MCP23017 {
                 address: _,
-                bank0: _,
-                bank1: _,
+                pins: _,
             } => 16,
         }
     }
@@ -75,8 +113,7 @@ impl Device {
             config::Type::MCP9808 { address: _ } => 0,
             config::Type::MCP23017 {
                 address: _,
-                bank0: _,
-                bank1: _,
+                pins: _,
             } => 16,
         }
     }
@@ -101,25 +138,16 @@ impl Device {
                 }
                 _ => Err(Error::OutOfBounds(index)),
             },
-            config::Type::MCP23017 {
-                address,
-                bank0,
-                bank1,
-            } => {
+            config::Type::MCP23017 { address, pins } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
-                let active_low = match bank {
-                    mcp23017::Bank::A => bank0,
-                    mcp23017::Bank::B => bank1,
-                }
-                .get(&mcp23017::pin_ordinal(pin))
-                .map_or(false, |v| v.active_low);
+                let active_low = pins.get(&index).map_or(false, |v| v.is_active_low());
                 let pin = self
                     .mcp23017_state
                     .get_pin(*address, bank, pin, &self.i2c)?;
                 if active_low {
-                    Ok((if pin { 1.0f64 } else { 0.0f64 }, config::Unit::Boolean))
-                } else {
                     Ok((if pin { 0.0f64 } else { 1.0f64 }, config::Unit::Boolean))
+                } else {
+                    Ok((if pin { 1.0f64 } else { 0.0f64 }, config::Unit::Boolean))
                 }
             }
         }
@@ -132,25 +160,16 @@ impl Device {
                 mode: _,
             } => Err(Error::OutOfBounds(index)),
             config::Type::MCP9808 { address: _ } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP23017 {
-                address,
-                bank0,
-                bank1,
-            } => {
+            config::Type::MCP23017 { address, pins } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
-                let active_low = match bank {
-                    mcp23017::Bank::A => bank0,
-                    mcp23017::Bank::B => bank1,
-                }
-                .get(&mcp23017::pin_ordinal(pin))
-                .map_or(false, |v| v.active_low);
-                if active_low {
-                    self.mcp23017_state
-                        .set_pin(*address, bank, pin, value, &self.i2c)
-                } else {
-                    self.mcp23017_state
-                        .set_pin(*address, bank, pin, !value, &self.i2c)
-                }
+                let active_low = pins.get(&index).map_or(false, |v| v.is_active_low());
+                self.mcp23017_state.set_pin(
+                    *address,
+                    bank,
+                    pin,
+                    if active_low { !value } else { value },
+                    &self.i2c,
+                )
             }
         }
     }
