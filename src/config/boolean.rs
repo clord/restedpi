@@ -17,7 +17,7 @@ pub enum BoolExpr {
 }
 
 /// A very basic parser that evaluates an expression for truth. Can refer to values.
-pub fn evaluate(app: &mut State, expr: &BoolExpr) -> bool {
+pub fn evaluate(app: &State, expr: &BoolExpr) -> bool {
     match expr {
         BoolExpr::EqZero(a) => evaluate_value(app, a) == 0.0f64,
         BoolExpr::NeqZero(a) => evaluate_value(app, a) != 0.0f64,

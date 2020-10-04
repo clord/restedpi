@@ -114,7 +114,7 @@ pub enum Value {
 }
 
 /// An evaluator for value expressions.
-pub fn evaluate(app: &mut State, expr: &Value) -> f64 {
+pub fn evaluate(app: &State, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
