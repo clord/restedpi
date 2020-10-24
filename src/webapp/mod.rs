@@ -13,7 +13,7 @@ use warp::{http::Response, http::StatusCode, reply, Rejection, Reply};
 pub mod slugify;
 
 // We have to share the app state since warp uses a thread pool
-pub type SharedAppState = std::sync::Arc<std::sync::Mutex<app::State>>;
+pub type SharedAppState = app::channel::AppChannel;
 
 #[derive(RustEmbed)]
 #[folder = "static/"]
@@ -90,7 +90,7 @@ pub fn device_as_json(device: &Device) -> (config::Device, Status) {
     (device.config(), device.status())
 }
 
-pub fn devices_as_json(mut app: std::sync::MutexGuard<app::State>) -> serde_json::value::Value {
+pub fn devices_as_json(mut app: SharedAppState) -> serde_json::value::Value {
     let d: HashMap<String, (config::Device, Status)> = app
         .devices()
         .into_iter()

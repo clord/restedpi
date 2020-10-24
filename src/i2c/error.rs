@@ -9,6 +9,8 @@ use std::sync::mpsc;
 #[derive(Debug, Serialize)]
 pub enum Error {
     IoError(String),
+    InputNotFound(String),
+    OutputNotFound(String),
     InvalidPinDirection,
     NonExistant(String),
     OutOfBounds(usize),

@@ -20,7 +20,6 @@ use rppal::system::DeviceInfo;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
-use std::time::Duration;
 use warp::{
     filters::path::Tail,
     http::header::{HeaderMap, HeaderValue},
@@ -62,38 +61,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = match serde_json::from_str(&contents) {
         Ok(cfg) => cfg,
         Err(e) => {
-            warn!("error parsing config: {}", e);
-            Config {
-                database: None,
-                listen: None,
-                port: None,
-                devices: None,
-            }
+            warn!("error parsing config, using defaults. error: {}", e);
+            Config::new()
         }
     };
 
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
 
-    let app_m = app::new(config).expect("app failed to start");
-
-    let thread_app_m = app_m.clone();
-    let thread = std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(Duration::from_secs(1));
-
-            // pump actions for the device
-            match &mut thread_app_m.lock() {
-                Ok(t) => {
-                    t.tick();
-                }
-                Err(e) => {
-                    error!("Thread failed to lock state: {}", e);
-                    unreachable!();
-                }
-            }
-        }
-    });
+    let app_m = app::channel::start_app(config).expect("app failed to start");
 
     let app = warp::any().map(move || app_m.clone());
 
@@ -235,6 +211,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("RestedPi listening: http://{}", addr);
     warp::serve(api.with(warp::log("restedpi::access"))).run(addr);
-    thread.join();
     Ok(())
 }

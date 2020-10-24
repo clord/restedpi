@@ -6,26 +6,58 @@ pub struct Storage {
     db: sled::Db,
 }
 
-fn make_device_key(name: &str) -> Vec<u8> {
-    let mut key = b"devices/".to_vec();
+fn make_key(prefix: Vec<u8>, name: &str) -> Vec<u8> {
+    let mut key = prefix;
     for byte in name.bytes() {
         key.push(byte)
     }
     key
 }
 
+fn make_input_key(name: &str) -> Vec<u8> {
+    make_key(b"inputs/".to_vec(), name)
+}
+
+fn make_output_key(name: &str) -> Vec<u8> {
+    make_key(b"outputs/".to_vec(), name)
+}
+
+fn make_device_key(name: &str) -> Vec<u8> {
+    make_key(b"devices/".to_vec(), name)
+}
+
 impl Storage {
+
+
+    fn all_prefix<'a, T: serde::Deserialize<'a>>(&self, prefix: Vec<u8>) -> Result<HashMap<String, T>> {
+        let mut result: HashMap<String, T> = HashMap::new();
+        for item in self.db.scan_prefix(prefix) {
+            let (key, value) = item?;
+            let decoded = serde_json::from_slice(&value)?;
+            result.insert(String::from_utf8_lossy(&key[prefix.len()..]).into_owned(), decoded);
+        }
+        Ok(result)
+    }
+
     /**
      * Read all devices stored in db.
      */
-    pub fn read_devices(&self) -> Result<HashMap<String, config::Device>> {
-        let mut result: HashMap<String, config::Device> = HashMap::new();
-        for item in self.db.scan_prefix(b"devices/") {
-            let (key, value) = item?;
-            let decoded = serde_json::from_slice(&value)?;
-            result.insert(String::from_utf8_lossy(&key[8..]).into_owned(), decoded);
-        }
-        Ok(result)
+    pub fn all_devices(&self) -> Result<HashMap<String, config::Device>> {
+        self.all_prefix(b"devices/".to_vec())
+    }
+
+    /**
+     * Read all inputs stored in db.
+     */
+    pub fn all_inputs(&self) -> Result<HashMap<String, config::Input>> {
+        self.all_prefix(b"inputs/".to_vec())
+    }
+
+    /**
+     * Read all outputs stored in db.
+     */
+    pub fn all_outputs(&self) -> Result<HashMap<String, config::Output>> {
+        self.all_prefix(b"outputs/".to_vec())
     }
 
     /**
@@ -45,6 +77,29 @@ impl Storage {
         let key = make_device_key(name);
         self.db.remove(key)?;
         Ok(())
+    }
+
+    pub fn get_input(&self, name: &str) -> Result<Option<config::Input>> {
+        let key = make_input_key(name);
+        if let Some(value) = self.db.get(key)? {
+            let decoded = serde_json::from_slice(&value)?;
+            Ok(Some(decoded))
+        }
+        else {
+            Ok(None)
+        }
+
+    }
+    pub fn get_output(&self, name: &str) -> Result<Option<config::Output>> {
+        let key = make_output_key(name);
+        if let Some(value) = self.db.get(key)? {
+            let decoded = serde_json::from_slice(&value)?;
+            Ok(Some(decoded))
+        }
+        else {
+            Ok(None)
+        }
+
     }
 }
 
