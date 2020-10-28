@@ -77,7 +77,7 @@ impl Device {
         }
     }
 
-    pub fn read_boolean(&mut self, index: usize) -> Result<bool> {
+    pub fn read_boolean(&self, index: usize) -> Result<bool> {
         match &self.config.model {
             config::Type::BMP085 { address, mode } => Err(Error::OutOfBounds(index)),
             config::Type::MCP9808 { address } => Err(Error::OutOfBounds(index)),
@@ -124,13 +124,8 @@ impl Device {
             config::Type::MCP9808 { address: _ } => Err(Error::OutOfBounds(index)),
             config::Type::MCP23017 { address, pins } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
-                self.mcp23017_state.set_pin(
-                    *address,
-                    bank,
-                    pin,
-                    value,
-                    &self.i2c,
-                )
+                self.mcp23017_state
+                    .set_pin(*address, bank, pin, value, &self.i2c)
             }
         }
     }

@@ -105,10 +105,10 @@ pub fn ordinal_pin(p: usize) -> Option<Pin> {
     }
 }
 
-pub fn bank_pin_to_index(bank:Bank, pin:Pin) -> usize {
+pub fn bank_pin_to_index(bank: Bank, pin: Pin) -> usize {
     match bank {
         Bank::A => pin_ordinal(pin),
-        Bank::B => pin_ordinal(pin) * 2
+        Bank::B => pin_ordinal(pin) * 2,
     }
 }
 
@@ -180,7 +180,13 @@ impl Mcp23017State {
     }
 
     // Unconditionally writes current value to device
-    fn write_gpio_value(&self, address: Address, bank: Bank, values: [bool; 8], i2c: &I2cBus) -> Result<()> {
+    fn write_gpio_value(
+        &self,
+        address: Address,
+        bank: Bank,
+        values: [bool; 8],
+        i2c: &I2cBus,
+    ) -> Result<()> {
         let register = match bank {
             Bank::A => WRITE_GPIOA_ADDR,
             Bank::B => WRITE_GPIOB_ADDR,
@@ -226,8 +232,18 @@ impl Mcp23017State {
         self.state = INITIAL_STATE;
         self.write_gpio_dir(address, Bank::A, i2c)?;
         self.write_gpio_dir(address, Bank::B, i2c)?;
-        self.write_gpio_value(address, Bank::A, [false,false,false,false,false,false,false,false], i2c)?;
-        self.write_gpio_value(address, Bank::B, [false,false,false,false,false,false,false,false], i2c)?;
+        self.write_gpio_value(
+            address,
+            Bank::A,
+            [false, false, false, false, false, false, false, false],
+            i2c,
+        )?;
+        self.write_gpio_value(
+            address,
+            Bank::B,
+            [false, false, false, false, false, false, false, false],
+            i2c,
+        )?;
         Ok(())
     }
 
@@ -286,13 +302,7 @@ impl Mcp23017State {
         return Ok(bank_state.direction[pdex]);
     }
 
-    pub fn get_pin(
-        &self,
-        address: Address,
-        bank: Bank,
-        pin: Pin,
-        i2c: &I2cBus,
-    ) -> Result<bool> {
+    pub fn get_pin(&self, address: Address, bank: Bank, pin: Pin, i2c: &I2cBus) -> Result<bool> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         if let Direction::Output = bank_state.direction[pdex] {

@@ -24,7 +24,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+        match self {
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
@@ -35,6 +35,8 @@ impl fmt::Display for Error {
             Error::SendError(ref err) => write!(f, "Failed to send: {}", err),
             Error::StorageError(ref err) => write!(f, "Storage error: {}", err),
             Error::EncodingError(ref err) => write!(f, "Encoding error: {}", err),
+            Error::InputNotFound(n) => write!(f, "Input error: {}", n),
+            Error::OutputNotFound(n) => write!(f, "Output error: {}", n),
         }
     }
 }
@@ -46,8 +48,8 @@ impl From<serde_json::error::Error> for Error {
         Error::EncodingError(format!("{}", err))
     }
 }
-impl From<sled::TransactionError> for Error {
-    fn from(err: sled::TransactionError) -> Error {
+impl From<sled::transaction::TransactionError> for Error {
+    fn from(err: sled::transaction::TransactionError) -> Error {
         Error::StorageError(format!("Trasaction Error: {}", err))
     }
 }

@@ -1,12 +1,12 @@
+use crate::app::state;
 use crate::config;
 use crate::i2c::Result;
-use crate::app::state;
 
 use chrono::prelude::*;
 
-use std::time::Duration;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
+use std::time::Duration;
 use std::vec::Vec;
 
 /**
@@ -14,7 +14,6 @@ use std::vec::Vec;
  */
 #[derive(Clone, Debug)]
 pub enum AppMessage {
-
     /**
      * run any device-specific reset procedures
      */
@@ -99,7 +98,7 @@ pub enum AppMessage {
     AddOrReplaceOutput {
         output_id: String,
         input: config::Output,
-        response: Sender<Result<()>>
+        response: Sender<Result<()>>,
     },
 
     /**
@@ -108,30 +107,26 @@ pub enum AppMessage {
     AddOrReplaceInput {
         input_id: String,
         input: config::Input,
-        response: Sender<Result<()>>
+        response: Sender<Result<()>>,
     },
 
     /**
      * Checks the current configuration for errors and returns them.
      */
     ConfigErrors {
-        response: Sender<Result<Vec<config::ConfigError>>>
+        response: Sender<Result<Vec<config::ConfigError>>>,
     },
 
     /**
      * Advance the time of the system to specified value.
      * state machine will update all automated outputs for that given time.
      */
-    SetTime {
-        time: DateTime<Local>
-    },
+    SetTime { time: DateTime<Local> },
 
     /**
      * will gracefully terminate the app channel
      */
     Terminate,
-
-
 }
 
 /**
@@ -143,28 +138,23 @@ pub struct AppChannel {
     sender: Sender<AppMessage>,
 }
 
-
 /**
  * Given a message and a mut ref to the app, will update app
  *
  * @returns true if channel should terminate
  */
 fn process_message(message: AppMessage, state: &mut state::State) -> bool {
+    let mut should_terminate = false;
     match message {
-
         AppMessage::ReadBooleans {
             input_ids,
-            response
-        } => {
-        },
+            response,
+        } => {}
 
-        AppMessage::ReadBoolean {
-            input_id,
-            response
-        } => {
+        AppMessage::ReadBoolean { input_id, response } => {
             let result = state.read_input_bool(&input_id);
             response.send(result);
-        },
+        }
 
         AppMessage::WriteBoolean {
             output_id,
@@ -173,90 +163,75 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
         } => {
             let result = state.write_output_bool(&output_id, value);
             response.send(result);
-        },
+        }
 
         AppMessage::AddOrReplaceDevice {
             device_id,
             config,
             response,
-        } => {
-        },
+        } => {}
 
         AppMessage::RemoveDevice {
             device_id,
-            response
-        } => {
-        },
-
-        AppMessage::RemoveInput {
-            input_id,
             response,
-        } => {
-        },
+        } => {}
+
+        AppMessage::RemoveInput { input_id, response } => {}
 
         AppMessage::RemoveOutput {
             output_id,
-            response
-        } => {
-        },
+            response,
+        } => {}
 
         AppMessage::GetDeviceConfig {
             device_id,
-            response
-        } => {
-        },
+            response,
+        } => {}
 
         AppMessage::AddOrReplaceOutput {
             output_id,
             input,
             response,
-        } => {
-        },
+        } => {}
 
         AppMessage::AddOrReplaceInput {
             input_id,
             input,
-            response
-        } => {
-        },
+            response,
+        } => {}
 
-        AppMessage::ConfigErrors {
-            response
-        } => {
-        },
+        AppMessage::ConfigErrors { response } => {}
 
-        AppMessage::SetTime {
-            time
-        } => {
-        },
+        AppMessage::SetTime { time } => {}
 
-        AppMessage::ResetDevice { device_id, response } => {},
+        AppMessage::ResetDevice {
+            device_id,
+            response,
+        } => {}
 
-        AppMessage::Terminate  => {},
+        AppMessage::Terminate => should_terminate = true,
     }
 
-    if let AppMessage::Terminate = message {
-        return true
-    }
-    return false
+    return should_terminate;
 }
-
 
 pub fn start_app(config: config::Config) -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
     let mut state = state::new(config)?;
     let sender_clone = sender.clone();
 
-    thread::spawn(move|| loop {
+    thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(1));
-        sender_clone.send(AppMessage::SetTime { time: Local::now() }).expect("Failed to send!");
+        sender_clone
+            .send(AppMessage::SetTime { time: Local::now() })
+            .expect("Failed to send!");
     });
 
     thread::spawn(move || loop {
         let next = receiver.recv().unwrap();
         if process_message(next, &mut state) {
             info!("terminating app");
-            break
+            break;
         }
         // TODO: Support sending real time change notification by allowing clients to send a sender to us,
         // which we'll keep in a list and notify each time we get to here, with removal upon error.

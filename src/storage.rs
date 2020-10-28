@@ -27,14 +27,19 @@ fn make_device_key(name: &str) -> Vec<u8> {
 }
 
 impl Storage {
-
-
-    fn all_prefix<'a, T: serde::Deserialize<'a>>(&self, prefix: Vec<u8>) -> Result<HashMap<String, T>> {
+    fn all_prefix<T: serde::de::DeserializeOwned>(
+        &self,
+        prefix: Vec<u8>,
+    ) -> Result<HashMap<String, T>> {
         let mut result: HashMap<String, T> = HashMap::new();
+        let prefix_len = prefix.len();
         for item in self.db.scan_prefix(prefix) {
             let (key, value) = item?;
-            let decoded = serde_json::from_slice(&value)?;
-            result.insert(String::from_utf8_lossy(&key[prefix.len()..]).into_owned(), decoded);
+            let decoded: T = serde_json::from_slice(&value)?;
+            result.insert(
+                String::from_utf8_lossy(&key[prefix_len..]).into_owned(),
+                decoded,
+            );
         }
         Ok(result)
     }
@@ -84,22 +89,18 @@ impl Storage {
         if let Some(value) = self.db.get(key)? {
             let decoded = serde_json::from_slice(&value)?;
             Ok(Some(decoded))
-        }
-        else {
+        } else {
             Ok(None)
         }
-
     }
     pub fn get_output(&self, name: &str) -> Result<Option<config::Output>> {
         let key = make_output_key(name);
         if let Some(value) = self.db.get(key)? {
             let decoded = serde_json::from_slice(&value)?;
             Ok(Some(decoded))
-        }
-        else {
+        } else {
             Ok(None)
         }
-
     }
 }
 

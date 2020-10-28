@@ -20,8 +20,8 @@ use rppal::system::DeviceInfo;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use warp::{
-    filters::path::Tail,
     http::header::{HeaderMap, HeaderValue},
     path, Filter,
 };
@@ -36,7 +36,8 @@ mod webapp;
 /// read configuration and decide what sensors and switches are available. start up application, then
 /// start running state machine. finally, present a rest api to the outside world to interact with the
 /// application.
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() {
     if env::var_os("RUST_LOG").is_none() {
         // Set `RUST_LOG=restedpi=debug` to see debug logs,
         env::set_var("RUST_LOG", "restedpi=info");
@@ -69,9 +70,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
 
-    let app_m = app::channel::start_app(config).expect("app failed to start");
-
-    let app = warp::any().map(move || app_m.clone());
+    let app = app::channel::start_app(config).expect("app failed to start");
+    let app = Arc::new(Mutex::new(app));
 
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
@@ -82,134 +82,74 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         HeaderValue::from_static("private, max-age=4"),
     );
 
-    let r_config = warp::get2()
-        .and(app.clone())
-        .and(warp::any().map(move || server_name.clone()))
-        .and(path!("config"))
-        .map(webapp::server_config)
-        .with(warp::reply::with::headers(short_cache_header.clone()));
+    // let r_config = warp::get()
+    //     .and(app)
+    //     .and(warp::any().map(move || server_name.clone()))
+    //     .and(path!("config"))
+    //     .map(webapp::server_config)
+    //     .with(warp::reply::with::headers(short_cache_header.clone()));
 
-    let r_config_check = warp::post2()
-        .and(app.clone())
-        .and(path!("debug" / "config_check"))
-        .and(warp::body::content_length_limit(LIMIT))
-        .and(warp::body::json())
-        .and_then(webapp::evaluate_config_check);
+    // let mut nocache_header = HeaderMap::new();
+    // nocache_header.insert("cache-control", HeaderValue::from_static("no-store"));
 
-    let r_eval_bool = warp::post2()
-        .and(app.clone())
-        .and(path!("debug" / "eval_bool"))
-        .and(warp::body::content_length_limit(LIMIT))
-        .and(warp::body::json())
-        .and_then(webapp::evaulate_bool_expr);
+    // let index_html = warp::get()
+    //     .and(warp::path::end())
+    //     .map(|| webapp::serve("index.html"));
 
-    let r_eval_value = warp::post2()
-        .and(app.clone())
-        .and(path!("debug" / "eval_value"))
-        .and(warp::body::content_length_limit(LIMIT))
-        .and(warp::body::json())
-        .and_then(webapp::evaulate_value_expr);
+    // let r_static = warp::get()
+    //     .and(warp::path::tail())
+    //     .map(|tail: Tail| webapp::serve(tail.as_str()));
 
-    let r_sensors = warp::get2()
-        .and(app.clone())
-        .and(path!("sensors"))
-        .and_then(webapp::all_sensors);
+    // let r_available_devices = warp::get()
+    //     .and(path!("available-devices"))
+    //     .and(app.clone())
+    //     .map(webapp::available_devices);
 
-    let r_device_sensors = warp::get2()
-        .and(app.clone())
-        .and(path!(String / "sensors"))
-        .and_then(webapp::device_sensors);
+    // let r_adding_configured = warp::post()
+    //     .and(app.clone())
+    //     .and(warp::body::json())
+    //     .map(webapp::add_device);
 
-    let r_read = warp::get2()
-        .and(app.clone())
-        .and(path!(String / "sensors" / usize))
-        .and_then(webapp::read_sensor);
+    // let r_remove_configured = warp::delete()
+    //     .and(app.clone())
+    //     .and(warp::path::param())
+    //     .map(webapp::remove_device);
 
-    let r_write = warp::put2()
-        .and(app.clone())
-        .and(path!(String / "switches" / usize))
-        .and(warp::body::json())
-        .and_then(webapp::write_switch);
+    // let r_fetching_all_configured = warp::get()
+    //     .and(app.clone())
+    //     .map(webapp::configured_devices);
 
-    let r_toggle = warp::post2()
-        .and(app.clone())
-        .and(path!(String / "switches" / "toggle" / usize))
-        .and_then(webapp::toggle_switch);
+    // let r_update_configured_device = warp::put()
+    //     .and(app.clone())
+    //     .and(warp::path::param())
+    //     .and(warp::body::json())
+    //     .map(webapp::edit_configured_device);
 
-    let mut nocache_header = HeaderMap::new();
-    nocache_header.insert("cache-control", HeaderValue::from_static("no-store"));
+    // let r_fetching_configured_device = warp::get()
+    //     .and(app.clone())
+    //     .and(warp::path::param())
+    //     .map(webapp::configured_device);
 
-    let index_html = warp::get2()
-        .and_then(|| webapp::serve("index.html"))
-        .with(warp::reply::with::headers(nocache_header));
+    // let r_configured = warp::path("configured").and(
+    //     r_adding_configured
+    //         .or(r_fetching_configured_device)
+    //         .or(r_update_configured_device)
+    //         .or(r_fetching_all_configured)
+    //         .or(r_remove_configured),
+    // );
 
-    let r_static = warp::get2()
-        .and(warp::any())
-        .and(warp::path::tail())
-        .and_then(|tail: Tail| webapp::serve(tail.as_str()));
+    // let r_devices = warp::path("devices").and(
+    //         // .or(r_configured),
+    // );
+    //
 
-    let r_available = warp::get2()
-        .and(path!("available"))
-        .and(app.clone())
-        .and_then(webapp::all_devices);
-
-    let r_adding_configured = warp::post2()
-        .and(app.clone())
-        .and(warp::body::json())
-        .and_then(webapp::add_device);
-
-    let r_remove_configured = warp::delete2()
-        .and(app.clone())
-        .and(warp::path::param())
-        .and_then(webapp::remove_device);
-
-    let r_fetching_all_configured = warp::get2()
-        .and(app.clone())
-        .and_then(webapp::configured_devices);
-
-    let r_update_configured_device = warp::put2()
-        .and(app.clone())
-        .and(warp::path::param())
-        .and(warp::body::json())
-        .and_then(webapp::edit_configured_device);
-
-    let r_fetching_configured_device = warp::get2()
-        .and(app.clone())
-        .and(warp::path::param())
-        .and_then(webapp::configured_device);
-
-    let r_configured = warp::path("configured").and(
-        r_adding_configured
-            .or(r_fetching_configured_device)
-            .or(r_update_configured_device)
-            .or(r_fetching_all_configured)
-            .or(r_remove_configured),
-    );
-
-    let r_devices = warp::path("devices").and(
-        r_read
-            .or(r_toggle)
-            .or(r_write)
-            .or(r_device_sensors)
-            .or(r_available)
-            .or(r_configured),
-    );
-
-    let api = r_static
-        .or(path!("api").and(
-            r_config
-                .or(r_sensors)
-                .or(r_devices)
-                .or(r_config_check)
-                .or(r_eval_bool)
-                .or(r_eval_value),
-        ))
-        .or(index_html)
-        .recover(webapp::customize_error);
-
+    let api = webapp::filters::api(app);
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
-
     info!("RestedPi listening: http://{}", addr);
-    warp::serve(api.with(warp::log("restedpi::access"))).run(addr);
-    Ok(())
+    warp::serve(
+        api.with(warp::log("restedpi::access"))
+            .recover(webapp::handle_rejection),
+    )
+    .run(addr)
+    .await;
 }

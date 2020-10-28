@@ -1,4 +1,4 @@
-use crate::app::State;
+use crate::app::state::State;
 use crate::config::sched;
 use chrono::prelude::*;
 use chrono::Duration;
@@ -118,7 +118,7 @@ pub fn evaluate(app: &State, expr: &Value) -> f64 {
     match expr {
         Value::Const(a) => *a,
 
-        Value::Sensor(name, index, unit) => match app.read_sensor(name.to_string(), *index) {
+        Value::Sensor(name, index, unit) => match app.read_sensor(name, *index) {
             Ok(value) => {
                 if *unit == value.1 {
                     value.0

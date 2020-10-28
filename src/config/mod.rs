@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 pub use value::Unit;
 
-
 pub mod sched;
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -42,7 +41,8 @@ pub enum Type {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum PinDirection {
-    Input, Output
+    Input,
+    Output,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -61,7 +61,6 @@ pub struct Device {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Input {
-
     /**
      * Read a float from the given device (with a unit)
      */
@@ -104,7 +103,7 @@ pub enum Output {
 
         // If set to an expression, the system will compute this output every tick,
         // and ignore user interference.
-        automation: Option<BoolExpr>
+        automation: Option<BoolExpr>,
     },
 
     /**
@@ -135,7 +134,7 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Self {
-         Config {
+        Config {
             database: None,
             listen: None,
             port: None,
@@ -154,29 +153,38 @@ impl Config {
             errors.push(ConfigError::DeviceListEmpty)
         }
 
-        return errors
+        return errors;
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum IORef {
-    InputRef {input_id: String},
-    OutputRef {output_id: String},
+    InputRef { input_id: String },
+    OutputRef { output_id: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MissingReason {
-    Missing, Disabled
+    Missing,
+    Disabled,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ConfigError {
     DeviceListEmpty,
-    DuplicateIoId{ io_id: IORef },
-    DuplicateDeviceId{ device_id: String },
-    IORefersToMissingOrDisabledDevice{io: IORef, device_id: String, reason: MissingReason},
-    IORefersToNonExistantDevicePin{io: IORef, pin_id: usize }
-    // could check that i2c addresses are valid
+    DuplicateIoId {
+        io_id: IORef,
+    },
+    DuplicateDeviceId {
+        device_id: String,
+    },
+    IORefersToMissingOrDisabledDevice {
+        io: IORef,
+        device_id: String,
+        reason: MissingReason,
+    },
+    IORefersToNonExistantDevicePin {
+        io: IORef,
+        pin_id: usize,
+    }, // could check that i2c addresses are valid
 }
-
