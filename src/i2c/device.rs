@@ -9,7 +9,7 @@ pub enum Status {
 
 #[derive(Clone, Debug)]
 pub struct Device {
-    config: config::Device,
+    pub config: config::Device,
     i2c: I2cBus,
     mcp23017_state: mcp23017::Mcp23017State,
     bmp085_state: bmp085::Bmp085State,

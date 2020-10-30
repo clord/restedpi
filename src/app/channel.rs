@@ -4,6 +4,7 @@ use crate::i2c::Result;
 
 use chrono::prelude::*;
 
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::time::Duration;
@@ -20,6 +21,22 @@ pub enum AppMessage {
     ResetDevice {
         device_id: String,
         response: Sender<Vec<Result<()>>>,
+    },
+
+    /**
+     * Return all devices configs
+     */
+    AllDevices {
+        response: Sender<
+            HashMap<
+                String,
+                (
+                    config::Device,
+                    HashMap<String, config::Input>,
+                    HashMap<String, config::Output>,
+                ),
+            >,
+        >,
     },
 
     /**
@@ -60,12 +77,17 @@ pub enum AppMessage {
 
     /**
      * Remove device at a given id.
-     * result is the removed device config if successful, and all affected inputs and outputs.
-     * any affected inputs will not be removed
+     * result is all affected inputs and outputs.
+     * any affected inputs or outputs will alsso be removed.
      */
     RemoveDevice {
         device_id: String,
-        response: Sender<Result<(config::Config, Vec<config::Input>, Vec<config::Output>)>>,
+        response: Sender<
+            Result<(
+                HashMap<String, config::Input>,
+                HashMap<String, config::Output>,
+            )>,
+        >,
     },
 
     /**
@@ -89,7 +111,13 @@ pub enum AppMessage {
      */
     GetDeviceConfig {
         device_id: String,
-        response: Sender<Result<(config::Config, Vec<config::Input>, Vec<config::Output>)>>,
+        response: Sender<
+            Result<(
+                config::Device,
+                HashMap<String, config::Input>,
+                HashMap<String, config::Output>,
+            )>,
+        >,
     },
 
     /**
@@ -149,11 +177,24 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
         AppMessage::ReadBooleans {
             input_ids,
             response,
-        } => {}
+        } => {
+            let mut result = Vec::new();
+            for input_id in input_ids {
+                let r = state.read_input_bool(&input_id);
+                result.push(r);
+            }
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::ReadBoolean { input_id, response } => {
             let result = state.read_input_bool(&input_id);
-            response.send(result);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
         }
 
         AppMessage::WriteBoolean {
@@ -162,31 +203,72 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.write_output_bool(&output_id, value);
-            response.send(result);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
         }
 
         AppMessage::AddOrReplaceDevice {
             device_id,
             config,
             response,
-        } => {}
+        } => {
+            let result = state.add_device(&device_id, &config);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::RemoveDevice {
             device_id,
             response,
-        } => {}
+        } => {
+            let result = state.remove_device(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
-        AppMessage::RemoveInput { input_id, response } => {}
+        AppMessage::AllDevices { response } => {
+            let result = state.devices();
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
+
+        AppMessage::RemoveInput { input_id, response } => {
+            let result = state.remove_input(&input_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::RemoveOutput {
             output_id,
             response,
-        } => {}
+        } => {
+            let result = state.remove_output(&output_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::GetDeviceConfig {
             device_id,
             response,
-        } => {}
+        } => {
+            let result = state.device_config(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::AddOrReplaceOutput {
             output_id,

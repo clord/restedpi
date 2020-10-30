@@ -67,7 +67,7 @@ pub enum Input {
     FloatWithUnitFromDevice {
         name: String,
         device_id: String,
-        input_id: usize,
+        device_input_id: usize,
     },
 
     /**
@@ -76,7 +76,7 @@ pub enum Input {
     BoolFromDevice {
         name: String,
         device_id: String,
-        input_id: usize,
+        device_input_id: usize,
         active_low: bool,
     },
 
@@ -99,7 +99,7 @@ pub enum Output {
     BoolToDevice {
         name: String,
         device_id: String,
-        output_id: usize,
+        device_output_id: usize,
 
         // If set to an expression, the system will compute this output every tick,
         // and ignore user interference.
@@ -117,6 +117,9 @@ pub enum Output {
  */
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
+    // name of device (defaults to device name)
+    pub name: Option<String>,
+
     // Where to listen for connections
     pub listen: Option<String>,
     pub port: Option<u16>,
@@ -125,34 +128,28 @@ pub struct Config {
     pub database: Option<PathBuf>,
 
     // available devices on this host
-    pub devices: HashMap<String, Device>,
+    pub devices: Option<HashMap<String, Device>>,
 
     // configured inputs and outputs of system
-    pub inputs: HashMap<String, Input>,
-    pub outputs: HashMap<String, Output>,
+    pub inputs: Option<HashMap<String, Input>>,
+    pub outputs: Option<HashMap<String, Output>>,
 }
 
 impl Config {
     pub fn new() -> Self {
         Config {
+            name: None,
             database: None,
             listen: None,
             port: None,
-            devices: HashMap::new(),
-            inputs: HashMap::new(),
-            outputs: HashMap::new(),
+            devices: None,
+            inputs: None,
+            outputs: None,
         }
     }
 
     pub fn check_config(&self) -> Vec<ConfigError> {
         let mut errors = Vec::<ConfigError>::new();
-
-        // Checks the whole config for validity,
-        // meaning inputs/outputs map to real devices and real device capabilities.
-        if self.devices.len() == 0 {
-            errors.push(ConfigError::DeviceListEmpty)
-        }
-
         return errors;
     }
 }
@@ -171,7 +168,6 @@ pub enum MissingReason {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ConfigError {
-    DeviceListEmpty,
     DuplicateIoId {
         io_id: IORef,
     },

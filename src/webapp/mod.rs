@@ -1,7 +1,4 @@
 use crate::app;
-use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
-use crate::config::value::{evaluate as evaluate_val, Value};
-use crate::i2c::device::{Device, Status};
 use crate::i2c::error::Error;
 use mime_guess::from_path;
 use serde_derive::Serialize;
@@ -10,6 +7,8 @@ use std::borrow::Cow;
 
 use warp::filters::path::Tail;
 use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
+pub mod filters;
+mod handlers;
 pub mod slugify;
 
 use std::sync::{Arc, Mutex};
@@ -42,7 +41,7 @@ pub async fn static_serve(path: &str) -> Result<impl Reply, Rejection> {
                     //     Some(file) => Ok(Response::builder()
                     //         .header("content-type", mime.to_string())
                     //         .body(file)),
-                         Err(reject::not_found())
+                    Err(reject::not_found())
                 }
             }
         }
@@ -50,161 +49,6 @@ pub async fn static_serve(path: &str) -> Result<impl Reply, Rejection> {
 }
 pub async fn static_serve_tail(path: Tail) -> Result<impl Reply, Rejection> {
     static_serve(path.as_str()).await
-}
-
-/// These are our API handlers, the ends of each filter chain.
-/// Notice how thanks to using `Filter::and`, we can define a function
-/// with the exact arguments we'd expect from each filter in the chain.
-/// No tuples are needed, it's auto flattened for the functions.
-mod handlers {
-    use crate::app::channel::AppChannel;
-    use serde_json::json;
-    use std::convert::Infallible;
-    use warp::{reply, Reply};
-
-    pub async fn list_devices(app: AppChannel) -> Result<impl Reply, Infallible> {
-        let reply = json!([]);
-        Ok(reply::json(&reply))
-    }
-
-    pub async fn get_configuration(app: AppChannel) -> Result<impl Reply, Infallible> {
-        let reply = json!([
-            { "name": "BMP085"
-            , "device": "/api/devices/available/Bmp085"
-            , "description": "High accuracy temperature and pressure"
-            , "datasheet": "https://www.sparkfun.com/datasheets/Components/General/BST-BMP085-DS000-05.pdf"
-            , "bus": "I2C"
-            , "sensors": [{ "type": "temperature", "range": "-40°C to +85°C  ±0.1°C" }, {"type": "pressure", "range": "300 to 1100hPa"}]
-            },
-            { "name": "MCP23017"
-            , "device": "/api/devices/available/Mcp23017"
-            , "description": " 16-port GPIO Expander"
-            , "datasheet": "http://ww1.microchip.com/downloads/en/DeviceDoc/20001952C.pdf"
-            , "bus": "I2C"
-            , "switches":
-                [ { "name": "pin0" }
-                , { "name": "pin1" }
-                , { "name": "pin2" }
-                , { "name": "pin3" }
-                , { "name": "pin4" }
-                , { "name": "pin5" }
-                , { "name": "pin6" }
-                , { "name": "pin7" }
-                , { "name": "pin8" }
-                , { "name": "pin9" }
-                , { "name": "pin10" }
-                , { "name": "pin11" }
-                , { "name": "pin12" }
-                , { "name": "pin13" }
-                , { "name": "pin14" }
-                , { "name": "pin15" }
-                ]
-            },
-            { "name": "MCP9808"
-            , "device": "/api/devices/available/Mcp9808"
-            , "description": "High-accuracy temperature sensor"
-            , "datasheet": "http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf"
-            , "bus": "I2C"
-            , "sensors": [{ "type": "temperature", "range": "-40°C to +125°C ±0.5°C" }]
-            }
-        ]);
-        Ok(reply::json(&reply))
-    }
-}
-
-pub mod filters {
-    use super::handlers;
-    use super::SharedAppState;
-    use crate::app::channel::AppChannel;
-    use std::convert::Infallible;
-    use warp::filters::path::Tail;
-    use warp::http::header::{HeaderMap, HeaderValue};
-    use warp::{any, get, path, reply, Filter, Rejection, Reply};
-
-    fn with_app(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = (AppChannel,), Error = Infallible> + Clone {
-        any().map(move || app.clone().lock().expect("locked state").clone())
-    }
-
-    pub fn api(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        path("api")
-            .and(devices(app.clone()).or(configuration(app)))
-            .or(static_filter())
-            .or(static_index_html())
-    }
-
-    fn static_index_html() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        get().and_then(|| super::static_serve("index.html"))
-    }
-
-    fn static_filter() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        get()
-            .and(warp::path::tail())
-            .and_then(super::static_serve_tail)
-    }
-
-    fn configuration(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        let mut short_cache_header = HeaderMap::new();
-        short_cache_header.insert(
-            "cache-control",
-            HeaderValue::from_static("private, max-age=4"),
-        );
-        warp::path!("configuration")
-            .and(get())
-            .and(with_app(app))
-            .and_then(handlers::get_configuration)
-            .with(reply::with::headers(short_cache_header))
-    }
-
-    fn devices(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        devices_list(app.clone())
-            .or(devices_create(app.clone()))
-            .or(devices_update(app.clone()))
-            .or(devices_delete(app))
-    }
-
-    fn devices_list(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        warp::path!("devices")
-            .and(get())
-            .and(with_app(app))
-            .and_then(handlers::list_devices)
-    }
-
-    fn devices_create(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        warp::path!("devices")
-            .and(warp::post())
-            .and(with_app(app))
-            .and_then(handlers::list_devices)
-    }
-
-    fn devices_update(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        warp::path!("devices")
-            .and(warp::put())
-            .and(with_app(app))
-            .and_then(handlers::list_devices)
-    }
-
-    fn devices_delete(
-        app: SharedAppState,
-    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        warp::path!("devices")
-            .and(warp::delete())
-            .and(with_app(app))
-            .and_then(handlers::list_devices)
-    }
 }
 
 // pub fn device_as_json(device: &Device) -> (config::Device, Status) {

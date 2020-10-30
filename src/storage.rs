@@ -84,6 +84,18 @@ impl Storage {
         Ok(())
     }
 
+    pub fn remove_output(&mut self, name: &str) -> Result<()> {
+        let key = make_output_key(name);
+        self.db.remove(key)?;
+        Ok(())
+    }
+
+    pub fn remove_input(&mut self, name: &str) -> Result<()> {
+        let key = make_input_key(name);
+        self.db.remove(key)?;
+        Ok(())
+    }
+
     pub fn get_input(&self, name: &str) -> Result<Option<config::Input>> {
         let key = make_input_key(name);
         if let Some(value) = self.db.get(key)? {

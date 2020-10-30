@@ -21,10 +21,7 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use warp::{
-    http::header::{HeaderMap, HeaderValue},
-    path, Filter,
-};
+use warp::Filter;
 
 mod app;
 mod config;
@@ -44,6 +41,7 @@ async fn main() {
         info!("defaulting to info level logging. RUST_LOG='restedpi=info'");
     }
     pretty_env_logger::init();
+
     let server_name = match DeviceInfo::new() {
         Ok(model) => model.model().to_string(),
         Err(e) => {
@@ -51,6 +49,7 @@ async fn main() {
             "Unknown".to_string()
         }
     };
+
     let contents = match fs::read_to_string("config.json") {
         Ok(cfg) => cfg,
         Err(e) => {
@@ -75,12 +74,6 @@ async fn main() {
 
     // Limit incoming body length to 16kb
     const LIMIT: u64 = 1024 * 16;
-
-    let mut short_cache_header = HeaderMap::new();
-    short_cache_header.insert(
-        "cache-control",
-        HeaderValue::from_static("private, max-age=4"),
-    );
 
     // let r_config = warp::get()
     //     .and(app)
