@@ -35,6 +35,27 @@ impl State {
         Ok(())
     }
 
+    pub fn add_input(&mut self, id: &str, config: config::Input) -> Result<()> {
+        self.storage.set_input(&id, &config)?;
+        self.inputs.insert(id.to_string(), config);
+        Ok(())
+    }
+
+    pub fn add_output(&mut self, id: &str, config: config::Output) -> Result<()> {
+        self.storage.set_output(&id, &config)?;
+        self.outputs.insert(id.to_string(), config);
+        Ok(())
+    }
+
+    pub fn reset_device(&mut self, id: &str) -> Result<()> {
+        let device = self
+            .devices
+            .get_mut(id)
+            .ok_or(Error::NonExistant(id.to_string()))?;
+        device.reset()?;
+        Ok(())
+    }
+
     pub fn device_config(
         &self,
         name: &str,
@@ -48,21 +69,6 @@ impl State {
                 let inputs = self.inputs_using_device(name);
                 let outputs = self.outputs_using_device(name);
                 Ok((d.config.clone(), inputs, outputs))
-            }
-            None => Err(Error::NonExistant(name.to_string())),
-        }
-    }
-
-    pub fn edit_device(&mut self, name: &str, config: &config::Device) -> Result<&Device> {
-        match self.devices.get_mut(name) {
-            Some(d) => {
-                info!("Edit device: '{}'", name);
-                d.set_config(config);
-                if cfg!(raspberry_pi) {
-                    d.reset()?;
-                }
-                self.storage.set_device(name, config)?;
-                Ok(d)
             }
             None => Err(Error::NonExistant(name.to_string())),
         }
@@ -186,6 +192,13 @@ impl State {
      */
     pub fn current_dt(&self) -> DateTime<Local> {
         self.dt
+    }
+
+    /**
+     * set current dt to a partcular time
+     */
+    pub fn set_current_dt(&mut self, new_dt: DateTime<Local>) {
+        self.dt = new_dt;
     }
 
     /**

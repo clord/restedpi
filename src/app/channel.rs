@@ -20,7 +20,7 @@ pub enum AppMessage {
      */
     ResetDevice {
         device_id: String,
-        response: Sender<Vec<Result<()>>>,
+        response: Sender<Result<()>>,
     },
 
     /**
@@ -125,7 +125,7 @@ pub enum AppMessage {
      */
     AddOrReplaceOutput {
         output_id: String,
-        input: config::Output,
+        output: config::Output,
         response: Sender<Result<()>>,
     },
 
@@ -136,13 +136,6 @@ pub enum AppMessage {
         input_id: String,
         input: config::Input,
         response: Sender<Result<()>>,
-    },
-
-    /**
-     * Checks the current configuration for errors and returns them.
-     */
-    ConfigErrors {
-        response: Sender<Result<Vec<config::ConfigError>>>,
     },
 
     /**
@@ -270,26 +263,44 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             }
         }
 
+        AppMessage::SetTime { time } => {
+            state.set_current_dt(time);
+        }
+
+        AppMessage::ResetDevice {
+            device_id,
+            response,
+        } => {
+            let result = state.reset_device(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
+
         AppMessage::AddOrReplaceOutput {
             output_id,
-            input,
+            output,
             response,
-        } => {}
+        } => {
+            let result = state.add_output(&output_id, output);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::AddOrReplaceInput {
             input_id,
             input,
             response,
-        } => {}
-
-        AppMessage::ConfigErrors { response } => {}
-
-        AppMessage::SetTime { time } => {}
-
-        AppMessage::ResetDevice {
-            device_id,
-            response,
-        } => {}
+        } => {
+            let result = state.add_input(&input_id, input);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(..) => should_terminate = true,
+            }
+        }
 
         AppMessage::Terminate => should_terminate = true,
     }

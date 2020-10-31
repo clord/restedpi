@@ -76,6 +76,26 @@ impl Storage {
     }
 
     /**
+     * Will set the device with a given name to a given config.
+     */
+    pub fn set_input(&mut self, name: &str, input: &config::Input) -> Result<()> {
+        let key = make_input_key(name);
+        let encoded = serde_json::to_vec(input)?;
+        self.db.insert(key, encoded)?;
+        Ok(())
+    }
+
+    /**
+     * Will set the device with a given name to a given config.
+     */
+    pub fn set_output(&mut self, name: &str, output: &config::Output) -> Result<()> {
+        let key = make_output_key(name);
+        let encoded = serde_json::to_vec(output)?;
+        self.db.insert(key, encoded)?;
+        Ok(())
+    }
+
+    /**
      * remove the device, regardless of whether it exists.
      */
     pub fn remove_device(&mut self, name: &str) -> Result<()> {
