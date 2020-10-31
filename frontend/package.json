@@ -1,26 +1,18 @@
 {
-  "name": "rpi-fe",
-  "private": true,
-  "version": "0.0.1",
-  "description": "Stencil App Starter",
-  "scripts": {
-    "build": "stencil build",
-    "start": "stencil build --dev --watch --serve",
-    "test": "stencil test --spec --e2e",
-    "test.watch": "stencil test --spec --e2e --watchAll",
-    "generate": "stencil generate"
-  },
-  "devDependencies": {
-    "@stencil/core": "^1.17.3",
-    "@stencil/router": "^1.0.1",
-    "@types/jest": "^26.0.10",
-    "puppeteer": "^5.2.1"
-  },
-  "license": "MIT",
+  "name": "restedpi-fe",
+  "version": "1.0.0",
+  "description": "front-end interaction with the rpi core",
+  "main": "src/index.tsx",
   "dependencies": {
-    "@shoelace-style/shoelace": "^2.0.0-beta.16",
-    "http": "0.0.1-security",
-    "http-proxy": "^1.18.1",
-    "node-http-proxy": "^0.2.3"
-  }
+    "esbuild": "^0.8.0",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "typescript": "^4.0.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "esbuild src/index.tsx --bundle --minify --sourcemap --target=chrome58,firefox57,safari11,edge16  --outfile=bundle.js"
+  },
+  "author": "Christopher C Lord"
 }
