@@ -159,6 +159,136 @@ pub struct AppChannel {
     sender: Sender<AppMessage>,
 }
 
+impl AppChannel {
+    pub fn terminate(&self) -> Result<()> {
+        Ok(self.sender.send(AppMessage::Terminate)?)
+    }
+    pub fn set_now(&self) -> Result<()> {
+        let time = Local::now();
+        Ok(self.sender.send(AppMessage::SetTime{time})?)
+    }
+    // pub fn ResetDevice {
+    //     device_id: String,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * Return all devices configs
+    //  */
+    // AllDevices {
+    //     response: Sender<
+    //         HashMap<
+    //             String,
+    //             (
+    //                 config::Device,
+    //                 HashMap<String, config::Input>,
+    //                 HashMap<String, config::Output>,
+    //             ),
+    //         >,
+    //     >,
+    // },
+
+    // /**
+    //  * Read a set of booleans in a group from a set of inputs
+    //  * result is a vec in same order as input_ids with result of reading each one.
+    //  */
+    // ReadBooleans {
+    //     input_ids: Vec<String>,
+    //     response: Sender<Vec<Result<bool>>>,
+    // },
+
+    // /**
+    //  * Read a single boolean value from an input
+    //  * result is the value read, or an error
+    //  */
+    // ReadBoolean {
+    //     input_id: String,
+    //     response: Sender<Result<bool>>,
+    // },
+
+    // /**
+    //  * write a boolean to a given output.
+    //  */
+    // WriteBoolean {
+    //     output_id: String,
+    //     value: bool,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * add or replace device at a given id
+    //  */
+    // AddOrReplaceDevice {
+    //     device_id: String,
+    //     config: config::Device,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * Remove device at a given id.
+    //  * result is all affected inputs and outputs.
+    //  * any affected inputs or outputs will alsso be removed.
+    //  */
+    // RemoveDevice {
+    //     device_id: String,
+    //     response: Sender<
+    //         Result<(
+    //             HashMap<String, config::Input>,
+    //             HashMap<String, config::Output>,
+    //         )>,
+    //     >,
+    // },
+
+    // /**
+    //  * remove an input.
+    //  */
+    // RemoveInput {
+    //     input_id: String,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * remove an output.
+    //  */
+    // RemoveOutput {
+    //     output_id: String,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * Read config of a given device, and also all associated inputs and outputs
+    //  */
+    // GetDeviceConfig {
+    //     device_id: String,
+    //     response: Sender<
+    //         Result<(
+    //             config::Device,
+    //             HashMap<String, config::Input>,
+    //             HashMap<String, config::Output>,
+    //         )>,
+    //     >,
+    // },
+
+    // /**
+    //  * Add or replace an output.
+    //  */
+    // AddOrReplaceOutput {
+    //     output_id: String,
+    //     output: config::Output,
+    //     response: Sender<Result<()>>,
+    // },
+
+    // /**
+    //  * Add or replace output.
+    //  */
+    // AddOrReplaceInput {
+    //     input_id: String,
+    //     input: config::Input,
+    //     response: Sender<Result<()>>,
+    // },
+
+}
+
 /**
  * Given a message and a mut ref to the app, will update app
  *

@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex};
 use warp::Filter;
 
 mod app;
+mod auth;
 mod config;
 mod i2c;
 mod storage;
@@ -68,30 +69,14 @@ async fn main() {
 
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
+    let key_and_cert = config.key_and_cert_path.clone();
 
     let app = app::channel::start_app(config).expect("app failed to start");
     let app = Arc::new(Mutex::new(app));
 
     // Limit incoming body length to 16kb
-    const LIMIT: u64 = 1024 * 16;
+ //   const LIMIT: u64 = 1024 * 16;
 
-    // let r_config = warp::get()
-    //     .and(app)
-    //     .and(warp::any().map(move || server_name.clone()))
-    //     .and(path!("config"))
-    //     .map(webapp::server_config)
-    //     .with(warp::reply::with::headers(short_cache_header.clone()));
-
-    // let mut nocache_header = HeaderMap::new();
-    // nocache_header.insert("cache-control", HeaderValue::from_static("no-store"));
-
-    // let index_html = warp::get()
-    //     .and(warp::path::end())
-    //     .map(|| webapp::serve("index.html"));
-
-    // let r_static = warp::get()
-    //     .and(warp::path::tail())
-    //     .map(|tail: Tail| webapp::serve(tail.as_str()));
 
     // let r_available_devices = warp::get()
     //     .and(path!("available-devices"))
@@ -138,11 +123,17 @@ async fn main() {
 
     let api = webapp::filters::api(app);
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
-    info!("RestedPi listening: http://{}", addr);
-    warp::serve(
+
+    let serve = warp::serve(
         api.with(warp::log("restedpi::access"))
             .recover(webapp::handle_rejection),
-    )
-    .run(addr)
-    .await;
+    );
+    if let Some((key_path, cert_path)) = key_and_cert {
+        info!("RestedPi listening: https://{}", addr);
+        serve.tls().cert_path(cert_path).key_path(key_path).run(addr).await
+    } else {
+        error!("Missing keys in configuration; can't start in TLS mode. set key_and_cert_path");
+        return ()
+    }
 }
+

@@ -124,6 +124,9 @@ pub struct Config {
     pub listen: Option<String>,
     pub port: Option<u16>,
 
+    // tls key and cert in that order
+    pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
+
     // where to store state
     pub database: Option<PathBuf>,
 
@@ -142,6 +145,7 @@ impl Config {
             database: None,
             listen: None,
             port: None,
+            key_and_cert_path: None,
             devices: None,
             inputs: None,
             outputs: None,

@@ -3,6 +3,9 @@
     "database": "/home/clord/rpi-dev.db",
     "devices": {},
     "inputs": {},
-    "outputs": {}
-
+    "outputs": {},
+    "key_and_cert_path": [
+      "/home/clord/rip-certs/rip.z.odago.ca.key.pem",
+      "/home/clord/rip-certs/rip.z.odago.ca.cert.pem"
+    ]
 }

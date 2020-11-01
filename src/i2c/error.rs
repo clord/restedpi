@@ -69,6 +69,11 @@ impl From<std::sync::mpsc::RecvError> for Error {
         Error::RecvError(format!("{}", err))
     }
 }
+impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error {
+    fn from(err: std::sync::mpsc::SendError<crate::app::channel::AppMessage>) -> Error {
+        Error::SendError(format!("{}", err))
+    }
+}
 impl From<std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>> for Error {
     fn from(err: std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>) -> Error {
         Error::SendError(format!("{}", err))
