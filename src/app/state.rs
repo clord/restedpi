@@ -1,7 +1,6 @@
 extern crate chrono;
 
 use crate::config;
-use crate::config::boolean::evaluate;
 use crate::config::value::Unit;
 use crate::i2c::{bus, device::Device, error::Error, Result};
 use crate::storage;
@@ -35,15 +34,15 @@ impl State {
         Ok(())
     }
 
-    pub fn add_input(&mut self, id: &str, config: config::Input) -> Result<()> {
+    pub fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
         self.storage.set_input(&id, &config)?;
-        self.inputs.insert(id.to_string(), config);
+        self.inputs.insert(id.to_string(), config.clone());
         Ok(())
     }
 
-    pub fn add_output(&mut self, id: &str, config: config::Output) -> Result<()> {
+    pub fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
         self.storage.set_output(&id, &config)?;
-        self.outputs.insert(id.to_string(), config);
+        self.outputs.insert(id.to_string(), config.clone());
         Ok(())
     }
 
@@ -207,16 +206,17 @@ impl State {
     pub fn read_input_bool(&self, input_id: &str) -> Result<bool> {
         let m_input = self.storage.get_input(input_id)?;
         match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
-            config::Input::ExpressionResult(expr) => Ok(evaluate(self, &expr)),
             config::Input::BoolFromDevice {
                 name: _,
                 device_id,
                 device_input_id,
                 active_low: _,
             } => {
+                debug!("will read!");
                 let device_handle = self.devices.get(&device_id);
                 let device = device_handle.ok_or(Error::NonExistant(device_id))?;
                 let value = device.read_boolean(device_input_id)?;
+                debug!("did read!");
                 Ok(value)
             }
             config::Input::BoolFromVariable => self
@@ -236,8 +236,8 @@ impl State {
      */
     pub fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
         let m_output = self.storage.get_output(output_id)?;
-        let input = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
-        match input {
+        let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
+        match output {
             config::Output::BoolToDevice {
                 device_id,
                 device_output_id,
@@ -255,6 +255,67 @@ impl State {
                 }
                 None => Err(Error::NonExistant(output_id.to_string())),
             },
+        }
+    }
+
+    pub fn emit_automations(&mut self, app_channel: &crate::app::channel::AppChannel) {
+        let keys: Vec<String> = { self.outputs.keys().cloned().collect() };
+        for output_id in keys {
+            debug!("automation for {}", output_id);
+            let output = { self.outputs.get(&output_id).cloned() };
+            if let Some(config::Output::BoolToDevice { automation, .. }) = output {
+                if let Some(expr) = automation {
+                    match config::boolean::evaluate(app_channel, &expr) {
+                        Ok(result) => {
+                            if let Err(e) = self.write_output_bool(&output_id, result) {
+                                error!("failed to write: {}", e);
+                            }
+                        }
+                        Err(e) => error!("{:?} has an error: {}", expr, e),
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
+        let m_input = self.storage.get_input(input_id)?;
+        match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
+            config::Input::BoolFromDevice {
+                name: _,
+                device_id,
+                device_input_id,
+                active_low: _,
+            } => {
+                let device_handle = self.devices.get(&device_id);
+                let device = device_handle.ok_or(Error::NonExistant(device_id))?;
+                let value = device.read_boolean(device_input_id)?;
+                Ok(if value {
+                    (1.0, config::Unit::Boolean)
+                } else {
+                    (0.0, config::Unit::Boolean)
+                })
+            }
+
+            config::Input::BoolFromVariable => {
+                let value = self
+                    .bool_variables
+                    .get(input_id)
+                    .cloned()
+                    .ok_or(Error::NonExistant(input_id.to_string()))?;
+
+                Ok(if value {
+                    (1.0, config::Unit::Boolean)
+                } else {
+                    (0.0, config::Unit::Boolean)
+                })
+            }
+
+            config::Input::FloatWithUnitFromDevice {
+                name: _,
+                device_id,
+                device_input_id,
+            } => self.read_sensor(&device_id, device_input_id),
         }
     }
 
@@ -285,10 +346,27 @@ pub fn new(config: config::Config) -> Result<State> {
         outputs: HashMap::new(),
         bool_variables: HashMap::new(),
     };
+
     if let Some(device_config) = config.devices {
         for (name, device_config) in device_config.iter() {
             state
                 .add_device(name, device_config)
+                .expect("pre-configured device to not fail to reset");
+        }
+    }
+
+    if let Some(input_config) = config.inputs {
+        for (name, input_config) in input_config.iter() {
+            state
+                .add_input(name, input_config)
+                .expect("pre-configured device to not fail to reset");
+        }
+    }
+
+    if let Some(output_config) = config.outputs {
+        for (name, output_config) in output_config.iter() {
+            state
+                .add_output(name, output_config)
                 .expect("pre-configured device to not fail to reset");
         }
     }

@@ -1,5 +1,6 @@
-use crate::app::state::State;
+use crate::app::channel::AppChannel;
 use crate::config::sched;
+use crate::i2c::Result;
 use chrono::prelude::*;
 use chrono::Duration;
 use serde_derive::{Deserialize, Serialize};
@@ -86,8 +87,8 @@ pub enum Value {
     // 1, 2, ... 30, 31
     DayOfMonth,
 
-    // Current value of a sensor i of device x
-    Sensor(String, usize, Unit),
+    // Current value of an input
+    ReadInput(String, Unit),
 
     // linear interpolation  A * (1 - t) + B * t
     // where:
@@ -114,75 +115,67 @@ pub enum Value {
 }
 
 /// An evaluator for value expressions.
-pub fn evaluate(app: &State, expr: &Value) -> f64 {
+pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
     match expr {
-        Value::Const(a) => *a,
+        Value::Const(a) => Ok(*a),
 
-        Value::Sensor(name, index, unit) => match app.read_sensor(name, *index) {
-            Ok(value) => {
-                if *unit == value.1 {
-                    value.0
-                } else {
-                    error!(
-                        "type mismatch on sensor. provided {:?}, user demands {:?}",
-                        value.1, *unit
-                    );
-                    std::f64::NAN
-                }
+        Value::ReadInput(input_id, unit) => {
+            let value = app.read_value(input_id.clone())?;
+            if *unit == value.1 {
+                Ok(value.0)
+            } else {
+                Err(crate::i2c::error::Error::UnitError(*unit))
             }
-            std::result::Result::Err(e) => {
-                error!("Failed to read sensor: {}", e);
-                std::f64::NAN
-            }
-        },
-
-        Value::Sub(a, b) => evaluate(app, a) - evaluate(app, b),
-        Value::Add(a, b) => evaluate(app, a) + evaluate(app, b),
-        Value::Mul(a, b) => evaluate(app, a) * evaluate(app, b),
-
-        Value::OffsetForLong { long } => sched::exact_offset_hrs(evaluate(app, long)),
-
-        Value::HourAngleSunrise { lat, doy } => {
-            sched::hour_angle_sunrise(evaluate(app, lat), sched::noon_decl_sun(evaluate(app, doy)))
-                .to_degrees()
         }
+        Value::Sub(a, b) => Ok(evaluate(app, a)? - evaluate(app, b)?),
+        Value::Add(a, b) => Ok(evaluate(app, a)? + evaluate(app, b)?),
+        Value::Mul(a, b) => Ok(evaluate(app, a)? * evaluate(app, b)?),
 
-        Value::NoonSunDeclinationAngle { doy } => sched::noon_decl_sun(evaluate(app, doy)),
+        Value::OffsetForLong { long } => Ok(sched::exact_offset_hrs(evaluate(app, long)?)),
 
-        Value::HoursOfDaylight { lat, doy } => {
-            sched::day_length_hrs(evaluate(app, lat), evaluate(app, doy))
-        }
+        Value::HourAngleSunrise { lat, doy } => Ok(sched::hour_angle_sunrise(
+            evaluate(app, lat)?,
+            sched::noon_decl_sun(evaluate(app, doy)?),
+        )
+        .to_degrees()),
+
+        Value::NoonSunDeclinationAngle { doy } => Ok(sched::noon_decl_sun(evaluate(app, doy)?)),
+
+        Value::HoursOfDaylight { lat, doy } => Ok(sched::day_length_hrs(
+            evaluate(app, lat)?,
+            evaluate(app, doy)?,
+        )),
 
         Value::HourOfSunset { lat, long, doy } => {
-            let dt: DateTime<Local> = app.current_dt();
-            let doy_ev = evaluate(app, doy);
+            let dt: DateTime<Local> = app.get_now()?;
+            let doy_ev = evaluate(app, doy)?;
             let h = sched::hour_angle_sunrise(
-                evaluate(app, lat).to_radians(),
+                evaluate(app, lat)?.to_radians(),
                 sched::noon_decl_sun(doy_ev),
             )
             .to_degrees()
                 / 15.0;
-            let exact_offset = sched::exact_offset_hrs(evaluate(app, long));
+            let exact_offset = sched::exact_offset_hrs(evaluate(app, long)?);
             let solar_offset = (12.0 + h) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
                 .yo(dt.year(), doy_ev as u32)
                 .and_hms(0, 0, 0)
                 + Duration::seconds(solar_offset as i64);
             let local = solar_dt.with_timezone(&dt.timezone());
-            local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0
+            Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
 
         Value::HourOfSunrise { lat, long, doy } => {
-            let dt: DateTime<Local> = app.current_dt();
-            let doy_ev = evaluate(app, doy);
+            let dt: DateTime<Local> = app.get_now()?;
+            let doy_ev = evaluate(app, doy)?;
             let h = sched::hour_angle_sunrise(
-                evaluate(app, lat).to_radians(),
+                evaluate(app, lat)?.to_radians(),
                 sched::noon_decl_sun(doy_ev),
             )
             .to_degrees()
                 / 15.0;
 
-            let exact_offset = sched::exact_offset_hrs(evaluate(app, long));
+            let exact_offset = sched::exact_offset_hrs(evaluate(app, long)?);
             debug!("ha: {}, sn: {}", h, exact_offset);
             let solar_offset = (12.0 - h) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
@@ -192,53 +185,57 @@ pub fn evaluate(app: &State, expr: &Value) -> f64 {
             debug!("solar: {}", solar_dt);
             let local = solar_dt.with_timezone(&dt.timezone());
             debug!("local: {} ({:?})", local, dt.timezone());
-            local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0
+            Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
 
         Value::HourOfDay => {
-            let dt: DateTime<Local> = app.current_dt();
-            dt.hour() as f64 + (dt.minute() as f64 / 60.0f64) + (dt.second() as f64 / 3600.0f64)
+            let dt: DateTime<Local> = app.get_now()?;
+            Ok(
+                dt.hour() as f64
+                    + (dt.minute() as f64 / 60.0f64)
+                    + (dt.second() as f64 / 3600.0f64),
+            )
         }
 
         Value::Year => {
-            let dt: DateTime<Local> = app.current_dt();
-            dt.year() as f64
+            let dt: DateTime<Local> = app.get_now()?;
+            Ok(dt.year() as f64)
         }
 
         Value::MonthOfYear => {
-            let dt: DateTime<Local> = app.current_dt();
-            dt.month() as f64
+            let dt: DateTime<Local> = app.get_now()?;
+            Ok(dt.month() as f64)
         }
 
         Value::DayOfMonth => {
-            let dt: DateTime<Local> = app.current_dt();
-            dt.day() as f64
+            let dt: DateTime<Local> = app.get_now()?;
+            Ok(dt.day() as f64)
         }
 
         Value::DayOfYear => {
-            let dt: DateTime<Local> = app.current_dt();
+            let dt: DateTime<Local> = app.get_now()?;
             let hour_ratio = (dt.hour() as f64)
                 + (dt.minute() as f64 / 60.0f64)
                 + (dt.second() as f64 / 3600.0f64);
-            dt.ordinal() as f64 + (hour_ratio / 24.0)
+            Ok(dt.ordinal() as f64 + (hour_ratio / 24.0))
         }
 
         Value::WeekDayFromMonday => {
-            let dt: DateTime<Local> = app.current_dt();
-            dt.weekday().number_from_monday() as f64
+            let dt: DateTime<Local> = app.get_now()?;
+            Ok(dt.weekday().number_from_monday() as f64)
         }
 
         Value::Lerp(a, t, b) => {
-            let tev = evaluate(app, t);
-            let aev = evaluate(app, a);
-            let bev = evaluate(app, b);
-            aev * (1f64 - tev) + bev * tev
+            let tev = evaluate(app, t)?;
+            let aev = evaluate(app, a)?;
+            let bev = evaluate(app, b)?;
+            Ok(aev * (1f64 - tev) + bev * tev)
         }
 
-        Value::Linear(a, x, b) => evaluate(app, a) * evaluate(app, x) + evaluate(app, b),
+        Value::Linear(a, x, b) => Ok(evaluate(app, a)? * evaluate(app, x)? + evaluate(app, b)?),
 
-        Value::Trunc(x) => evaluate(app, x).trunc(),
+        Value::Trunc(x) => Ok(evaluate(app, x)?.trunc()),
 
-        Value::Inverse(v) => 1.0f64 / evaluate(app, v),
+        Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v)?),
     }
 }

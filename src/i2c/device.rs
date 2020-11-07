@@ -40,48 +40,34 @@ impl Device {
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
             config::Type::MCP9808 { .. } => Ok(()),
-            config::Type::MCP23017 { address, pins: _ } => {
+            config::Type::MCP23017 { address, .. } => {
                 self.mcp23017_state.reset(*address, &self.i2c)
             }
-            config::Type::BMP085 { address, mode: _ } => {
-                self.bmp085_state.reset(*address, &self.i2c)
-            }
+            config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),
         }
     }
 
     pub fn sensor_count(&self) -> usize {
         match &self.config.model {
-            config::Type::BMP085 {
-                address: _,
-                mode: _,
-            } => 2,
-            config::Type::MCP9808 { address: _ } => 1,
-            config::Type::MCP23017 {
-                address: _,
-                pins: _,
-            } => 0,
+            config::Type::BMP085 { .. } => 2,
+            config::Type::MCP9808 { .. } => 1,
+            config::Type::MCP23017 { .. } => 0,
         }
     }
 
     pub fn boolean_count(&self) -> usize {
         match self.config.model {
-            config::Type::BMP085 {
-                address: _,
-                mode: _,
-            } => 0,
-            config::Type::MCP9808 { address: _ } => 0,
-            config::Type::MCP23017 {
-                address: _,
-                pins: _,
-            } => 16,
+            config::Type::BMP085 { .. } => 0,
+            config::Type::MCP9808 { .. } => 0,
+            config::Type::MCP23017 { .. } => 16,
         }
     }
 
     pub fn read_boolean(&self, index: usize) -> Result<bool> {
         match &self.config.model {
-            config::Type::BMP085 { address, mode } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP9808 { address } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP23017 { address, pins } => {
+            config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP23017 { address, .. } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
                 let pin = self
                     .mcp23017_state
@@ -111,18 +97,15 @@ impl Device {
                 }
                 _ => Err(Error::OutOfBounds(index)),
             },
-            config::Type::MCP23017 { address, pins } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP23017 { .. } => Err(Error::OutOfBounds(index)),
         }
     }
 
     pub fn write_boolean(&mut self, index: usize, value: bool) -> Result<()> {
         match &self.config.model {
-            config::Type::BMP085 {
-                address: _,
-                mode: _,
-            } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP9808 { address: _ } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP23017 { address, pins } => {
+            config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index)),
+            config::Type::MCP23017 { address, .. } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
                 self.mcp23017_state
                     .set_pin(*address, bank, pin, value, &self.i2c)

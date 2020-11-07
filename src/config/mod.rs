@@ -1,7 +1,7 @@
 pub mod boolean;
 pub mod value;
 
-use boolean::BoolExpr;
+pub use boolean::BoolExpr;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -35,20 +35,9 @@ pub enum Type {
     },
     MCP23017 {
         address: u16,
-        pins: [Mcp23017PinConfig; 16],
+        // true for input, false for output
+        pin_input: [bool; 16],
     },
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum PinDirection {
-    Input,
-    Output,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct Mcp23017PinConfig {
-    /// Whether the pin should be input or output
-    pub direction: PinDirection,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -84,11 +73,6 @@ pub enum Input {
      * We can read a single boolean
      */
     BoolFromVariable,
-
-    /**
-     * returns the result of an expresion
-     */
-    ExpressionResult(BoolExpr),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -101,8 +85,7 @@ pub enum Output {
         device_id: String,
         device_output_id: usize,
 
-        // If set to an expression, the system will compute this output every tick,
-        // and ignore user interference.
+        // If set to an expression, the system will compute this output every tick and write it to the output
         automation: Option<BoolExpr>,
     },
 

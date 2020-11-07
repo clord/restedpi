@@ -23,6 +23,8 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
 
+use config::BoolExpr;
+
 mod app;
 mod auth;
 mod config;
@@ -36,12 +38,26 @@ mod webapp;
 /// application.
 #[tokio::main]
 async fn main() {
-    if env::var_os("RUST_LOG").is_none() {
+    //     let x = config::Device{
+    //      model: config::Type::MCP23017 {
+    //        address: 67,
+    //        pin_input:
+    //            [true, false, true, false, true, false, true
+    //            , false, true, false, true, false, true, false, true, false, ]
+    //      },
+    //      name: "device name".to_string(),
+    //      description: "Description of device".to_string(),
+    //      disabled: None
+    //     } ;
+
+    //     println!("{}", serde_json::to_string(&x).expect("foo"));
+
+    if env::var_os("LOG").is_none() {
         // Set `RUST_LOG=restedpi=debug` to see debug logs,
-        env::set_var("RUST_LOG", "restedpi=info");
+        env::set_var("LOG", "restedpi=info");
         info!("defaulting to info level logging. RUST_LOG='restedpi=info'");
     }
-    pretty_env_logger::init();
+    pretty_env_logger::init_custom_env("LOG");
 
     let server_name = match DeviceInfo::new() {
         Ok(model) => model.model().to_string(),
@@ -74,53 +90,6 @@ async fn main() {
     let app = app::channel::start_app(config).expect("app failed to start");
     let app = Arc::new(Mutex::new(app));
 
-    // Limit incoming body length to 16kb
- //   const LIMIT: u64 = 1024 * 16;
-
-
-    // let r_available_devices = warp::get()
-    //     .and(path!("available-devices"))
-    //     .and(app.clone())
-    //     .map(webapp::available_devices);
-
-    // let r_adding_configured = warp::post()
-    //     .and(app.clone())
-    //     .and(warp::body::json())
-    //     .map(webapp::add_device);
-
-    // let r_remove_configured = warp::delete()
-    //     .and(app.clone())
-    //     .and(warp::path::param())
-    //     .map(webapp::remove_device);
-
-    // let r_fetching_all_configured = warp::get()
-    //     .and(app.clone())
-    //     .map(webapp::configured_devices);
-
-    // let r_update_configured_device = warp::put()
-    //     .and(app.clone())
-    //     .and(warp::path::param())
-    //     .and(warp::body::json())
-    //     .map(webapp::edit_configured_device);
-
-    // let r_fetching_configured_device = warp::get()
-    //     .and(app.clone())
-    //     .and(warp::path::param())
-    //     .map(webapp::configured_device);
-
-    // let r_configured = warp::path("configured").and(
-    //     r_adding_configured
-    //         .or(r_fetching_configured_device)
-    //         .or(r_update_configured_device)
-    //         .or(r_fetching_all_configured)
-    //         .or(r_remove_configured),
-    // );
-
-    // let r_devices = warp::path("devices").and(
-    //         // .or(r_configured),
-    // );
-    //
-
     let api = webapp::filters::api(app);
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
 
@@ -130,10 +99,14 @@ async fn main() {
     );
     if let Some((key_path, cert_path)) = key_and_cert {
         info!("RestedPi listening: https://{}", addr);
-        serve.tls().cert_path(cert_path).key_path(key_path).run(addr).await
+        serve
+            .tls()
+            .cert_path(cert_path)
+            .key_path(key_path)
+            .run(addr)
+            .await
     } else {
         error!("Missing keys in configuration; can't start in TLS mode. set key_and_cert_path");
-        return ()
+        return ();
     }
 }
-

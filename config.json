@@ -1,11 +1,34 @@
 {
     "listen": "0.0.0.0",
     "database": "/home/clord/rpi-dev.db",
-    "devices": {},
-    "inputs": {},
-    "outputs": {},
     "key_and_cert_path": [
       "/home/clord/rip-certs/rip.z.odago.ca.key.pem",
       "/home/clord/rip-certs/rip.z.odago.ca.cert.pem"
-    ]
+    ],
+    "devices": {
+      "main-mcp": {
+        "model": {
+          "name":"MCP23017",
+          "address":67,
+          "pin_input":[true,false,true,false,true,false,true,false,true,false,true,false,true,false,true,false]},
+          "name":"device name",
+          "description":"Description of device",
+          "disabled":null
+      }
+    },
+    "inputs": {},
+    "outputs": {
+      "light-1": {
+        "BoolToDevice": {
+          "name":"Main Light",
+          "device_id":"main-mcp",
+          "device_output_id":1,
+          "automation": { 
+            "EqBool": [
+              {"ReadBooleanInput":"some-input"}, 
+              {"Const":true}
+            ]}
+        }
+      }
+    }
 }

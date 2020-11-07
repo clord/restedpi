@@ -280,6 +280,7 @@ impl Mcp23017State {
         value: bool,
         i2c: &I2cBus,
     ) -> Result<()> {
+        info!("set_pin: {}", address);
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         if bank_state.direction[pdex] != Direction::Output {

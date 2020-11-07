@@ -1,5 +1,6 @@
-use crate::app::state::State;
+use crate::app::channel::AppChannel;
 use crate::config::value::{evaluate as evaluate_value, Value};
+use crate::i2c::Result;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -11,28 +12,33 @@ pub enum BoolExpr {
     Between(Value, Value, Value),
     EqZero(Value),
     NeqZero(Value),
+    Const(bool),
+    EqBool(Box<BoolExpr>, Box<BoolExpr>),
     And(Box<BoolExpr>, Box<BoolExpr>),
     Or(Box<BoolExpr>, Box<BoolExpr>),
     Not(Box<BoolExpr>),
+    ReadBooleanInput(String),
 }
 
 /// A very basic parser that evaluates an expression for truth. Can refer to values.
-pub fn evaluate(app: &State, expr: &BoolExpr) -> bool {
+pub fn evaluate(app: &AppChannel, expr: &BoolExpr) -> Result<bool> {
+    debug!("evaluate: {:?}", expr);
     match expr {
-        BoolExpr::EqZero(a) => evaluate_value(app, a) == 0.0f64,
-        BoolExpr::NeqZero(a) => evaluate_value(app, a) != 0.0f64,
-        BoolExpr::Equal(a, b) => evaluate_value(app, a) == evaluate_value(app, b),
+        BoolExpr::EqZero(a) => Ok(evaluate_value(app, a)? == 0.0f64),
+        BoolExpr::NeqZero(a) => Ok(evaluate_value(app, a)? != 0.0f64),
+        BoolExpr::Equal(a, b) => Ok(evaluate_value(app, a)? == evaluate_value(app, b)?),
         BoolExpr::EqualPlusOrMinus(a, b, c) => {
-            (evaluate_value(app, a) - evaluate_value(app, b)).abs() < evaluate_value(app, c)
+            Ok((evaluate_value(app, a)? - evaluate_value(app, b)?).abs() < evaluate_value(app, c)?)
         }
-        BoolExpr::MoreThan(a, b) => evaluate_value(app, a) > evaluate_value(app, b),
-        BoolExpr::LessThan(a, b) => evaluate_value(app, a) < evaluate_value(app, b),
-        BoolExpr::Between(a, b, c) => {
-            evaluate_value(app, a) <= evaluate_value(app, b)
-                && evaluate_value(app, b) <= evaluate_value(app, c)
-        }
-        BoolExpr::And(a, b) => evaluate(app, &*a) && evaluate(app, &*b),
-        BoolExpr::Or(a, b) => evaluate(app, &*a) || evaluate(app, &*b),
-        BoolExpr::Not(b) => !evaluate(app, &*b),
+        BoolExpr::MoreThan(a, b) => Ok(evaluate_value(app, a)? > evaluate_value(app, b)?),
+        BoolExpr::LessThan(a, b) => Ok(evaluate_value(app, a)? < evaluate_value(app, b)?),
+        BoolExpr::Between(a, b, c) => Ok(evaluate_value(app, a)? <= evaluate_value(app, b)?
+            && evaluate_value(app, b)? <= evaluate_value(app, c)?),
+        BoolExpr::Const(a) => Ok(*a),
+        BoolExpr::EqBool(a, b) => Ok(evaluate(app, &*a)? == evaluate(app, &*b)?),
+        BoolExpr::And(a, b) => Ok(evaluate(app, &*a)? && evaluate(app, &*b)?),
+        BoolExpr::Or(a, b) => Ok(evaluate(app, &*a)? || evaluate(app, &*b)?),
+        BoolExpr::Not(b) => Ok(!(evaluate(app, &*b)?)),
+        BoolExpr::ReadBooleanInput(input_id) => app.read_boolean(input_id.clone()),
     }
 }
