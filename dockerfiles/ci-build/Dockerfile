@@ -25,7 +25,7 @@ RUN curl https://sh.rustup.rs -sSf | \
 ENV PATH=/root/.cargo/bin:$PATH
 ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 
-RUN rustup target add armv7-unknown-linux-gnueabihf
+RUN rustup target add arm-unknown-linux-gnueabihf
 COPY config /root/.cargo/config
 
 RUN git clone --depth=1 https://github.com/raspberrypi/tools.git
@@ -35,5 +35,5 @@ ENV PATH=/root/tools/arm-bcm2708/arm-linux-gnueabihf/bin:$PATH
 # COPY . restedpi-rust/
 # WORKDIR restedpi-rust
 
-# RUN cargo build --target=armv7-unknown-linux-gnueabihf --release
+# RUN cargo build --target=arm-unknown-linux-gnueabihf --release
 
