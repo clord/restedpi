@@ -35,7 +35,7 @@ impl Device {
 
     pub fn set_config(&mut self, config: &config::Device) -> Result<()> {
         self.config = config.clone();
-        self.reset()?
+        self.reset()
     }
 
     pub fn reset(&mut self) -> Result<()> {
