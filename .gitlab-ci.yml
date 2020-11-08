@@ -10,8 +10,11 @@ stages:
 build:
   stage: build
   artifacts:
+    expire-in: 1 week
     paths: 
-      - target/release/restedpi
+      - target/release
+    exclude:
+      - target/**/*.o
   script: cargo build --target=armv7-unknown-linux-gnueabihf --release
 
 test:
