@@ -1,15 +1,22 @@
 image: clord/restedpi-ci
+
+before_script:
+  - export DEBIAN_FRONTEND=noninteractive
+
 stages:
   - build
-  - test
   - deploy
 
 build:
   stage: build
-  script: cargo build
+  artifacts:
+    paths: 
+      - target/
+  script: cargo build --target=armv7-unknown-linux-gnueabihf --release
 
 test:
-  stage: test
+  stage: build
+  script: cargo build
   script: cargo test
 
 deploy:
@@ -26,7 +33,6 @@ deploy:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - cargo build --target=armv7-unknown-linux-gnueabihf --release
-    - ls -la target/*
+    - ls -la target/release/*
     #    - rsync -hrvz --delete  $DEPLOY_USER@$DEPLOY_HOST
 
