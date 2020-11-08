@@ -1,5 +1,9 @@
 image: clord/restedpi-ci
 
+cache:
+  paths:
+    - target
+
 before_script:
   - export DEBIAN_FRONTEND=noninteractive
 
@@ -11,10 +15,10 @@ build:
   stage: build
   artifacts:
     paths: 
-      - target/armv7-unknown-linux-gnueabihf/release/restedpi
+      - target/arm-unknown-linux-gnueabihf/release/restedpi
 
   script: 
-    - cargo build --target=armv7-unknown-linux-gnueabihf --release
+    - cargo build --target=arm-unknown-linux-gnueabihf --release
 
 test:
   stage: build
@@ -37,6 +41,6 @@ deploy:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - ls target/armv7-unknown-linux-gnueabihf/release
-    - rsync -hrvz --delete target/armv7-unknown-linux-gnueabihf/release/restedpi $DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/restedpi
+    - ls target/arm-unknown-linux-gnueabihf/release
+    - rsync -hrvz --delete target/arm-unknown-linux-gnueabihf/release/restedpi $DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/restedpi
 
