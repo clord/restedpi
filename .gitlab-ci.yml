@@ -13,7 +13,9 @@ build:
     paths: 
       - target/release
 
-  script: cargo build --target=armv7-unknown-linux-gnueabihf --release
+  script: 
+    - cargo build --target=armv7-unknown-linux-gnueabihf --release
+    - ls target/release/**
 
 test:
   stage: build
