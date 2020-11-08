@@ -16,9 +16,9 @@ build:
   script: 
     - cargo build --target=armv7-unknown-linux-gnueabihf --release
     - echo "***********"
-    - ls target/release
+    - ls target/
     - echo "***********"
-    - ls target/release/**
+    - ls target/**
     - echo "***********"
 
 test:
