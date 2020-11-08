@@ -6,7 +6,7 @@ stages:
 
 build:
   stage: build
-  script: cargo build --target=armv7-unknown-linux-gnueabihf --release
+  script: cargo build
 
 test:
   stage: test
@@ -26,6 +26,7 @@ deploy:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - ls .
+    - cargo build --target=armv7-unknown-linux-gnueabihf --release
+    - ls -la target/*
     #    - rsync -hrvz --delete  $DEPLOY_USER@$DEPLOY_HOST
 
