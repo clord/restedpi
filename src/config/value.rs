@@ -1,4 +1,4 @@
-use crate::app::channel::AppChannel;
+use crate::app::state::State;
 use crate::config::sched;
 use crate::i2c::Result;
 use chrono::prelude::*;
@@ -115,12 +115,12 @@ pub enum Value {
 }
 
 /// An evaluator for value expressions.
-pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
+pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
     match expr {
         Value::Const(a) => Ok(*a),
 
         Value::ReadInput(input_id, unit) => {
-            let value = app.read_value(input_id.clone())?;
+            let value = app.read_input_value(input_id)?;
             if *unit == value.1 {
                 Ok(value.0)
             } else {
@@ -147,7 +147,7 @@ pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
         )),
 
         Value::HourOfSunset { lat, long, doy } => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             let doy_ev = evaluate(app, doy)?;
             let h = sched::hour_angle_sunrise(
                 evaluate(app, lat)?.to_radians(),
@@ -166,7 +166,7 @@ pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
         }
 
         Value::HourOfSunrise { lat, long, doy } => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             let doy_ev = evaluate(app, doy)?;
             let h = sched::hour_angle_sunrise(
                 evaluate(app, lat)?.to_radians(),
@@ -189,7 +189,7 @@ pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
         }
 
         Value::HourOfDay => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             Ok(
                 dt.hour() as f64
                     + (dt.minute() as f64 / 60.0f64)
@@ -198,22 +198,22 @@ pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
         }
 
         Value::Year => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             Ok(dt.year() as f64)
         }
 
         Value::MonthOfYear => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             Ok(dt.month() as f64)
         }
 
         Value::DayOfMonth => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             Ok(dt.day() as f64)
         }
 
         Value::DayOfYear => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             let hour_ratio = (dt.hour() as f64)
                 + (dt.minute() as f64 / 60.0f64)
                 + (dt.second() as f64 / 3600.0f64);
@@ -221,7 +221,7 @@ pub fn evaluate(app: &AppChannel, expr: &Value) -> Result<f64> {
         }
 
         Value::WeekDayFromMonday => {
-            let dt: DateTime<Local> = app.get_now()?;
+            let dt: DateTime<Local> = app.current_dt();
             Ok(dt.weekday().number_from_monday() as f64)
         }
 

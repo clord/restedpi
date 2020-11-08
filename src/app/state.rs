@@ -258,14 +258,14 @@ impl State {
         }
     }
 
-    pub fn emit_automations(&mut self, app_channel: &crate::app::channel::AppChannel) {
+    pub fn emit_automations(&mut self) {
         let keys: Vec<String> = { self.outputs.keys().cloned().collect() };
         for output_id in keys {
             debug!("automation for {}", output_id);
             let output = { self.outputs.get(&output_id).cloned() };
             if let Some(config::Output::BoolToDevice { automation, .. }) = output {
                 if let Some(expr) = automation {
-                    match config::boolean::evaluate(app_channel, &expr) {
+                    match config::boolean::evaluate(self, &expr) {
                         Ok(result) => {
                             if let Err(e) = self.write_output_bool(&output_id, result) {
                                 error!("failed to write: {}", e);

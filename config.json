@@ -16,7 +16,16 @@
           "disabled":null
       }
     },
-    "inputs": {},
+    "inputs": {
+      "some-input": {
+        "BoolFromDevice": {
+          "name": "a great input",
+          "device_id": "main-mcp",
+          "device_input_id": 2,
+          "active_low": false
+        }
+      }
+    },
     "outputs": {
       "light-1": {
         "BoolToDevice": {

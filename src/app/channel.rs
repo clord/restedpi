@@ -514,7 +514,7 @@ pub fn start_app(config: config::Config) -> Result<AppChannel> {
                     info!("terminating channel");
                     break;
                 } else {
-                    state.emit_automations(&cloned_app_channel);
+                    state.emit_automations();
                 }
 
                 // TODO: Support sending real time change notification by allowing clients to send a sender to us,
