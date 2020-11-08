@@ -345,18 +345,18 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
                 let r = state.read_input_bool(&input_id);
                 result.push(r);
             }
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::ReadBoolean { input_id, response } => {
             let result = state.read_input_bool(&input_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::WriteBoolean {
@@ -365,10 +365,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.write_output_bool(&output_id, value);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::AddOrReplaceDevice {
@@ -377,10 +377,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.add_device(&device_id, &config);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::RemoveDevice {
@@ -388,26 +388,26 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.remove_device(&device_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::AllDevices { response } => {
             let result = state.devices();
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::RemoveInput { input_id, response } => {
             let result = state.remove_input(&input_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::RemoveOutput {
@@ -415,10 +415,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.remove_output(&output_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::GetDeviceConfig {
@@ -426,10 +426,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.device_config(&device_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::SetTime { time } => {
@@ -441,10 +441,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.reset_device(&device_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::AddOrReplaceOutput {
@@ -453,10 +453,10 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.add_output(&output_id, &output);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::AddOrReplaceInput {
@@ -465,25 +465,25 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             response,
         } => {
             let result = state.add_input(&input_id, &input);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
 
         AppMessage::ReadValue { input_id, response } => {
             let result = state.read_input_value(&input_id);
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
         AppMessage::GetTime { response } => {
             let result = Ok(state.current_dt());
-            thread::spawn(move || match response.send(result) {
+            match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
-            });
+            };
         }
         AppMessage::Terminate => should_terminate = true,
     }
@@ -503,9 +503,6 @@ pub fn start_app(config: config::Config) -> Result<AppChannel> {
         };
     });
 
-    let app_channel = AppChannel { sender };
-
-    let cloned_app_channel = app_channel.clone();
     thread::spawn(move || loop {
         match receiver.recv() {
             Ok(next) => {
@@ -526,5 +523,5 @@ pub fn start_app(config: config::Config) -> Result<AppChannel> {
         }
     });
 
-    Ok(app_channel)
+    Ok(AppChannel { sender })
 }

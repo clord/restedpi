@@ -1,3 +1,4 @@
+use crate::config::Dir;
 use crate::i2c::bus::{Address, I2cBus};
 use crate::i2c::{error::Error, Result};
 
@@ -11,18 +12,6 @@ const WRITE_GPIOA_ADDR: u8 = 0x14;
 const WRITE_GPIOB_ADDR: u8 = 0x15;
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-pub enum Pullup {
-    On,
-    Off,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-pub enum Direction {
-    Output,
-    Input(Pullup),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum Pin {
     Pin0,
     Pin1,
@@ -34,11 +23,11 @@ pub enum Pin {
     Pin7,
 }
 
-fn direction_as_pullup_word(ps: [Direction; 8]) -> u8 {
+fn direction_as_pullup_word(ps: [Dir; 8]) -> u8 {
     let mut result = 0u8;
     let mut dex = 0;
     for x in ps.iter() {
-        if let Direction::Input(Pullup::On) = x {
+        if let Dir::In(true) = x {
             result = result | 1u8 >> dex;
         }
         dex += 1;
@@ -46,11 +35,11 @@ fn direction_as_pullup_word(ps: [Direction; 8]) -> u8 {
     result
 }
 
-fn direction_as_inout_word(ps: [Direction; 8]) -> u8 {
+fn direction_as_inout_word(ps: [Dir; 8]) -> u8 {
     let mut result = 0u8;
     let mut dex = 0;
     for x in ps.iter() {
-        if let Direction::Input(_) = x {
+        if let Dir::In(_) = x {
             result = result | 1u8 >> dex;
         };
         dex += 1;
@@ -141,15 +130,15 @@ struct BankState<T> {
  */
 #[derive(Debug, PartialEq, Clone, PartialOrd)]
 struct State {
-    direction: [Direction; 8],
+    direction: [Dir; 8],
 }
 
 const INITIAL_STATE: BankState<State> = BankState {
     a: State {
-        direction: [Direction::Input(Pullup::Off); 8],
+        direction: [Dir::In(false); 8],
     },
     b: State {
-        direction: [Direction::Input(Pullup::Off); 8],
+        direction: [Dir::In(false); 8],
     },
 };
 
@@ -252,7 +241,7 @@ impl Mcp23017State {
         address: Address,
         bank: Bank,
         pin: Pin,
-        direction: Direction,
+        direction: Dir,
         i2c: &I2cBus,
     ) -> Result<()> {
         let bank_state = self.state_for_bank(bank);
@@ -280,10 +269,10 @@ impl Mcp23017State {
         value: bool,
         i2c: &I2cBus,
     ) -> Result<()> {
-        info!("set_pin: {}", address);
+        debug!("set_pin: {}:{:?}:{:?} <- {}", address, bank, pin, value);
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
-        if bank_state.direction[pdex] != Direction::Output {
+        if bank_state.direction[pdex] != Dir::Out {
             return Err(Error::InvalidPinDirection);
         }
 
@@ -297,7 +286,7 @@ impl Mcp23017State {
         Ok(())
     }
 
-    pub fn get_pin_direction(&self, bank: Bank, pin: Pin) -> Result<Direction> {
+    pub fn get_pin_direction(&self, bank: Bank, pin: Pin) -> Result<Dir> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         return Ok(bank_state.direction[pdex]);
@@ -306,9 +295,10 @@ impl Mcp23017State {
     pub fn get_pin(&self, address: Address, bank: Bank, pin: Pin, i2c: &I2cBus) -> Result<bool> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
-        if let Direction::Output = bank_state.direction[pdex] {
-            return Err(Error::InvalidPinDirection);
-        }
+        // can read from output pins!
+        // if let Dir::Out = bank_state.direction[pdex] {
+        //     return Err(Error::InvalidPinDirection);
+        // }
         let value = self.read_gpio_value(address, bank, i2c)?;
         return Ok(value[pin_ordinal(pin)]);
     }

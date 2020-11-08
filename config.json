@@ -7,14 +7,15 @@
     ],
     "devices": {
       "main-mcp": {
+        "name":"main mcp",
+        "description":"Main Switchbank",
         "model": {
           "name":"MCP23017",
           "address":67,
-          "pin_input":[true,false,true,false,true,false,true,false,true,false,true,false,true,false,true,false]},
-          "name":"device name",
-          "description":"Description of device",
+          "pin_direction":["Out","Out",{"In":false},"Out","Out",{"In":true},"Out","Out","Out","Out","Out","Out","Out","Out","Out","Out"],
           "disabled":null
       }
+    }
     },
     "inputs": {
       "some-input": {

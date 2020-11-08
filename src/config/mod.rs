@@ -36,8 +36,14 @@ pub enum Type {
     MCP23017 {
         address: u16,
         // true for input, false for output
-        pin_input: [bool; 16],
+        pin_direction: [Dir; 16],
     },
+}
+
+#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Copy, Clone, Debug)]
+pub enum Dir {
+    Out,
+    In(bool),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -24,9 +24,7 @@ impl State {
         let mut device = Device::new(config, self.i2c.clone());
         info!("Adding or replacing device with id: {}", id);
 
-        if cfg!(raspberry_pi) {
-            device.reset()?;
-        }
+        device.reset()?;
 
         self.storage.set_device(&id, config)?;
         self.devices.insert(id.to_string(), device);
@@ -47,10 +45,9 @@ impl State {
     }
 
     pub fn reset_device(&mut self, id: &str) -> Result<()> {
-        let device = self
-            .devices
-            .get_mut(id)
-            .ok_or(Error::NonExistant(id.to_string()))?;
+        let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
+            format!("reset_device: {}", id).to_string(),
+        ))?;
         device.reset()?;
         Ok(())
     }
@@ -69,7 +66,9 @@ impl State {
                 let outputs = self.outputs_using_device(name);
                 Ok((d.config.clone(), inputs, outputs))
             }
-            None => Err(Error::NonExistant(name.to_string())),
+            None => Err(Error::NonExistant(
+                format!("device config for {}", name).to_string(),
+            )),
         }
     }
 
@@ -173,9 +172,7 @@ impl State {
         self.devices.clear();
         for (sname, config) in self.storage.all_devices()? {
             let mut device = Device::new(&config, self.i2c.clone());
-            if cfg!(raspberry_pi) {
-                device.reset()?;
-            }
+            device.reset()?;
             self.devices.insert(sname, device);
         }
 
@@ -212,18 +209,20 @@ impl State {
                 device_input_id,
                 active_low: _,
             } => {
-                debug!("will read!");
                 let device_handle = self.devices.get(&device_id);
-                let device = device_handle.ok_or(Error::NonExistant(device_id))?;
+                let device = device_handle
+                    .ok_or(Error::NonExistant(format!("BoolFromDevice: {}", device_id)))?;
                 let value = device.read_boolean(device_input_id)?;
-                debug!("did read!");
                 Ok(value)
             }
-            config::Input::BoolFromVariable => self
-                .bool_variables
-                .get(input_id)
-                .cloned()
-                .ok_or(Error::NonExistant(input_id.to_string())),
+            config::Input::BoolFromVariable => {
+                self.bool_variables
+                    .get(input_id)
+                    .cloned()
+                    .ok_or(Error::NonExistant(
+                        format!("BoolFromVariable: {}", input_id).to_string(),
+                    ))
+            }
             config::Input::FloatWithUnitFromDevice { .. } => {
                 // TODO: Could read the float and convert to boolean using thresholds in config...
                 Err(Error::UnitError(Unit::Boolean))
@@ -244,7 +243,8 @@ impl State {
                 ..
             } => {
                 let device_handle = self.devices.get_mut(&device_id);
-                let device = device_handle.ok_or(Error::NonExistant(device_id))?;
+                let device = device_handle
+                    .ok_or(Error::NonExistant(format!("BoolToDevice: {}", device_id)))?;
                 device.write_boolean(device_output_id, value)?;
                 Ok(())
             }
@@ -253,7 +253,9 @@ impl State {
                     *var = value;
                     Ok(())
                 }
-                None => Err(Error::NonExistant(output_id.to_string())),
+                None => Err(Error::NonExistant(
+                    format!("BoolToVariable: {}", output_id).to_string(),
+                )),
             },
         }
     }
@@ -288,7 +290,9 @@ impl State {
                 active_low: _,
             } => {
                 let device_handle = self.devices.get(&device_id);
-                let device = device_handle.ok_or(Error::NonExistant(device_id))?;
+                let device = device_handle.ok_or(Error::NonExistant(
+                    format!("BoolFromDevice: {}", device_id).to_string(),
+                ))?;
                 let value = device.read_boolean(device_input_id)?;
                 Ok(if value {
                     (1.0, config::Unit::Boolean)
@@ -298,11 +302,13 @@ impl State {
             }
 
             config::Input::BoolFromVariable => {
-                let value = self
-                    .bool_variables
-                    .get(input_id)
-                    .cloned()
-                    .ok_or(Error::NonExistant(input_id.to_string()))?;
+                let value =
+                    self.bool_variables
+                        .get(input_id)
+                        .cloned()
+                        .ok_or(Error::NonExistant(
+                            format!("BoolFromVariable: {}", input_id).to_string(),
+                        ))?;
 
                 Ok(if value {
                     (1.0, config::Unit::Boolean)
@@ -322,7 +328,9 @@ impl State {
     pub fn read_sensor(&self, device_id: &str, sensor_id: usize) -> Result<(f64, Unit)> {
         match self.devices.get(device_id) {
             Some(m) => m.read_sensor(sensor_id),
-            None => Err(Error::NonExistant(device_id.to_string())),
+            None => Err(Error::NonExistant(
+                format!("read_sensor: {}", device_id).to_string(),
+            )),
         }
     }
 }

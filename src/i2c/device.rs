@@ -33,15 +33,30 @@ impl Device {
         self.config.clone()
     }
 
-    pub fn set_config(&mut self, config: &config::Device) {
+    pub fn set_config(&mut self, config: &config::Device) -> Result<()> {
         self.config = config.clone();
+        self.reset()?
     }
 
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
             config::Type::MCP9808 { .. } => Ok(()),
-            config::Type::MCP23017 { address, .. } => {
-                self.mcp23017_state.reset(*address, &self.i2c)
+            config::Type::MCP23017 {
+                address,
+                pin_direction,
+            } => {
+                self.mcp23017_state.reset(*address, &self.i2c)?;
+                for index in 0..15 {
+                    let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
+                    self.mcp23017_state.set_pin_direction(
+                        *address,
+                        bank,
+                        pin,
+                        pin_direction[index],
+                        &self.i2c,
+                    )?;
+                }
+                Ok(())
             }
             config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),
         }
@@ -105,8 +120,21 @@ impl Device {
         match &self.config.model {
             config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index)),
             config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index)),
-            config::Type::MCP23017 { address, .. } => {
+            config::Type::MCP23017 {
+                address,
+                pin_direction,
+            } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
+                let old_dir = self.mcp23017_state.get_pin_direction(bank, pin)?;
+                if old_dir != pin_direction[index] {
+                    self.mcp23017_state.set_pin_direction(
+                        *address,
+                        bank,
+                        pin,
+                        pin_direction[index],
+                        &self.i2c,
+                    )?;
+                }
                 self.mcp23017_state
                     .set_pin(*address, bank, pin, value, &self.i2c)
             }

@@ -31,6 +31,7 @@ mod config;
 mod i2c;
 mod storage;
 mod webapp;
+use config::Dir;
 
 /// big picture:
 /// read configuration and decide what sensors and switches are available. start up application, then
@@ -38,19 +39,18 @@ mod webapp;
 /// application.
 #[tokio::main]
 async fn main() {
-    //     let x = config::Device{
-    //      model: config::Type::MCP23017 {
-    //        address: 67,
-    //        pin_input:
-    //            [true, false, true, false, true, false, true
-    //            , false, true, false, true, false, true, false, true, false, ]
-    //      },
-    //      name: "device name".to_string(),
-    //      description: "Description of device".to_string(),
-    //      disabled: None
-    //     } ;
+    // let x = config::Device{
+    //  model: config::Type::MCP23017 {
+    //    address: 67,
+    //    pin_direction:
+    //        [Dir::Out, Dir::Out, Dir::In(false), Dir::Out, Dir::Out, Dir::In(true), Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, Dir::Out, ]
+    //  },
+    //  name: "device name".to_string(),
+    //  description: "Description of device".to_string(),
+    //  disabled: None
+    // } ;
 
-    //     println!("{}", serde_json::to_string(&x).expect("foo"));
+    // println!("{}", serde_json::to_string(&x).expect("foo"));
 
     if env::var_os("LOG").is_none() {
         // Set `RUST_LOG=restedpi=debug` to see debug logs,
