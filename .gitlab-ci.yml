@@ -17,7 +17,9 @@ build:
 test:
   stage: build
   script: cargo build
-  script: cargo test
+  script: 
+    - sleep 10 
+    - cargo test
 
 deploy:
   stage: deploy
@@ -33,5 +35,6 @@ deploy:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
+    - ls target/release/*
     - rsync -hrvz --delete target/release/restedpi $DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/restedpi
 
