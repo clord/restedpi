@@ -11,15 +11,12 @@ build:
   stage: build
   artifacts:
     paths: 
-      - target/release
+      - target/armv7-unknown-linux-gnueabihf/release
 
   script: 
     - cargo build --target=armv7-unknown-linux-gnueabihf --release
     - echo "***********"
-    - ls target/
-    - echo "***********"
-    - ls target/**
-    - echo "***********"
+    - ls target/armv7-unknown-linux-gnueabihf/release
 
 test:
   stage: build
@@ -42,6 +39,6 @@ deploy:
     - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - ls target/release/*
+    - ls target/armv7-unknown-linux-gnueabihf/release
     - rsync -hrvz --delete target/release/restedpi $DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/restedpi
 
