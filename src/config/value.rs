@@ -159,7 +159,7 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             .to_degrees()
                 / 15.0;
             let exact_offset = sched::exact_offset_hrs(evaluate(app, long)?);
-            let solar_offset = (12.0 + h) * 3600.0;
+            let solar_offset = (12 + 2 * (12 - h)) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
                 .yo(dt.year(), doy_ev as u32)
                 .and_hms(0, 0, 0)
@@ -180,7 +180,7 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
 
             let exact_offset = sched::exact_offset_hrs(evaluate(app, long)?);
             debug!("ha: {}, sn: {}", h, exact_offset);
-            let solar_offset = (12.0 - h) * 3600.0;
+            let solar_offset = h * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
                 .yo(dt.year(), doy_ev as u32)
                 .and_hms(0, 0, 0)
