@@ -141,7 +141,7 @@ pub fn start() -> I2cBus {
     let mut current_address: Option<Address> = None;
     let (sender, receiver) = channel::<I2cMessage>();
 
-    thread::spawn(move || match I2c::new() {
+    thread::spawn(move || match I2c::with_bus(1) {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },
