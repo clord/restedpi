@@ -1,7 +1,7 @@
 /// Compute the number of hours for a given day of the year (from jan 1) and at given latitude
 pub fn day_length_hrs(lat: f64, day_of_year: f64) -> f64 {
     let ha = hour_angle_sunrise(lat.to_radians(), noon_decl_sun(day_of_year));
-    2.0 * ha.to_degrees() / (360.0 / 24.0)
+    ha.to_degrees() / (360.0 / 24.0)
 }
 
 /// Given longnitude in degrees (- for west, + for east) compute how many hours offset
