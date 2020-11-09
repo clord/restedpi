@@ -76,8 +76,14 @@ async fn main() {
 
     let config_file = {
         match config_dir_config_file {
-            Some(path) => if path.exists() { path } else { etc_dir_config_file }
-            None => etc_dir_config_file
+            Some(path) => {
+                if path.exists() {
+                    path
+                } else {
+                    etc_dir_config_file
+                }
+            }
+            None => etc_dir_config_file,
         }
     };
 

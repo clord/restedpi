@@ -180,11 +180,7 @@ impl Mcp23017State {
             Bank::A => WRITE_GPIOA_ADDR,
             Bank::B => WRITE_GPIOB_ADDR,
         };
-        if cfg!(raspberry_pi) {
-            i2c.write(address, register, vec![as_word(values)])
-        } else {
-            Ok(())
-        }
+        i2c.write(address, register, vec![as_word(values)])
     }
 
     // Unconditionally reads values from the device and stores in device state
@@ -194,12 +190,8 @@ impl Mcp23017State {
             Bank::B => READ_GPIOB_ADDR,
         };
 
-        if cfg!(raspberry_pi) {
-            let result = i2c.read(address, register, 1)?;
-            Ok(read_word(result[0]))
-        } else {
-            Ok([true, false, true, true, false, true, true, false])
-        }
+        let result = i2c.read(address, register, 1)?;
+        Ok(read_word(result[0]))
     }
 
     // Unconditionally writes current direction to device
@@ -209,10 +201,8 @@ impl Mcp23017State {
             Bank::A => (REGISTER_GPIOA, REGISTER_GPIOA_PULLUP),
             Bank::B => (REGISTER_GPIOB, REGISTER_GPIOB_PULLUP),
         };
-        if cfg!(raspberry_pi) {
-            i2c.write(address, dir_reg, vec![direction_as_inout_word(dir)])?;
-            i2c.write(address, pullup_reg, vec![direction_as_pullup_word(dir)])?;
-        }
+        i2c.write(address, dir_reg, vec![direction_as_inout_word(dir)])?;
+        i2c.write(address, pullup_reg, vec![direction_as_pullup_word(dir)])?;
 
         Ok(())
     }

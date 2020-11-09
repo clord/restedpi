@@ -193,10 +193,7 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
 
         Value::MinuteOfHour => {
             let dt: DateTime<Local> = app.current_dt();
-            Ok(
-                dt.minute() as f64
-                    + (dt.second() as f64 / 3600.0f64),
-            )
+            Ok(dt.minute() as f64 + (dt.second() as f64 / 3600.0f64))
         }
         Value::HourOfDay => {
             let dt: DateTime<Local> = app.current_dt();

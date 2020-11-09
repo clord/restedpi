@@ -18,7 +18,7 @@ build:
       - target
 
   script: 
-    - cargo build --target=arm-unknown-linux-gnueabihf --release
+    - cargo build --target=arm-unknown-linux-gnueabihf --release --features "raspberrypi"
 
 test:
   stage: build

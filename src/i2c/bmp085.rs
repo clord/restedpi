@@ -99,9 +99,6 @@ impl Bmp085State {
 
     /// Read temperature in degrees c
     pub fn temperature_in_c(&self, address: Address, i2c: &I2cBus) -> Result<f32> {
-        if !cfg!(raspberry_pi) {
-            return Ok(11.1f32);
-        }
         let (t, _) = self.read_raw_temp(address, i2c)?;
         Ok((t as f32) * 0.1)
     }
@@ -113,9 +110,6 @@ impl Bmp085State {
         accuracy: config::SamplingMode,
         i2c: &I2cBus,
     ) -> Result<f32> {
-        if !cfg!(raspberry_pi) {
-            return Ok(100f32);
-        }
         let (_, b5) = self.read_raw_temp(address, i2c)?;
         let sampling = sampling_mode(accuracy);
 
