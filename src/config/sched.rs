@@ -25,5 +25,5 @@ pub fn noon_decl_sun(day_of_year: f64) -> f64 {
 ///   lat: position on earth north/south expressed as an angle in radians
 ///     δ: declination of the sun in radians (determined by time of year)
 pub fn hour_angle_sunrise(lat: f64, decl: f64) -> f64 {
-    (((90.833f64.to_radians()).cos() / lat.cos() * decl.cos()) - lat.tan() * decl.tan()).acos()
+    ((90.833f64.to_radians().cos() / (lat.cos() * decl.cos())) - lat.tan() * decl.tan()).acos()
 }
