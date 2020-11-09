@@ -119,7 +119,7 @@ pub enum Value {
 
 /// An evaluator for value expressions.
 pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
-    match expr {
+    let res = match expr {
         Value::Const(a) => Ok(*a),
 
         Value::ReadInput(input_id, unit) => {
@@ -244,5 +244,7 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::Trunc(x) => Ok(evaluate(app, x)?.trunc()),
 
         Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v)?),
-    }
+    };
+    debug!("Eval: {:?} -> {:?}", expr, res);
+    res
 }
