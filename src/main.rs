@@ -16,14 +16,11 @@ extern crate lazy_static;
 extern crate rust_embed;
 
 use crate::config::Config;
-use rppal::system::DeviceInfo;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
-
-use config::BoolExpr;
 
 mod app;
 mod auth;
@@ -31,7 +28,6 @@ mod config;
 mod i2c;
 mod storage;
 mod webapp;
-use config::Dir;
 
 /// big picture:
 /// read configuration and decide what sensors and switches are available. start up application, then
@@ -59,15 +55,33 @@ async fn main() {
     }
     pretty_env_logger::init_custom_env("LOG");
 
-    let server_name = match DeviceInfo::new() {
-        Ok(model) => model.model().to_string(),
-        Err(e) => {
-            warn!("reading model: {}", e);
-            "Unknown".to_string()
+    // let server_name = match DeviceInfo::new() {
+    //     Ok(model) => model.model().to_string(),
+    //     Err(e) => {
+    //         warn!("reading model: {}", e);
+    //         "Unknown".to_string()
+    //     }
+    // };
+
+    // If ~/.config/restedpi/startup.json exists, use as config,
+    let config_dir_config_file = dirs::config_dir().map(|x| {
+        let mut y = x.clone();
+        y.push("restedpi");
+        y.push("startup.json");
+        y
+    });
+
+    // otherwise use /etc/restedpi/startup.json
+    let etc_dir_config_file = std::path::PathBuf::from("/etc/restedpi/startup.json");
+
+    let config_file = {
+        match config_dir_config_file {
+            Some(path) => if path.exists() { path } else { etc_dir_config_file }
+            None => etc_dir_config_file
         }
     };
 
-    let contents = match fs::read_to_string("config.json") {
+    let contents = match fs::read_to_string(config_file) {
         Ok(cfg) => cfg,
         Err(e) => {
             warn!("invalid config file: {}", e);

@@ -69,6 +69,9 @@ pub enum Value {
         long: Box<Value>,
     },
 
+    // fractional minutes since start of this hour
+    MinuteOfHour,
+
     // hour of day since midnight of this day
     HourOfDay,
 
@@ -188,6 +191,13 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
 
+        Value::MinuteOfHour => {
+            let dt: DateTime<Local> = app.current_dt();
+            Ok(
+                dt.minute() as f64
+                    + (dt.second() as f64 / 3600.0f64),
+            )
+        }
         Value::HourOfDay => {
             let dt: DateTime<Local> = app.current_dt();
             Ok(
