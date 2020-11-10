@@ -3,13 +3,13 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
+extern crate bit_array;
 extern crate regex;
 extern crate serde;
 extern crate serde_derive;
 extern crate sled;
-extern crate warp;
 extern crate typenum;
-extern crate bit_array;
+extern crate warp;
 
 #[macro_use]
 extern crate lazy_static;

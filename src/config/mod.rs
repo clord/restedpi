@@ -35,7 +35,6 @@ pub enum Type {
     },
     MCP23017 {
         address: u16,
-        // true for input, false for output
         pin_direction: [Dir; 16],
     },
 }

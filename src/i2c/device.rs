@@ -46,16 +46,18 @@ impl Device {
                 pin_direction,
             } => {
                 self.mcp23017_state.reset(*address, &self.i2c)?;
-                for index in 0..15 {
-                    let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
-                    self.mcp23017_state.set_pin_direction(
-                        *address,
-                        bank,
-                        pin,
-                        pin_direction[index],
-                        &self.i2c,
-                    )?;
-                }
+                self.mcp23017_state.set_pin_directions(
+                    *address,
+                    mcp23017::Bank::A,
+                    &pin_direction[0..7],
+                    &self.i2c,
+                )?;
+                self.mcp23017_state.set_pin_directions(
+                    *address,
+                    mcp23017::Bank::B,
+                    &pin_direction[8..15],
+                    &self.i2c,
+                )?;
                 Ok(())
             }
             config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),

@@ -122,7 +122,7 @@ struct BankState<T> {
 #[derive(Debug, PartialEq, Clone, PartialOrd)]
 struct State {
     direction: [Dir; 8],
-    values: Bits
+    values: Bits,
 }
 
 #[derive(Debug, Clone)]
@@ -133,19 +133,16 @@ pub struct Mcp23017State {
 impl Mcp23017State {
     pub fn new() -> Self {
         Mcp23017State {
-            state:
-BankState {
-    a: State {
-        direction: [Dir::In(false); 8],
-        values: Bits::new(),
-    },
-    b: State {
-        direction: [Dir::In(false); 8],
-        values: Bits::new(),
-    },
-}
-
-                ,
+            state: BankState {
+                a: State {
+                    direction: [Dir::In(false); 8],
+                    values: Bits::new(),
+                },
+                b: State {
+                    direction: [Dir::In(false); 8],
+                    values: Bits::new(),
+                },
+            },
         }
     }
 
@@ -212,31 +209,43 @@ BankState {
 
     pub fn reset(&mut self, address: Address, i2c: &I2cBus) -> Result<()> {
         self.state = BankState {
-    a: State {
-        direction: [Dir::In(false); 8],
-        values: Bits::new(),
-    },
-    b: State {
-        direction: [Dir::In(false); 8],
-        values: Bits::new(),
-    },
-};
+            a: State {
+                direction: [Dir::In(false); 8],
+                values: Bits::new(),
+            },
+            b: State {
+                direction: [Dir::In(false); 8],
+                values: Bits::new(),
+            },
+        };
         self.write_gpio_dir(address, Bank::A, i2c)?;
         self.write_gpio_dir(address, Bank::B, i2c)?;
         for bank in [Bank::A, Bank::B].iter() {
             let mut bits = Bits::from_elem(false);
-           for pin_ord in 0..7 {
+            for pin_ord in 0..7 {
                 if let Some(pin) = ordinal_pin(pin_ord) {
                     bits.set(pin_ord, self.init_pin_value(pin, *bank))
                 }
-           }
-            self.write_gpio_value(
-                address,
-                *bank,
-                vec![as_word(&bits.clone())],
-                i2c,
-            )?;
+            }
+            self.write_gpio_value(address, *bank, vec![as_word(&bits.clone())], i2c)?;
         }
+        Ok(())
+    }
+
+    pub fn set_pin_directions(
+        &mut self,
+        address: Address,
+        bank: Bank,
+        directions: &[Dir],
+        i2c: &I2cBus,
+    ) -> Result<()> {
+        let bank_state = self.mut_state_for_bank(bank);
+        let mut i = 0;
+        for dir in directions {
+            bank_state.direction[i] = *dir;
+            i += 1;
+        }
+        self.write_gpio_dir(address, bank, i2c)?;
         Ok(())
     }
 
@@ -258,11 +267,7 @@ BankState {
         Ok(())
     }
 
-    fn mutate_pin(&mut self,
-        bank: Bank,
-        pin: Pin,
-        value: bool
-        ) -> u8 {
+    fn mutate_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> u8 {
         let pdex = pin_ordinal(pin);
         let bank_state = self.mut_state_for_bank(bank);
         bank_state.values.set(pdex, value);
@@ -278,17 +283,21 @@ BankState {
         i2c: &I2cBus,
     ) -> Result<()> {
         match self.get_pin_direction(bank, pin) {
-            Dir::In(..) => {
-                Err(Error::InvalidPinDirection)
-            },
+            Dir::In(..) => Err(Error::InvalidPinDirection),
             Dir::OutH => {
-                debug!("set_pin: a:{} b:{:?} p:{:?} <- {}", address, bank, pin, value);
+                debug!(
+                    "set_pin: a:{} b:{:?} p:{:?} <- {}",
+                    address, bank, pin, value
+                );
                 let new_values = self.mutate_pin(bank, pin, value);
                 self.write_gpio_value(address, bank, vec![new_values], i2c)?;
                 Ok(())
-            },
+            }
             Dir::OutL => {
-                debug!("set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)", address, bank, pin, !value);
+                debug!(
+                    "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
+                    address, bank, pin, !value
+                );
                 let new_values = self.mutate_pin(bank, pin, !value);
                 self.write_gpio_value(address, bank, vec![new_values], i2c)?;
                 Ok(())
@@ -306,16 +315,12 @@ BankState {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         match bank_state.direction[pdex] {
-            Dir::OutL => {
-                Ok(!bank_state.values[pdex])
-            },
-            Dir::OutH => {
-                Ok(bank_state.values[pdex])
-            },
+            Dir::OutL => Ok(!bank_state.values[pdex]),
+            Dir::OutH => Ok(bank_state.values[pdex]),
             Dir::In(..) => {
                 let value = self.read_gpio_value(address, bank, i2c)?;
                 return Ok(value[pin_ordinal(pin)]);
-            },
+            }
         }
     }
 }

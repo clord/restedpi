@@ -270,7 +270,7 @@ impl State {
                 if let Some(expr) = automation {
                     match config::boolean::evaluate(self, &expr) {
                         Ok(result) => {
-                            if let Err(e) = self.write_output_bool(&output_id,  result) {
+                            if let Err(e) = self.write_output_bool(&output_id, result) {
                                 error!("failed to write: {}", e);
                             }
                         }
