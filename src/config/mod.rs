@@ -90,6 +90,7 @@ pub enum Output {
         name: String,
         device_id: String,
         device_output_id: usize,
+        active_low: Option<bool>,
 
         // If set to an expression, the system will compute this output every tick and write it to the output
         automation: Option<BoolExpr>,

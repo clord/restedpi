@@ -239,13 +239,14 @@ impl State {
         match output {
             config::Output::BoolToDevice {
                 device_id,
+                active_low,
                 device_output_id,
                 ..
             } => {
                 let device_handle = self.devices.get_mut(&device_id);
                 let device = device_handle
                     .ok_or(Error::NonExistant(format!("BoolToDevice: {}", device_id)))?;
-                device.write_boolean(device_output_id, value)?;
+                device.write_boolean(device_output_id, active_low.unwrap_or(false) ^ value)?;
                 Ok(())
             }
             config::Output::BoolToVariable => match self.bool_variables.get_mut(output_id) {
@@ -269,7 +270,7 @@ impl State {
                 if let Some(expr) = automation {
                     match config::boolean::evaluate(self, &expr) {
                         Ok(result) => {
-                            if let Err(e) = self.write_output_bool(&output_id, result) {
+                            if let Err(e) = self.write_output_bool(&output_id,  result) {
                                 error!("failed to write: {}", e);
                             }
                         }
