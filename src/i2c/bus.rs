@@ -118,12 +118,11 @@ fn next_message(
                     Err(e) => error!("Failed to switch address: {}", e),
                 };
             }
-            debug!("i2c read: {}, {}, {}", address, command, size);
             let mut vec = Vec::new();
             vec.resize(size, 0u8);
             match i2c.block_read(command, &mut vec) {
                 Ok(()) => match response.send(Ok(vec)) {
-                    Ok(()) => (),
+                    Ok(()) => debug!("i2c read result: {}, {}, {}", address, command, size),
                     Err(e) => error!("Failed to send response: {:?}", e),
                 },
                 Err(e) => {
@@ -141,7 +140,7 @@ pub fn start() -> I2cBus {
     let mut current_address: Option<Address> = None;
     let (sender, receiver) = channel::<I2cMessage>();
 
-    thread::spawn(move || match I2c::with_bus(1) {
+    thread::spawn(move || match I2c::new() {
         Ok(mut i2c) => loop {
             next_message(&mut current_address, &mut i2c, &receiver);
         },

@@ -146,7 +146,7 @@ impl Config {
     }
 
     pub fn check_config(&self) -> Vec<ConfigError> {
-        let mut errors = Vec::<ConfigError>::new();
+        let errors = Vec::<ConfigError>::new();
         return errors;
     }
 }

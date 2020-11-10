@@ -50,7 +50,7 @@ fn direction_as_inout_word(ps: [Dir; 8]) -> u8 {
 fn read_word(ps: u8) -> [bool; 8] {
     let mut result = [false; 8];
     for ordinal in 0..8 {
-        if 0 != ps & (1u8 >> ordinal) {
+        if 0 != (ps & (1u8 >> ordinal)) {
             result[ordinal] = true
         }
     }
@@ -290,11 +290,8 @@ impl Mcp23017State {
         let mut current = self.read_gpio_value(address, bank, i2c)?;
         let final_value = if let Dir::OutL = bank_state.direction[pdex] {!value} else {value};
 
-        if current[pdex] == final_value {
-            return Ok(());
-        }
 
-        info!("set_pin: a:{} b:{:?} p:{:?} <- {} ({:?})", address, bank, pin, final_value, bank_state.direction[pdex]);
+        debug!("set_pin: a:{} b:{:?} p:{:?} <- {} ({:?})", address, bank, pin, final_value, bank_state.direction[pdex]);
 
         current[pdex] = final_value;
         self.write_gpio_value(address, bank, current, i2c)?;
