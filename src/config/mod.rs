@@ -42,7 +42,10 @@ pub enum Type {
 
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Copy, Clone, Debug)]
 pub enum Dir {
-    Out,
+    // Active High output
+    OutH,
+    // Active Low output
+    OutL,
     In(bool),
 }
 
