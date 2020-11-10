@@ -210,12 +210,6 @@ impl Mcp23017State {
         Ok(())
     }
 
-    fn init_pin_value(&self, pin: Pin, bank: Bank) -> bool {
-        let bank_state = self.state_for_bank(bank);
-        let pdex = pin_ordinal(pin);
-        bank_state.direction[pdex] == Dir::OutL
-    }
-
     pub fn reset(&mut self, address: Address, i2c: &I2cBus) -> Result<()> {
         self.state = BankState {
             a: State {
@@ -282,24 +276,29 @@ impl Mcp23017State {
         value: bool,
         i2c: &I2cBus,
     ) -> Result<()> {
+        let pdex = pin_ordinal(pin);
         match self.get_pin_direction(bank, pin) {
             Dir::In(..) => Err(Error::InvalidPinDirection),
             Dir::OutH => {
-                debug!(
-                    "set_pin: a:{} b:{:?} p:{:?} <- {}",
-                    address, bank, pin, value
-                );
-                let new_values = self.mutate_pin(bank, pin, value);
-                self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                if value != self.state_for_bank(bank).values[7-pdex] {
+                    debug!(
+                        "set_pin: a:{} b:{:?} p:{:?} <- {}",
+                        address, bank, pin, value
+                    );
+                    let new_values = self.mutate_pin(bank, pin, value);
+                    self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                }
                 Ok(())
             }
             Dir::OutL => {
-                debug!(
-                    "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
-                    address, bank, pin, !value
-                );
-                let new_values = self.mutate_pin(bank, pin, !value);
-                self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                if value != self.state_for_bank(bank).values[7-pdex] {
+                    debug!(
+                        "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
+                        address, bank, pin, value
+                    );
+                    let new_values = self.mutate_pin(bank, pin, !value);
+                    self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                }
                 Ok(())
             }
         }
@@ -319,7 +318,7 @@ impl Mcp23017State {
             Dir::OutH => Ok(bank_state.values[7-pdex]),
             Dir::In(..) => {
                 let value = self.read_gpio_value(address, bank, i2c)?;
-                return Ok(value[pin_ordinal(pin)]);
+                return Ok(value[7-pin_ordinal(pin)]);
             }
         }
     }

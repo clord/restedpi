@@ -179,15 +179,12 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 / 15.0;
 
             let exact_offset = sched::exact_offset_hrs(evaluate(app, long)?);
-            debug!("ha: {}, sn: {}", h, exact_offset);
             let solar_offset = (12.0 - h / 2.0) * 3600.0;
             let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
                 .yo(dt.year(), doy_ev as u32)
                 .and_hms(0, 0, 0)
                 + Duration::seconds(solar_offset as i64);
-            debug!("solar: {}", solar_dt);
             let local = solar_dt.with_timezone(&dt.timezone());
-            debug!("local: {} ({:?})", local, dt.timezone());
             Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
 
