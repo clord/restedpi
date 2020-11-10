@@ -33,7 +33,7 @@ fn direction_as_pullup_word(ps: [Dir; 8]) -> u8 {
     let mut dex = 0;
     for x in ps.iter() {
         if let Dir::In(true) = x {
-            ba.set(8-dex, true);
+            ba.set(7-dex, true);
         }
         dex += 1;
     }
@@ -51,7 +51,7 @@ fn direction_as_inout_word(ps: [Dir; 8]) -> u8 {
     let mut dex = 0;
     for x in ps.iter() {
         if let Dir::In(_) = x {
-            ba.set(8-dex, true);
+            ba.set(7-dex, true);
         };
         dex += 1;
     }
@@ -270,7 +270,7 @@ impl Mcp23017State {
     fn mutate_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> u8 {
         let pdex = pin_ordinal(pin);
         let bank_state = self.mut_state_for_bank(bank);
-        bank_state.values.set(8-pdex, value);
+        bank_state.values.set(7-pdex, value);
         as_word(&bank_state.values)
     }
 
@@ -315,8 +315,8 @@ impl Mcp23017State {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         match bank_state.direction[pdex] {
-            Dir::OutL => Ok(!bank_state.values[8-pdex]),
-            Dir::OutH => Ok(bank_state.values[8-pdex]),
+            Dir::OutL => Ok(!bank_state.values[7-pdex]),
+            Dir::OutH => Ok(bank_state.values[7-pdex]),
             Dir::In(..) => {
                 let value = self.read_gpio_value(address, bank, i2c)?;
                 return Ok(value[pin_ordinal(pin)]);
