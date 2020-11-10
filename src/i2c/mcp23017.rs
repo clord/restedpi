@@ -281,7 +281,6 @@ impl Mcp23017State {
         value: bool,
         i2c: &I2cBus,
     ) -> Result<()> {
-        debug!("set_pin: {}:{:?}:{:?} <- {}", address, bank, pin, value);
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         if bank_state.direction[pdex] == Dir::In(true) || bank_state.direction[pdex] == Dir::In(false) {
@@ -289,19 +288,15 @@ impl Mcp23017State {
         }
 
         let mut current = self.read_gpio_value(address, bank, i2c)?;
-        if let Dir::OutL = bank_state.direction[pdex]  {
-            if  current[pdex] != value{
+        let final_value = if let Dir::OutL = bank_state.direction[pdex] {!value} else {value};
+
+        if current[pdex] == final_value {
             return Ok(());
-            }
         }
 
-        if current[pdex] == value {
-            return Ok(());
-        }
-        if let Dir::OutL = bank_state.direction[pdex]  {
-            current[pdex] = !value;
-        }
-            current[pdex] = value;
+        info!("set_pin: a:{} b:{:?} p:{:?} <- {} ({:?})", address, bank, pin, final_value, bank_state.direction[pdex]);
+
+        current[pdex] = final_value;
         self.write_gpio_value(address, bank, current, i2c)?;
         Ok(())
     }
@@ -315,7 +310,6 @@ impl Mcp23017State {
     pub fn get_pin(&self, address: Address, bank: Bank, pin: Pin, i2c: &I2cBus) -> Result<bool> {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
-        // can read from output pins!
         let value = self.read_gpio_value(address, bank, i2c)?;
         if let Dir::OutL = bank_state.direction[pdex] {
             return Ok(!value[pin_ordinal(pin)]);
