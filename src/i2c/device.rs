@@ -58,6 +58,9 @@ impl Device {
                     &pin_direction[8..15],
                     &self.i2c,
                 )?;
+                // by writing false, we will update with correct state for all pins after dir change
+                self.mcp23017_state.set_pin(*address, mcp23017::Bank::A, mcp23017::Pin::Pin0, false, &self.i2c)?;
+                self.mcp23017_state.set_pin(*address, mcp23017::Bank::B, mcp23017::Pin::Pin0, false, &self.i2c)?;
                 Ok(())
             }
             config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),
