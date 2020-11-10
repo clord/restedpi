@@ -115,10 +115,7 @@ async fn main() {
     let api = webapp::filters::api(app);
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
 
-    let serve = warp::serve(
-        api.with(warp::log("restedpi::access"))
-            .recover(webapp::handle_rejection),
-    );
+    let serve = warp::serve(api.with(warp::log("web")).recover(webapp::handle_rejection));
     if let Some((key_path, cert_path)) = key_and_cert {
         info!("RestedPi listening: https://{}", addr);
         serve

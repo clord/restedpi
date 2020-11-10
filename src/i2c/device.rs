@@ -59,8 +59,20 @@ impl Device {
                     &self.i2c,
                 )?;
                 // by writing false, we will update with correct state for all pins after dir change
-                self.mcp23017_state.set_pin(*address, mcp23017::Bank::A, mcp23017::Pin::Pin0, false, &self.i2c)?;
-                self.mcp23017_state.set_pin(*address, mcp23017::Bank::B, mcp23017::Pin::Pin0, false, &self.i2c)?;
+                self.mcp23017_state.set_pin(
+                    *address,
+                    mcp23017::Bank::A,
+                    mcp23017::Pin::Pin0,
+                    false,
+                    &self.i2c,
+                )?;
+                self.mcp23017_state.set_pin(
+                    *address,
+                    mcp23017::Bank::B,
+                    mcp23017::Pin::Pin0,
+                    false,
+                    &self.i2c,
+                )?;
                 Ok(())
             }
             config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),
@@ -88,7 +100,7 @@ impl Device {
             config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index)),
             config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index)),
             config::Type::MCP23017 { address, .. } => {
-                let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
+                let (bank, pin) = mcp23017::index_to_bank_pin(index);
                 let pin = self
                     .mcp23017_state
                     .get_pin(*address, bank, pin, &self.i2c)?;
@@ -129,7 +141,7 @@ impl Device {
                 address,
                 pin_direction,
             } => {
-                let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
+                let (bank, pin) = mcp23017::index_to_bank_pin(index);
                 let old_dir = self.mcp23017_state.get_pin_direction(bank, pin);
                 if old_dir != pin_direction[index] {
                     self.mcp23017_state.set_pin_direction(
