@@ -43,4 +43,5 @@ deploy:
   script:
     - ls target/arm-unknown-linux-gnueabihf/release
     - rsync -hrvz --delete target/arm-unknown-linux-gnueabihf/release/restedpi $DEPLOY_USER@$DEPLOY_HOST:/usr/local/bin/restedpi
+    - ssh $DEPLOY_USER@$DEPLOY_HOST 'sudo systemctl restart restedpi'
 
