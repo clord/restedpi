@@ -33,7 +33,7 @@ fn direction_as_pullup_word(ps: [Dir; 8]) -> u8 {
     let mut dex = 0;
     for x in ps.iter() {
         if let Dir::In(true) = x {
-            ba.set(dex, true);
+            ba.set(8-dex, true);
         }
         dex += 1;
     }
@@ -51,7 +51,7 @@ fn direction_as_inout_word(ps: [Dir; 8]) -> u8 {
     let mut dex = 0;
     for x in ps.iter() {
         if let Dir::In(_) = x {
-            ba.set(dex, true);
+            ba.set(8-dex, true);
         };
         dex += 1;
     }
@@ -229,15 +229,6 @@ impl Mcp23017State {
         };
         self.write_gpio_dir(address, Bank::A, i2c)?;
         self.write_gpio_dir(address, Bank::B, i2c)?;
-        for bank in [Bank::A, Bank::B].iter() {
-            let mut bits = Bits::from_elem(false);
-            for pin_ord in 0..7 {
-                if let Some(pin) = ordinal_pin(pin_ord) {
-                    bits.set(pin_ord, self.init_pin_value(pin, *bank))
-                }
-            }
-            self.write_gpio_value(address, *bank, vec![as_word(&bits.clone())], i2c)?;
-        }
         Ok(())
     }
 
@@ -279,7 +270,7 @@ impl Mcp23017State {
     fn mutate_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> u8 {
         let pdex = pin_ordinal(pin);
         let bank_state = self.mut_state_for_bank(bank);
-        bank_state.values.set(pdex, value);
+        bank_state.values.set(8-pdex, value);
         as_word(&bank_state.values)
     }
 
@@ -293,7 +284,7 @@ impl Mcp23017State {
     ) -> Result<()> {
         match self.get_pin_direction(bank, pin) {
             Dir::In(..) => Err(Error::InvalidPinDirection),
-            Dir::OutL => {
+            Dir::OutH => {
                 debug!(
                     "set_pin: a:{} b:{:?} p:{:?} <- {}",
                     address, bank, pin, value
@@ -302,7 +293,7 @@ impl Mcp23017State {
                 self.write_gpio_value(address, bank, vec![new_values], i2c)?;
                 Ok(())
             }
-            Dir::OutH => {
+            Dir::OutL => {
                 debug!(
                     "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
                     address, bank, pin, !value
@@ -324,8 +315,8 @@ impl Mcp23017State {
         let pdex = pin_ordinal(pin);
         let bank_state = self.state_for_bank(bank);
         match bank_state.direction[pdex] {
-            Dir::OutH => Ok(!bank_state.values[pdex]),
-            Dir::OutL => Ok(bank_state.values[pdex]),
+            Dir::OutL => Ok(!bank_state.values[8-pdex]),
+            Dir::OutH => Ok(bank_state.values[8-pdex]),
             Dir::In(..) => {
                 let value = self.read_gpio_value(address, bank, i2c)?;
                 return Ok(value[pin_ordinal(pin)]);
