@@ -180,6 +180,7 @@ impl Mcp23017State {
             Bank::A => WRITE_GPIOA_ADDR,
             Bank::B => WRITE_GPIOB_ADDR,
         };
+        debug!("will write: {}: {:?} ({})", address, &values, as_word(values));
         i2c.write(address, register, vec![as_word(values)])
     }
 
@@ -191,6 +192,7 @@ impl Mcp23017State {
         };
 
         let result = i2c.read(address, register, 1)?;
+        debug!("did read: {}: {:?}", address, result);
         Ok(read_word(result[0]))
     }
 
