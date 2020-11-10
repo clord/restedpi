@@ -8,6 +8,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate sled;
 extern crate warp;
+extern crate typenum;
+extern crate bit_array;
 
 #[macro_use]
 extern crate lazy_static;

@@ -125,7 +125,7 @@ impl Device {
                 pin_direction,
             } => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index)?;
-                let old_dir = self.mcp23017_state.get_pin_direction(bank, pin)?;
+                let old_dir = self.mcp23017_state.get_pin_direction(bank, pin);
                 if old_dir != pin_direction[index] {
                     self.mcp23017_state.set_pin_direction(
                         *address,
