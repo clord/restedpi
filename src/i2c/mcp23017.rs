@@ -5,14 +5,16 @@ use bit_array::BitArray;
 
 type Bits = BitArray<u32, typenum::U8>;
 
-const REGISTER_GPIOA: u8 = 0x00;
-const REGISTER_GPIOB: u8 = 0x01;
-const REGISTER_GPIOA_PULLUP: u8 = 0x0C;
-const REGISTER_GPIOB_PULLUP: u8 = 0x0D;
-const READ_GPIOA_ADDR: u8 = 0x12;
-const READ_GPIOB_ADDR: u8 = 0x13;
-const WRITE_GPIOA_ADDR: u8 = 0x14;
-const WRITE_GPIOB_ADDR: u8 = 0x15;
+const DIRECTION_A: u8 = 0x00;
+const DIRECTION_B: u8 = 0x01;
+const IN_POLARITY_A: u8 = 0x02;
+const IN_POLARITY_B: u8 = 0x03;
+const PULLUP_A: u8 = 0x0C;
+const PULLUP_B: u8 = 0x0D;
+const READ_A: u8 = 0x12;
+const READ_B: u8 = 0x13;
+const WRITE_A: u8 = 0x14;
+const WRITE_B: u8 = 0x15;
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum Pin {
@@ -35,6 +37,12 @@ fn direction_as_pullup_word(ps: [Dir; 8]) -> u8 {
         }
         dex += 1;
     }
+    as_word(&ba)
+}
+
+fn direction_as_input_polarity_word(_ps: [Dir; 8]) -> u8 {
+    let mut ba = Bits::new();
+    ba.clear();
     as_word(&ba)
 }
 
@@ -169,8 +177,8 @@ impl Mcp23017State {
         i2c: &I2cBus,
     ) -> Result<()> {
         let register = match bank {
-            Bank::A => WRITE_GPIOA_ADDR,
-            Bank::B => WRITE_GPIOB_ADDR,
+            Bank::A => WRITE_A,
+            Bank::B => WRITE_B,
         };
         debug!("will write: {}: {:?}", address, &values);
         i2c.write(address, register, values)
@@ -179,8 +187,8 @@ impl Mcp23017State {
     // Unconditionally reads values from the device and stores in device state
     fn read_gpio_value(&self, address: Address, bank: Bank, i2c: &I2cBus) -> Result<Bits> {
         let register = match bank {
-            Bank::A => READ_GPIOA_ADDR,
-            Bank::B => READ_GPIOB_ADDR,
+            Bank::A => READ_A,
+            Bank::B => READ_B,
         };
 
         let result = i2c.read(address, register, 1)?;
@@ -191,11 +199,12 @@ impl Mcp23017State {
     // Unconditionally writes current direction to device
     fn write_gpio_dir(&self, address: Address, bank: Bank, i2c: &I2cBus) -> Result<()> {
         let dir = self.state_for_bank(bank).direction;
-        let (dir_reg, pullup_reg) = match bank {
-            Bank::A => (REGISTER_GPIOA, REGISTER_GPIOA_PULLUP),
-            Bank::B => (REGISTER_GPIOB, REGISTER_GPIOB_PULLUP),
+        let (dir_reg, polarity_reg, pullup_reg) = match bank {
+            Bank::A => (DIRECTION_A, IN_POLARITY_A, PULLUP_A),
+            Bank::B => (DIRECTION_B, IN_POLARITY_B, PULLUP_B),
         };
         i2c.write(address, dir_reg, vec![direction_as_inout_word(dir)])?;
+        i2c.write(address, polarity_reg, vec![direction_as_input_polarity_word(dir)])?;
         i2c.write(address, pullup_reg, vec![direction_as_pullup_word(dir)])?;
 
         Ok(())
