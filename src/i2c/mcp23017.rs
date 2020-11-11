@@ -283,7 +283,7 @@ impl Mcp23017State {
     ) -> Result<()> {
         match self.get_pin_direction(bank, pin) {
             Dir::In(..) => Err(Error::InvalidPinDirection),
-            Dir::OutL => {
+            Dir::OutH => {
                 debug!(
                     "set_pin: a:{} b:{:?} p:{:?} <- {}",
                     address, bank, pin, value
@@ -292,7 +292,7 @@ impl Mcp23017State {
                 self.write_gpio_value(address, bank, vec![new_values], i2c)?;
                 Ok(())
             }
-            Dir::OutH => {
+            Dir::OutL => {
                 debug!(
                     "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
                     address, bank, pin, value
@@ -311,8 +311,8 @@ impl Mcp23017State {
     pub fn get_pin(&self, address: Address, bank: Bank, pin: Pin, i2c: &I2cBus) -> Result<bool> {
         let state = self.state_for_bank(bank);
         match state.get_direction(pin) {
-            Dir::OutH => Ok(!state.pin_value(pin)),
-            Dir::OutL => Ok(state.pin_value(pin)),
+            Dir::OutL => Ok(!state.pin_value(pin)),
+            Dir::OutH => Ok(state.pin_value(pin)),
             Dir::In(..) => {
                 let value = self.read_gpio_value(address, bank, i2c)?;
                 return Ok(value[7 - pin_to_ordinal(pin)]);
