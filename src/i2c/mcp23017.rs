@@ -248,6 +248,9 @@ impl Mcp23017State {
             i += 1;
         }
         self.write_gpio_dir(address, bank, i2c)?;
+        for p in 0..7 {
+            self.set_pin(address, bank, ordinal_to_pin(p), false, i2c)?;
+        }
         Ok(())
     }
 
