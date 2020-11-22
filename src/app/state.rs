@@ -3,44 +3,50 @@ extern crate chrono;
 use crate::config;
 use crate::config::value::Unit;
 use crate::i2c::{bus, device::Device, error::Error, Result};
-use crate::storage;
 use chrono::prelude::*;
 use std::collections::HashMap;
+use std::sync::mpsc::Sender;
 
 // Keep current app state in memory, together with device state
 pub struct State {
     dt: DateTime<Local>,
+
     devices: HashMap<String, Device>,
+    device_configs: HashMap<String, config::Device>,
+    devices_change: Sender<HashMap<String, config::Device>>,
+
     inputs: HashMap<String, config::Input>,
+    inputs_change: Sender<HashMap<String, config::Input>>,
+
     outputs: HashMap<String, config::Output>,
+    outputs_change: Sender<HashMap<String, config::Output>>,
+
     i2c: bus::I2cBus,
-    storage: storage::Storage,
     bool_variables: HashMap<String, bool>,
 }
 
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub fn add_device(&mut self, id: &str, config: &config::Device) -> Result<()> {
-        let mut device = Device::new(config, self.i2c.clone());
+    pub fn add_device(&mut self, id: &str, config: config::Device) -> Result<()> {
+        let mut device = Device::new(config.clone(), self.i2c.clone());
         info!("Adding or replacing device with id: {}", id);
-
         device.reset()?;
-
-        self.storage.set_device(&id, config)?;
         self.devices.insert(id.to_string(), device);
-
+        self.devices_change
+            .send(self.device_configs.clone())
+            .unwrap_or(());
         Ok(())
     }
 
     pub fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
-        self.storage.set_input(&id, &config)?;
         self.inputs.insert(id.to_string(), config.clone());
+        self.inputs_change.send(self.inputs.clone()).unwrap_or(());
         Ok(())
     }
 
     pub fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
-        self.storage.set_output(&id, &config)?;
         self.outputs.insert(id.to_string(), config.clone());
+        self.outputs_change.send(self.outputs.clone()).unwrap_or(());
         Ok(())
     }
 
@@ -60,11 +66,11 @@ impl State {
         HashMap<String, config::Input>,
         HashMap<String, config::Output>,
     )> {
-        match self.devices.get(name) {
-            Some(d) => {
+        match self.device_configs.get(name) {
+            Some(config) => {
                 let inputs = self.inputs_using_device(name);
                 let outputs = self.outputs_using_device(name);
-                Ok((d.config.clone(), inputs, outputs))
+                Ok((config.clone(), inputs, outputs))
             }
             None => Err(Error::NonExistant(
                 format!("device config for {}", name).to_string(),
@@ -81,11 +87,13 @@ impl State {
                         affected.insert(iid.clone(), input.clone());
                     }
                 }
+
                 config::Input::BoolFromDevice { device_id, .. } => {
                     if device_id == id {
                         affected.insert(iid.clone(), input.clone());
                     }
                 }
+
                 // TODO: BoolExpr could refer to an input of this device!
                 _ => (),
             }
@@ -121,8 +129,10 @@ impl State {
         let afflicted_inputs = self.inputs_using_device(name);
         let afflicted_outputs = self.outputs_using_device(name);
 
-        self.storage.remove_device(name)?;
         self.devices.remove(name);
+        self.devices_change
+            .send(self.device_configs.clone())
+            .unwrap_or(());
 
         for o in &afflicted_outputs {
             self.remove_output(&o.0)?;
@@ -136,13 +146,14 @@ impl State {
     }
 
     pub fn remove_input(&mut self, id: &str) -> Result<()> {
-        self.storage.remove_input(id)?;
         self.inputs.remove(id);
+        self.inputs_change.send(self.inputs.clone()).unwrap_or(());
         Ok(())
     }
+
     pub fn remove_output(&mut self, id: &str) -> Result<()> {
-        self.storage.remove_output(id)?;
         self.outputs.remove(id);
+        self.outputs_change.send(self.outputs.clone()).unwrap_or(());
         Ok(())
     }
 
@@ -157,30 +168,12 @@ impl State {
         ),
     > {
         let mut result = HashMap::new();
-        for (k, v) in &self.devices {
+        for (k, config) in &self.device_configs {
             let inputs = self.inputs_using_device(k);
             let outputs = self.outputs_using_device(k);
-            result.insert(k.clone(), (v.config.clone(), inputs, outputs));
+            result.insert(k.clone(), (config.clone(), inputs, outputs));
         }
         return result;
-    }
-
-    /**
-     * Reset the whole app, setting up stuff from storage in addition to config
-     */
-    pub fn reset(&mut self) -> Result<()> {
-        self.devices.clear();
-        for (sname, config) in self.storage.all_devices()? {
-            let mut device = Device::new(&config, self.i2c.clone());
-            device.reset()?;
-            self.devices.insert(sname, device);
-        }
-
-        self.inputs = self.storage.all_inputs()?;
-        self.outputs = self.storage.all_outputs()?;
-
-        self.dt = Local::now();
-        Ok(())
     }
 
     /**
@@ -201,7 +194,7 @@ impl State {
      * read a named input
      */
     pub fn read_input_bool(&self, input_id: &str) -> Result<bool> {
-        let m_input = self.storage.get_input(input_id)?;
+        let m_input = self.inputs.get(input_id);
         match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
             config::Input::BoolFromDevice {
                 name: _,
@@ -209,10 +202,11 @@ impl State {
                 device_input_id,
                 active_low: _,
             } => {
-                let device_handle = self.devices.get(&device_id);
-                let device = device_handle
+                let device = self
+                    .devices
+                    .get(device_id)
                     .ok_or(Error::NonExistant(format!("BoolFromDevice: {}", device_id)))?;
-                let value = device.read_boolean(device_input_id)?;
+                let value = device.read_boolean(*device_input_id)?;
                 Ok(value)
             }
             config::Input::BoolFromVariable => {
@@ -234,7 +228,7 @@ impl State {
      * Write a particular value to an output
      */
     pub fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
-        let m_output = self.storage.get_output(output_id)?;
+        let m_output = self.outputs.get(output_id);
         let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
         match output {
             config::Output::BoolToDevice {
@@ -243,12 +237,14 @@ impl State {
                 device_output_id,
                 ..
             } => {
-                let device_handle = self.devices.get_mut(&device_id);
-                let device = device_handle
+                let device = self
+                    .devices
+                    .get_mut(device_id)
                     .ok_or(Error::NonExistant(format!("BoolToDevice: {}", device_id)))?;
-                device.write_boolean(device_output_id, active_low.unwrap_or(false) ^ value)?;
+                device.write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)?;
                 Ok(())
             }
+
             config::Output::BoolToVariable => match self.bool_variables.get_mut(output_id) {
                 Some(var) => {
                     *var = value;
@@ -282,7 +278,7 @@ impl State {
     }
 
     pub fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
-        let m_input = self.storage.get_input(input_id)?;
+        let m_input = self.inputs.get(input_id);
         match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
             config::Input::BoolFromDevice {
                 name: _,
@@ -290,11 +286,11 @@ impl State {
                 device_input_id,
                 active_low: _,
             } => {
-                let device_handle = self.devices.get(&device_id);
+                let device_handle = self.devices.get(device_id);
                 let device = device_handle.ok_or(Error::NonExistant(
                     format!("BoolFromDevice: {}", device_id).to_string(),
                 ))?;
-                let value = device.read_boolean(device_input_id)?;
+                let value = device.read_boolean(*device_input_id)?;
                 Ok(if value {
                     (1.0, config::Unit::Boolean)
                 } else {
@@ -322,7 +318,7 @@ impl State {
                 name: _,
                 device_id,
                 device_input_id,
-            } => self.read_sensor(&device_id, device_input_id),
+            } => self.read_sensor(&device_id, *device_input_id),
         }
     }
 
@@ -336,51 +332,40 @@ impl State {
     }
 }
 
-pub fn new(config: config::Config) -> Result<State> {
+pub fn new_state(
+    devices: HashMap<String, config::Device>,
+    devices_change: Sender<HashMap<String, config::Device>>,
+
+    inputs: HashMap<String, config::Input>,
+    inputs_change: Sender<HashMap<String, config::Input>>,
+
+    outputs: HashMap<String, config::Output>,
+    outputs_change: Sender<HashMap<String, config::Output>>,
+) -> Result<State> {
     let dt = Local::now();
     let i2c = bus::start();
+    let mut device_instances: HashMap<String, Device> = HashMap::new();
 
-    let path = config
-        .database
-        .unwrap_or(std::path::PathBuf::from("rested-pi.db"));
-    info!("using database at {}", path.to_string_lossy());
-    let storage = storage::open(&path)?;
+    for (k, cfg) in &devices {
+        device_instances.insert(k.clone(), Device::new(cfg.clone(), i2c.clone()));
+    }
 
-    let mut state = State {
+    let state = State {
         i2c,
         dt,
-        storage,
-        devices: HashMap::new(),
-        inputs: HashMap::new(),
-        outputs: HashMap::new(),
+
+        device_configs: devices,
+        devices: device_instances,
+        devices_change,
+
+        inputs,
+        inputs_change,
+
+        outputs,
+        outputs_change,
+
         bool_variables: HashMap::new(),
     };
-
-    if let Some(device_config) = config.devices {
-        for (name, device_config) in device_config.iter() {
-            state
-                .add_device(name, device_config)
-                .expect("pre-configured device to not fail to reset");
-        }
-    }
-
-    if let Some(input_config) = config.inputs {
-        for (name, input_config) in input_config.iter() {
-            state
-                .add_input(name, input_config)
-                .expect("pre-configured device to not fail to reset");
-        }
-    }
-
-    if let Some(output_config) = config.outputs {
-        for (name, output_config) in output_config.iter() {
-            state
-                .add_output(name, output_config)
-                .expect("pre-configured device to not fail to reset");
-        }
-    }
-
-    state.reset()?;
 
     Ok(state)
 }

@@ -30,7 +30,7 @@ impl FromStr for Unit {
 }
 
 /// A source of f64 values, usable in expressions
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub enum Value {
     // Some constant
     Const(f64),

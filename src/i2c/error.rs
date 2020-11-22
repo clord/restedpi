@@ -43,21 +43,24 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
+impl From<toml::ser::Error> for Error {
+    fn from(err: toml::ser::Error) -> Error {
+        Error::EncodingError(format!("ser: {}", err))
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(err: toml::de::Error) -> Error {
+        Error::EncodingError(format!("de: {}", err))
+    }
+}
+
 impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Error {
         Error::EncodingError(format!("{}", err))
     }
 }
-impl From<sled::transaction::TransactionError> for Error {
-    fn from(err: sled::transaction::TransactionError) -> Error {
-        Error::StorageError(format!("Trasaction Error: {}", err))
-    }
-}
-impl From<sled::Error> for Error {
-    fn from(err: sled::Error) -> Error {
-        Error::StorageError(format!("{}", err))
-    }
-}
+
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error::IoError(format!("{}", err))

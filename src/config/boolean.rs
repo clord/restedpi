@@ -3,7 +3,7 @@ use crate::config::value::{evaluate as evaluate_value, Value};
 use crate::i2c::Result;
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub enum BoolExpr {
     Equal(Value, Value),
     EqualPlusOrMinus(Value, Value, Value),

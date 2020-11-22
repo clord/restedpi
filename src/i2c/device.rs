@@ -16,9 +16,9 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(config: &config::Device, i2c: I2cBus) -> Self {
+    pub fn new(config: config::Device, i2c: I2cBus) -> Self {
         Device {
-            config: config.clone(),
+            config,
             i2c,
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),

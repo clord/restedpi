@@ -1,6 +1,8 @@
 use crate::app::state;
 use crate::config;
 use crate::i2c::Result;
+use std::fs;
+use std::path::PathBuf;
 
 use chrono::prelude::*;
 
@@ -376,7 +378,7 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
             config,
             response,
         } => {
-            let result = state.add_device(&device_id, &config);
+            let result = state.add_device(&device_id, config);
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
@@ -490,9 +492,52 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
     return should_terminate;
 }
 
-pub fn start_app(config: config::Config) -> Result<AppChannel> {
+fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>(
+    path: PathBuf,
+) -> Result<(HashMap<String, T>, Sender<HashMap<String, T>>)> {
+    let cloned_path = path.clone();
+    let contents = fs::read_to_string(path).unwrap_or("".to_string());
+    let config = serde_json::from_str(&contents).unwrap_or_else(|e| {
+        error!("error parsing config: {}", e);
+        HashMap::new()
+    });
+    let (sender, receiver) = channel::<HashMap<String, T>>();
+
+    thread::spawn(move || loop {
+        match receiver.recv() {
+            Ok(config) => match serde_json::to_string(&config) {
+                Ok(config_as_string) => {
+                    fs::write(&cloned_path, config_as_string).expect("failed to write change");
+                }
+                Err(e) => {
+                    error!("Failed to encode: {}", e);
+                }
+            },
+            Err(e) => {
+                error!("Failed to write: {}", e);
+            }
+        }
+    });
+
+    Ok((config, sender))
+}
+
+pub fn start_app() -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
-    let mut state = state::new(config)?;
+
+    let (devices, devices_change) = read_item(PathBuf::from("devices.json"))?;
+    let (inputs, inputs_change) = read_item(PathBuf::from("inputs.json"))?;
+    let (outputs, outputs_change) = read_item(PathBuf::from("outputs.json"))?;
+
+    let mut state = state::new_state(
+        devices,
+        devices_change,
+        inputs,
+        inputs_change,
+        outputs,
+        outputs_change,
+    )?;
+
     let sender_clone = sender.clone();
 
     thread::spawn(move || loop {
