@@ -496,10 +496,9 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     path: PathBuf,
 ) -> Result<(HashMap<String, T>, Sender<HashMap<String, T>>)> {
     let cloned_path = path.clone();
-    let contents = fs::read_to_string(path).unwrap_or("".to_string());
+    let contents = fs::read_to_string(path).unwrap_or("{}".to_string());
     let config = serde_json::from_str(&contents).unwrap_or_else(|e| {
         error!("error parsing item: {}", e);
-        debug!("contents: {:?}", contents);
         HashMap::new()
     });
     let (sender, receiver) = channel::<HashMap<String, T>>();
@@ -526,9 +525,9 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
 pub fn start_app() -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
 
-    let (devices, devices_change) = read_item(PathBuf::from("devices.json"))?;
-    let (inputs, inputs_change) = read_item(PathBuf::from("inputs.json"))?;
-    let (outputs, outputs_change) = read_item(PathBuf::from("outputs.json"))?;
+    let (devices, devices_change) = read_item(PathBuf::from("/etc/restedpi/devices.json"))?;
+    let (inputs, inputs_change) = read_item(PathBuf::from("/etc/restedpi/inputs.json"))?;
+    let (outputs, outputs_change) = read_item(PathBuf::from("/etc/restedpi/outputs.json"))?;
 
     let mut state = state::new_state(
         devices,
