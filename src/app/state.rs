@@ -347,6 +347,7 @@ pub fn new_state(
     let mut device_instances: HashMap<String, Device> = HashMap::new();
 
     for (k, cfg) in &devices {
+        info!("adding device: {}", cfg.name);
         device_instances.insert(k.clone(), Device::new(cfg.clone(), i2c.clone()));
     }
 
