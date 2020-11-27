@@ -498,7 +498,8 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     let cloned_path = path.clone();
     let contents = fs::read_to_string(path).unwrap_or("".to_string());
     let config = serde_json::from_str(&contents).unwrap_or_else(|e| {
-        error!("error parsing config: {}", e);
+        error!("error parsing item: {}", e);
+        debug!("contents: {:?}", contents);
         HashMap::new()
     });
     let (sender, receiver) = channel::<HashMap<String, T>>();
