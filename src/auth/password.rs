@@ -1,5 +1,4 @@
-use crate::i2c::error::Error;
-use crate::i2c::Result;
+use crate::error::{Error, Result};
 use crypto::pbkdf2::{pbkdf2_check, pbkdf2_simple};
 
 /**

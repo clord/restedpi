@@ -1,6 +1,6 @@
 use crate::app::state;
 use crate::config;
-use crate::i2c::Result;
+use crate::error::Result;
 use std::fs;
 use std::path::PathBuf;
 

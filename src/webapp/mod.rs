@@ -1,5 +1,5 @@
 use crate::app;
-use crate::i2c::error::Error;
+use crate::error::Error;
 use mime_guess::from_path;
 use serde_derive::Serialize;
 use serde_json::json;

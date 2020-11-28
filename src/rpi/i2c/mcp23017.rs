@@ -1,6 +1,6 @@
 use crate::config::Dir;
-use crate::i2c::bus::{Address, I2cBus};
-use crate::i2c::{error::Error, Result};
+use crate::rpi::{I2cAddress, RpiApi};
+use crate::error::{Error, Result};
 use bit_array::BitArray;
 
 type Bits = BitArray<u32, typenum::U8>;
@@ -186,60 +186,60 @@ impl Mcp23017State {
     // Unconditionally writes current value to device
     fn write_gpio_value(
         &self,
-        address: Address,
+        address: I2cAddress,
         bank: Bank,
         values: Vec<u8>,
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<()> {
         let register = match bank {
             Bank::A => WRITE_A,
             Bank::B => WRITE_B,
         };
         debug!("will write: {}: {:?}", address, &values);
-        i2c.write(address, register, values)
+        rapi.write_i2c(address, register, values)
     }
 
     // Unconditionally reads values from the device and stores in device state
-    fn read_gpio_value(&self, address: Address, bank: Bank, i2c: &I2cBus) -> Result<Bits> {
+    fn read_gpio_value(&self, address: I2cAddress, bank: Bank, rapi: &RpiApi) -> Result<Bits> {
         let register = match bank {
             Bank::A => READ_A,
             Bank::B => READ_B,
         };
 
-        let result = i2c.read(address, register, 1)?;
+        let result = rapi.read_i2c(address, register, 1)?;
         debug!("did read: {}: {:?}", address, result);
         Ok(read_word(result[0]))
     }
 
     // Unconditionally writes current direction to device
-    fn write_gpio_dir(&self, address: Address, bank: Bank, i2c: &I2cBus) -> Result<()> {
+    fn write_gpio_dir(&self, address: I2cAddress, bank: Bank, rapi: &RpiApi) -> Result<()> {
         let state = self.state_for_bank(bank);
         let (dir_reg, polarity_reg, pullup_reg) = match bank {
             Bank::A => (DIRECTION_A, IN_POLARITY_A, PULLUP_A),
             Bank::B => (DIRECTION_B, IN_POLARITY_B, PULLUP_B),
         };
-        i2c.write(address, dir_reg, vec![state.inout_word()])?;
-        i2c.write(address, polarity_reg, vec![state.input_polarity_word()])?;
-        i2c.write(address, pullup_reg, vec![state.pullup_word()])?;
+        rapi.write_i2c(address, dir_reg, vec![state.inout_word()])?;
+        rapi.write_i2c(address, polarity_reg, vec![state.input_polarity_word()])?;
+        rapi.write_i2c(address, pullup_reg, vec![state.pullup_word()])?;
         Ok(())
     }
 
-    pub fn reset(&mut self, address: Address, i2c: &I2cBus) -> Result<()> {
+    pub fn reset(&mut self, address: I2cAddress, rapi: &RpiApi) -> Result<()> {
         self.state = BankState {
             a: State::new(),
             b: State::new(),
         };
-        self.write_gpio_dir(address, Bank::A, i2c)?;
-        self.write_gpio_dir(address, Bank::B, i2c)?;
+        self.write_gpio_dir(address, Bank::A, rapi)?;
+        self.write_gpio_dir(address, Bank::B, rapi)?;
         Ok(())
     }
 
     pub fn set_pin_directions(
         &mut self,
-        address: Address,
+        address: I2cAddress,
         bank: Bank,
         directions: &[Dir],
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<()> {
         let bank_state = self.mut_state_for_bank(bank);
         let mut i = 0;
@@ -247,25 +247,25 @@ impl Mcp23017State {
             bank_state.direction[i] = *dir;
             i += 1;
         }
-        self.write_gpio_dir(address, bank, i2c)?;
+        self.write_gpio_dir(address, bank, rapi)?;
         for p in 0..7 {
-            self.set_pin(address, bank, ordinal_to_pin(p), false, i2c)?;
+            self.set_pin(address, bank, ordinal_to_pin(p), false, rapi)?;
         }
         Ok(())
     }
 
     pub fn set_pin_direction(
         &mut self,
-        address: Address,
+        address: I2cAddress,
         bank: Bank,
         pin: Pin,
         direction: Dir,
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<()> {
         let bank_state = self.mut_state_for_bank(bank);
         if bank_state.get_direction(pin) != direction {
             bank_state.set_direction(pin, direction);
-            self.write_gpio_dir(address, bank, i2c)?;
+            self.write_gpio_dir(address, bank, rapi)?;
         }
         Ok(())
     }
@@ -278,11 +278,11 @@ impl Mcp23017State {
 
     pub fn set_pin(
         &mut self,
-        address: Address,
+        address: I2cAddress,
         bank: Bank,
         pin: Pin,
         value: bool,
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<()> {
         match self.get_pin_direction(bank, pin) {
             Dir::In(..) => Err(Error::InvalidPinDirection),
@@ -292,7 +292,7 @@ impl Mcp23017State {
                     address, bank, pin, value
                 );
                 let new_values = self.mutate_pin(bank, pin, value);
-                self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                self.write_gpio_value(address, bank, vec![new_values], rapi)?;
                 Ok(())
             }
             Dir::OutL => {
@@ -301,7 +301,7 @@ impl Mcp23017State {
                     address, bank, pin, value
                 );
                 let new_values = self.mutate_pin(bank, pin, !value);
-                self.write_gpio_value(address, bank, vec![new_values], i2c)?;
+                self.write_gpio_value(address, bank, vec![new_values], rapi)?;
                 Ok(())
             }
         }
@@ -311,13 +311,19 @@ impl Mcp23017State {
         self.state_for_bank(bank).get_direction(pin)
     }
 
-    pub fn get_pin(&self, address: Address, bank: Bank, pin: Pin, i2c: &I2cBus) -> Result<bool> {
+    pub fn get_pin(
+        &self,
+        address: I2cAddress,
+        bank: Bank,
+        pin: Pin,
+        rapi: &RpiApi,
+    ) -> Result<bool> {
         let state = self.state_for_bank(bank);
         match state.get_direction(pin) {
             Dir::OutL => Ok(!state.pin_value(pin)),
             Dir::OutH => Ok(state.pin_value(pin)),
             Dir::In(..) => {
-                let value = self.read_gpio_value(address, bank, i2c)?;
+                let value = self.read_gpio_value(address, bank, rapi)?;
                 return Ok(value[7 - pin_to_ordinal(pin)]);
             }
         }

@@ -2,7 +2,9 @@ extern crate chrono;
 
 use crate::config;
 use crate::config::value::Unit;
-use crate::i2c::{bus, device::Device, error::Error, Result};
+use crate::error::{Error,Result};
+use crate::rpi::device::Device;
+use crate::rpi;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
@@ -21,7 +23,7 @@ pub struct State {
     outputs: HashMap<String, config::Output>,
     outputs_change: Sender<HashMap<String, config::Output>>,
 
-    i2c: bus::I2cBus,
+    i2c: rpi::RpiApi,
     bool_variables: HashMap<String, bool>,
 }
 
@@ -343,7 +345,7 @@ pub fn new_state(
     outputs_change: Sender<HashMap<String, config::Output>>,
 ) -> Result<State> {
     let dt = Local::now();
-    let i2c = bus::start();
+    let i2c = rpi::start();
     let mut device_instances: HashMap<String, Device> = HashMap::new();
 
     for (k, cfg) in &devices {

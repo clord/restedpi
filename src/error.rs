@@ -6,6 +6,9 @@ use std::fmt;
 use std::io;
 use std::sync::mpsc;
 
+/// Represent all common results of i2c
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, Serialize)]
 pub enum Error {
     IoError(String),
@@ -77,8 +80,8 @@ impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error
         Error::SendError(format!("{}", err))
     }
 }
-impl From<std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>> for Error {
-    fn from(err: std::sync::mpsc::SendError<crate::i2c::bus::I2cMessage>) -> Error {
+impl From<std::sync::mpsc::SendError<crate::rpi::RpiMessage>> for Error {
+    fn from(err: std::sync::mpsc::SendError<crate::rpi::RpiMessage>) -> Error {
         Error::SendError(format!("{}", err))
     }
 }

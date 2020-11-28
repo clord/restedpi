@@ -1,6 +1,6 @@
 use crate::app::state::State;
 use crate::config::value::{evaluate as evaluate_value, Value};
-use crate::i2c::Result;
+use crate::error::Result;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]

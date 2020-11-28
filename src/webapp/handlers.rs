@@ -1,8 +1,4 @@
 use crate::app::channel::AppChannel;
-use crate::config::boolean::{evaluate as evaluate_bool, BoolExpr};
-use crate::config::value::{evaluate as evaluate_val, Value};
-use crate::i2c::device::{Device, Status};
-use crate::i2c::error;
 use rppal::system::DeviceInfo;
 use std::convert::Infallible;
 use warp::{reply, Reply};

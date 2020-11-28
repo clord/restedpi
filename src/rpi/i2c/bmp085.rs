@@ -1,6 +1,6 @@
 use crate::config;
-use crate::i2c::util::{iv2be, uv2be};
-use crate::i2c::{bus::Address, bus::I2cBus, Result};
+use crate::rpi::{I2cAddress, RpiApi, i2c::util::{iv2be, uv2be}};
+use crate::error::Result;
 use std::thread;
 use std::time::Duration;
 
@@ -68,19 +68,19 @@ impl Bmp085State {
         }
     }
 
-    pub fn reset(&mut self, address: Address, bus: &I2cBus) -> Result<()> {
+    pub fn reset(&mut self, address: I2cAddress, bus: &RpiApi) -> Result<()> {
         // this sensor must be reset to be used...
-        let ac1 = bus.read(address, Register::AC1 as u8, 2)?;
-        let ac2 = bus.read(address, Register::AC2 as u8, 2)?;
-        let ac3 = bus.read(address, Register::AC3 as u8, 2)?;
-        let ac4 = bus.read(address, Register::AC4 as u8, 2)?;
-        let ac5 = bus.read(address, Register::AC5 as u8, 2)?;
-        let ac6 = bus.read(address, Register::AC6 as u8, 2)?;
-        let b1 = bus.read(address, Register::B1 as u8, 2)?;
-        let b2 = bus.read(address, Register::B2 as u8, 2)?;
-        let mb = bus.read(address, Register::Mb as u8, 2)?;
-        let mc = bus.read(address, Register::Mc as u8, 2)?;
-        let md = bus.read(address, Register::Md as u8, 2)?;
+        let ac1 = bus.read_i2c(address, Register::AC1 as u8, 2)?;
+        let ac2 = bus.read_i2c(address, Register::AC2 as u8, 2)?;
+        let ac3 = bus.read_i2c(address, Register::AC3 as u8, 2)?;
+        let ac4 = bus.read_i2c(address, Register::AC4 as u8, 2)?;
+        let ac5 = bus.read_i2c(address, Register::AC5 as u8, 2)?;
+        let ac6 = bus.read_i2c(address, Register::AC6 as u8, 2)?;
+        let b1 = bus.read_i2c(address, Register::B1 as u8, 2)?;
+        let b2 = bus.read_i2c(address, Register::B2 as u8, 2)?;
+        let mb = bus.read_i2c(address, Register::Mb as u8, 2)?;
+        let mc = bus.read_i2c(address, Register::Mc as u8, 2)?;
+        let md = bus.read_i2c(address, Register::Md as u8, 2)?;
 
         // No mutation until all succeed
         self.ac1 = iv2be(&ac1) as i16;
@@ -98,22 +98,22 @@ impl Bmp085State {
     }
 
     /// Read temperature in degrees c
-    pub fn temperature_in_c(&self, address: Address, i2c: &I2cBus) -> Result<f32> {
-        let (t, _) = self.read_raw_temp(address, i2c)?;
+    pub fn temperature_in_c(&self, address: I2cAddress, rapi: &RpiApi) -> Result<f32> {
+        let (t, _) = self.read_raw_temp(address, rapi)?;
         Ok((t as f32) * 0.1)
     }
 
     /// Read air pressure in kPa
     pub fn pressure_kpa(
         &self,
-        address: Address,
+        address: I2cAddress,
         accuracy: config::SamplingMode,
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<f32> {
-        let (_, b5) = self.read_raw_temp(address, i2c)?;
+        let (_, b5) = self.read_raw_temp(address, rapi)?;
         let sampling = sampling_mode(accuracy);
 
-        let up = self.read_raw_pressure(address, accuracy, i2c)?;
+        let up = self.read_raw_pressure(address, accuracy, rapi)?;
 
         let b1: i32 = self.b1 as i32;
         let b2: i32 = self.b2 as i32;
@@ -150,14 +150,14 @@ impl Bmp085State {
     }
 
     /// Reads the raw temperature data and associated register
-    fn read_raw_temp(&self, address: Address, i2c: &I2cBus) -> Result<(i32, i32)> {
-        i2c.write(
+    fn read_raw_temp(&self, address: I2cAddress, rapi: &RpiApi) -> Result<(i32, i32)> {
+        rapi.write_i2c(
             address,
             Register::Control as u8,
             vec![Control::ReadTemp as u8],
         )?;
         thread::sleep(Duration::from_millis(5)); // sleep for 4.5 ms
-        let data = i2c.read(address, Register::Data as u8, 2)?;
+        let data = rapi.read_i2c(address, Register::Data as u8, 2)?;
 
         let ut: i32 = iv2be(&data) as i32;
         let ac6: i32 = self.ac6 as i32;
@@ -177,13 +177,13 @@ impl Bmp085State {
     /// Reads the raw pressure data
     fn read_raw_pressure(
         &self,
-        address: Address,
+        address: I2cAddress,
         accuracy: config::SamplingMode,
-        i2c: &I2cBus,
+        rapi: &RpiApi,
     ) -> Result<i32> {
         let pressure_cmd = Control::ReadPressure as u8;
         let sampling = sampling_mode(accuracy);
-        i2c.write(
+        rapi.write_i2c(
             address,
             Register::Control as u8,
             vec![pressure_cmd + (sampling << 6)],
@@ -198,9 +198,9 @@ impl Bmp085State {
 
         thread::sleep(duration);
 
-        let msbv = i2c.read(address, Register::Data as u8 + 0, 1)?;
-        let lsbv = i2c.read(address, Register::Data as u8 + 1, 1)?;
-        let xlsbv = i2c.read(address, Register::Data as u8 + 2, 1)?;
+        let msbv = rapi.read_i2c(address, Register::Data as u8 + 0, 1)?;
+        let lsbv = rapi.read_i2c(address, Register::Data as u8 + 1, 1)?;
+        let xlsbv = rapi.read_i2c(address, Register::Data as u8 + 2, 1)?;
         let msb = msbv[0] as u32;
         let lsb = lsbv[0] as u32;
         let xlsb = xlsbv[0] as u32;

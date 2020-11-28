@@ -26,8 +26,9 @@ use warp::Filter;
 mod app;
 mod auth;
 mod config;
-mod i2c;
+mod rpi;
 mod webapp;
+mod error;
 
 /// big picture:
 /// read configuration and decide what sensors and switches are available. start up application, then

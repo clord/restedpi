@@ -1,6 +1,6 @@
 use crate::app::state::State;
 use crate::config::sched;
-use crate::i2c::Result;
+use crate::error::Result;
 use chrono::prelude::*;
 use chrono::Duration;
 use serde_derive::{Deserialize, Serialize};
@@ -127,7 +127,7 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             if *unit == value.1 {
                 Ok(value.0)
             } else {
-                Err(crate::i2c::error::Error::UnitError(*unit))
+                Err(crate::error::Error::UnitError(*unit))
             }
         }
         Value::Sub(a, b) => Ok(evaluate(app, a)? - evaluate(app, b)?),

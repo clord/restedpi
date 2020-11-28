@@ -1,5 +1,7 @@
 use crate::config;
-use crate::i2c::{bmp085, bus::I2cBus, error::Error, mcp23017, mcp9808, Result};
+use crate::error::{Error, Result};
+use crate::rpi::RpiApi;
+use crate::rpi::i2c::{bmp085, mcp23017, mcp9808};
 use serde_derive::Serialize;
 
 #[derive(Clone, Serialize, Debug)]
@@ -10,16 +12,16 @@ pub enum Status {
 #[derive(Clone, Debug)]
 pub struct Device {
     pub config: config::Device,
-    i2c: I2cBus,
+    rapi: RpiApi,
     mcp23017_state: mcp23017::Mcp23017State,
     bmp085_state: bmp085::Bmp085State,
 }
 
 impl Device {
-    pub fn new(config: config::Device, i2c: I2cBus) -> Self {
+    pub fn new(config: config::Device, rapi: RpiApi) -> Self {
         Device {
             config,
-            i2c,
+            rapi,
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),
         }
@@ -45,18 +47,18 @@ impl Device {
                 address,
                 pin_direction,
             } => {
-                self.mcp23017_state.reset(*address, &self.i2c)?;
+                self.mcp23017_state.reset(*address, &self.rapi)?;
                 self.mcp23017_state.set_pin_directions(
                     *address,
                     mcp23017::Bank::A,
                     &pin_direction[0..7],
-                    &self.i2c,
+                    &self.rapi,
                 )?;
                 self.mcp23017_state.set_pin_directions(
                     *address,
                     mcp23017::Bank::B,
                     &pin_direction[8..15],
-                    &self.i2c,
+                    &self.rapi,
                 )?;
                 // by writing false, we will update with correct state for all pins after dir change
                 self.mcp23017_state.set_pin(
@@ -64,18 +66,18 @@ impl Device {
                     mcp23017::Bank::A,
                     mcp23017::Pin::Pin0,
                     false,
-                    &self.i2c,
+                    &self.rapi,
                 )?;
                 self.mcp23017_state.set_pin(
                     *address,
                     mcp23017::Bank::B,
                     mcp23017::Pin::Pin0,
                     false,
-                    &self.i2c,
+                    &self.rapi,
                 )?;
                 Ok(())
             }
-            config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.i2c),
+            config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.rapi),
         }
     }
 
@@ -103,7 +105,7 @@ impl Device {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index);
                 let pin = self
                     .mcp23017_state
-                    .get_pin(*address, bank, pin, &self.i2c)?;
+                    .get_pin(*address, bank, pin, &self.rapi)?;
                 Ok(pin)
             }
         }
@@ -113,18 +115,20 @@ impl Device {
         match &self.config.model {
             config::Type::BMP085 { address, mode } => match index {
                 0 => {
-                    let v = self.bmp085_state.temperature_in_c(*address, &self.i2c)?;
+                    let v = self.bmp085_state.temperature_in_c(*address, &self.rapi)?;
                     Ok((v as f64, config::Unit::DegC))
                 }
                 1 => {
-                    let v = self.bmp085_state.pressure_kpa(*address, *mode, &self.i2c)?;
+                    let v = self
+                        .bmp085_state
+                        .pressure_kpa(*address, *mode, &self.rapi)?;
                     Ok((v as f64, config::Unit::KPa))
                 }
                 _ => Err(Error::OutOfBounds(index)),
             },
             config::Type::MCP9808 { address } => match index {
                 0 => {
-                    let temp = mcp9808::read_temp(&self.i2c, *address)?;
+                    let temp = mcp9808::read_temp(&self.rapi, *address)?;
                     Ok((temp as f64, config::Unit::DegC))
                 }
                 _ => Err(Error::OutOfBounds(index)),
@@ -149,11 +153,11 @@ impl Device {
                         bank,
                         pin,
                         pin_direction[index],
-                        &self.i2c,
+                        &self.rapi,
                     )?;
                 }
                 self.mcp23017_state
-                    .set_pin(*address, bank, pin, value, &self.i2c)
+                    .set_pin(*address, bank, pin, value, &self.rapi)
             }
         }
     }
