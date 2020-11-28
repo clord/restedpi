@@ -3,22 +3,21 @@ use rppal::i2c::I2c;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::vec::Vec;
+
 pub mod device;
 pub mod i2c;
-pub type I2cAddress = u16;
-pub type I2cCommand = u8;
 
 #[derive(Clone, Debug)]
 pub enum RpiMessage {
     WriteI2C {
-        address: I2cAddress,
-        command: I2cCommand,
+        address: i2c::I2cAddress,
+        command: i2c::I2cCommand,
         parameters: Vec<u8>,
         response: Sender<Result<()>>,
     },
     ReadI2C {
-        address: I2cAddress,
-        command: I2cCommand,
+        address: i2c::I2cAddress,
+        command: i2c::I2cCommand,
         size: usize,
         response: Sender<Result<Vec<u8>>>,
     },
@@ -43,7 +42,7 @@ pub struct RpiApi {
 }
 
 impl RpiApi {
-    pub fn write_i2c(&self, address: I2cAddress, command: u8, parameters: Vec<u8>) -> Result<()> {
+    pub fn write_i2c(&self, address: i2c::I2cAddress, command: u8, parameters: Vec<u8>) -> Result<()> {
         let (response, port) = channel();
         self.sender.send(RpiMessage::WriteI2C {
             parameters,
@@ -82,7 +81,7 @@ pub fn start() -> RpiApi {
     let (sender, receiver) = channel::<RpiMessage>();
 
     thread::spawn(move || {
-        let mut current_i2c_address: Option<I2cAddress> = None;
+        let mut current_i2c_address: Option<i2c::I2cAddress> = None;
         match I2c::new() {
             Ok(mut i2c) => loop {
                 let next = receiver.recv().unwrap();

@@ -1,7 +1,7 @@
 use crate::config;
 use crate::error::{Error, Result};
-use crate::rpi::RpiApi;
-use crate::rpi::i2c::{bmp085, mcp23017, mcp9808};
+use super::RpiApi;
+use super::i2c::{bmp085, mcp23017, mcp9808};
 use serde_derive::Serialize;
 
 #[derive(Clone, Serialize, Debug)]

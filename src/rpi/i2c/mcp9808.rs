@@ -1,4 +1,5 @@
-use crate::rpi::{RpiApi, I2cAddress, i2c::util::uv2be};
+use super::{I2cAddress, util::uv2be};
+use super::super::RpiApi;
 use crate::error::Result;
 
 /// MCP 9808
