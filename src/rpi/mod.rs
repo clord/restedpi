@@ -42,7 +42,12 @@ pub struct RpiApi {
 }
 
 impl RpiApi {
-    pub fn write_i2c(&self, address: i2c::I2cAddress, command: u8, parameters: Vec<u8>) -> Result<()> {
+    pub fn write_i2c(
+        &self,
+        address: i2c::I2cAddress,
+        command: u8,
+        parameters: Vec<u8>,
+    ) -> Result<()> {
         let (response, port) = channel();
         self.sender.send(RpiMessage::WriteI2C {
             parameters,
@@ -68,10 +73,7 @@ impl RpiApi {
 
     pub fn read_gpio(&self, pin: u8) -> Result<rppal::gpio::Level> {
         let (response, port) = channel();
-        self.sender.send(RpiMessage::ReadGpio {
-            response,
-            pin,
-        })?;
+        self.sender.send(RpiMessage::ReadGpio { response, pin })?;
 
         port.recv()?
     }
@@ -86,11 +88,11 @@ pub fn start() -> RpiApi {
             Ok(mut i2c) => loop {
                 let next = receiver.recv().unwrap();
                 match next {
-                    RpiMessage::ReadGpio {pin, response} => {
+                    RpiMessage::ReadGpio { pin, response } => {
                         debug!("TODO: read gpio {}", pin);
                         // TODO: Actually read the pin
                         response.send(Ok(rppal::gpio::Level::High));
-                    },
+                    }
                     RpiMessage::WriteI2C {
                         address,
                         command,

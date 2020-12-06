@@ -10,9 +10,9 @@ extern crate serde_derive;
 extern crate typenum;
 extern crate warp;
 
-use librpi::webapp;
-use librpi::config::Config;
 use librpi::app;
+use librpi::config::Config;
+use librpi::webapp;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -78,7 +78,8 @@ async fn main() {
     let key_and_cert = config.key_and_cert_path.clone();
     cloned_path.pop();
 
-    let app = app::channel::start_app((config.lat, config.long), &cloned_path).expect("app failed to start");
+    let app = app::channel::start_app((config.lat, config.long), &cloned_path)
+        .expect("app failed to start");
     let app = Arc::new(Mutex::new(app));
 
     let api = webapp::filters::api(app);

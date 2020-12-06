@@ -1,9 +1,9 @@
 use crate::app::state;
 use crate::config;
 use crate::error::Result;
+use chrono::prelude::*;
 use std::fs;
 use std::path::PathBuf;
-use chrono::prelude::*;
 
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
@@ -521,7 +521,7 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     Ok((config, sender))
 }
 
-pub fn start_app(here: (f64,f64), path: &std::path::Path) -> Result<AppChannel> {
+pub fn start_app(here: (f64, f64), path: &std::path::Path) -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
 
     let (devices, devices_change) = read_item(path.join("devices.toml"))?;

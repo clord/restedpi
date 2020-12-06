@@ -1,12 +1,12 @@
-use crate::error::Result;
 use crate::error::Error;
+use crate::error::Result;
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
 
 lrlex_mod!("config/config.l");
 lrpar_mod!("config/config.y");
 
-pub use config_y::{Value, Unit, DateTimeValue, LocationValue, BoolExpr};
+pub use config_y::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 
 pub fn bool_expr(as_str: &str) -> Result<BoolExpr> {
     let lexerdef = config_l::lexerdef();
@@ -20,7 +20,6 @@ pub fn bool_expr(as_str: &str) -> Result<BoolExpr> {
     }
     match res {
         Some(Ok(e)) => Ok(e),
-        _ => Err(Error::ParseError)
+        _ => Err(Error::ParseError),
     }
 }
-

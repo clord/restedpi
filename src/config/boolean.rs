@@ -1,7 +1,7 @@
 use crate::app::state::State;
 use crate::config::value::evaluate as evaluate_value;
-use crate::error::Result;
 use crate::config::BoolExpr;
+use crate::error::Result;
 
 /// A very basic parser that evaluates an expression for truth. Can refer to values.
 pub fn evaluate(app: &State, expr: &BoolExpr) -> Result<bool> {

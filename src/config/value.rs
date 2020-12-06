@@ -1,18 +1,21 @@
 use crate::app::state::State;
 use crate::config::sched;
+use crate::config::{DateTimeValue, LocationValue, Unit, Value};
 use crate::error::Result;
+use chrono::offset::LocalResult;
 use chrono::prelude::*;
 use chrono::Duration;
-use chrono::offset::LocalResult;
 use std::str::FromStr;
-use crate::config::{Value, Unit, DateTimeValue, LocationValue};
 
 pub enum ParseUnitError {
     NotKnown,
 }
 
 fn doy_for_dt(dt: DateTime<Local>) -> f64 {
-    dt.ordinal0() as f64 + (dt.hour() as f64 / 24.0f64) + ((dt.minute() as f64 / 24.0f64) / 60.0f64) + ((dt.second() as f64 / 24.0f64) / 3600.0f64)
+    dt.ordinal0() as f64
+        + (dt.hour() as f64 / 24.0f64)
+        + ((dt.minute() as f64 / 24.0f64) / 60.0f64)
+        + ((dt.second() as f64 / 24.0f64) / 3600.0f64)
 }
 
 fn lat_for_loc(app: &State, location: &LocationValue) -> f64 {
@@ -30,25 +33,25 @@ fn long_for_loc(app: &State, location: &LocationValue) -> f64 {
 }
 
 fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> DateTime<Local> {
-    match datetime { 
+    match datetime {
         DateTimeValue::Now => app.current_dt(),
         DateTimeValue::SpecificDTZ(v) => *v,
-        DateTimeValue::SpecificDate(v) => match Local.from_local_date(v) { 
+        DateTimeValue::SpecificDate(v) => match Local.from_local_date(v) {
             LocalResult::None => {
                 error!("invalid date {:?}", v);
                 Local.timestamp(0, 0)
-            },
+            }
             LocalResult::Single(s) => s.and_hms(0, 0, 0),
             LocalResult::Ambiguous(s, x) => {
                 error!("ambiguous date {:?} {:?} {:?}", v, s, x);
-                s.and_hms(0,0,0)
+                s.and_hms(0, 0, 0)
             }
         },
-        DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) { 
+        DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) {
             LocalResult::None => {
                 error!("invalid date {:?}", v);
                 Local.timestamp(0, 0)
-            },
+            }
             LocalResult::Single(s) => s,
             LocalResult::Ambiguous(s, x) => {
                 error!("ambiguous date {:?} {:?} {:?}", v, s, x);
@@ -93,13 +96,16 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::HourAngleSunrise(location, datetime) => Ok(sched::hour_angle_sunrise(
             lat_for_loc(app, location),
             sched::noon_decl_sun(doy_for_dt(dt_for_datetime(app, datetime))),
-        ).to_degrees()),
+        )
+        .to_degrees()),
 
-        Value::NoonSunDeclinationAngle ( datetime ) => Ok(sched::noon_decl_sun( doy_for_dt(dt_for_datetime(app, datetime)) )),
+        Value::NoonSunDeclinationAngle(datetime) => Ok(sched::noon_decl_sun(doy_for_dt(
+            dt_for_datetime(app, datetime),
+        ))),
 
         Value::HoursOfDaylight(location, datetime) => Ok(sched::day_length_hrs(
-                lat_for_loc(app, location),
-                doy_for_dt(dt_for_datetime(app, datetime))
+            lat_for_loc(app, location),
+            doy_for_dt(dt_for_datetime(app, datetime)),
         )),
 
         Value::HourOfSunset(location, datetime) => {
@@ -107,11 +113,8 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             let doy_ev = doy_for_dt(dt);
             let lat = lat_for_loc(app, location);
             let long = long_for_loc(app, location);
-            let h = sched::hour_angle_sunrise(
-                lat.to_radians(),
-                sched::noon_decl_sun(doy_ev),
-            )
-            .to_degrees()
+            let h = sched::hour_angle_sunrise(lat.to_radians(), sched::noon_decl_sun(doy_ev))
+                .to_degrees()
                 / 15.0;
             let exact_offset = sched::exact_offset_hrs(long);
             let solar_offset = (12.0 + h / 2.0) * 3600.0;
@@ -129,11 +132,8 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             let lat = lat_for_loc(app, location);
             let long = long_for_loc(app, location);
 
-            let h = sched::hour_angle_sunrise(
-                lat.to_radians(),
-                sched::noon_decl_sun(doy_ev),
-            )
-            .to_degrees()
+            let h = sched::hour_angle_sunrise(lat.to_radians(), sched::noon_decl_sun(doy_ev))
+                .to_degrees()
                 / 15.0;
 
             let exact_offset = sched::exact_offset_hrs(long);

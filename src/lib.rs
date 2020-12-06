@@ -19,6 +19,6 @@ extern crate rust_embed;
 pub mod app;
 pub mod auth;
 pub mod config;
+pub mod error;
 pub mod rpi;
 pub mod webapp;
-pub mod error;

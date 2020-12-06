@@ -1,12 +1,11 @@
-use std::io::{self, BufRead, Write};
 use librpi::config::parse;
 use log::error;
 use std::env;
+use std::io::{self, BufRead, Write};
 
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
-
 
 fn main() {
     if env::var_os("LOG").is_none() {
@@ -26,10 +25,10 @@ fn main() {
                 }
                 match parse::bool_expr(l) {
                     Ok(r) => println!("Result: {:?}", r),
-                    Err(e) => error!("Unable to evaluate expression: {:?}", e)
+                    Err(e) => error!("Unable to evaluate expression: {:?}", e),
                 }
             }
-            _ => break
+            _ => break,
         }
     }
 }

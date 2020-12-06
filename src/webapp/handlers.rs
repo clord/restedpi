@@ -1,13 +1,32 @@
 use crate::app::channel::AppChannel;
 use rppal::system::DeviceInfo;
 use std::convert::Infallible;
-use warp::{reply, Reply};
+use warp::{reject, reply, Rejection, Reply};
 
 use serde_json::json;
 
-pub async fn list_devices(app: AppChannel) -> Result<impl Reply, Infallible> {
-    let reply = json!([]);
-    Ok(reply::json(&reply))
+pub async fn list_devices(app: AppChannel) -> Result<impl Reply, Rejection> {
+    match app.all_devices() {
+        Ok(r) => Ok(reply::json(&r)),
+        Err(e) => Err(reject::custom(e)),
+    }
+}
+
+pub async fn add_or_replace_device(
+    device_id: String,
+    device: crate::config::Device,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    match app.add_or_replace_device(device_id, device) {
+        Ok(r) => Ok(reply::json(&r)),
+        Err(e) => Err(reject::custom(e)),
+    }
+}
+pub async fn remove_device(device_id: String, app: AppChannel) -> Result<impl Reply, Rejection> {
+    match app.remove_device(device_id) {
+        Ok(r) => Ok(reply::json(&r)),
+        Err(e) => Err(reject::custom(e)),
+    }
 }
 
 pub async fn server_name() -> Result<impl Reply, Infallible> {

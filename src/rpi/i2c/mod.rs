@@ -5,4 +5,3 @@ pub mod util;
 
 pub type I2cAddress = u16;
 pub type I2cCommand = u8;
-

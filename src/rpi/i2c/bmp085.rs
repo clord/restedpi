@@ -1,7 +1,7 @@
-use crate::config;
 use super::super::RpiApi;
-use super::I2cAddress;
 use super::util::{iv2be, uv2be};
+use super::I2cAddress;
+use crate::config;
 use crate::error::Result;
 use std::thread;
 use std::time::Duration;

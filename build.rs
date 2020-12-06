@@ -1,6 +1,6 @@
 use cfgrammar::yacc::YaccKind;
 use lrlex::LexerBuilder;
-use lrpar::{CTParserBuilder};
+use lrpar::CTParserBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lex_rule_ids_map = CTParserBuilder::new()
@@ -11,4 +11,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .process_file_in_src("config/config.l")?;
     Ok(())
 }
-

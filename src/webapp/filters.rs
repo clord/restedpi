@@ -55,7 +55,6 @@ fn available_devices(
 
 fn devices(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     devices_list(app.clone())
-        .or(devices_create(app.clone()))
         .or(devices_update(app.clone()))
         .or(devices_delete(app))
 }
@@ -69,29 +68,21 @@ fn devices_list(
         .and_then(handlers::list_devices)
 }
 
-fn devices_create(
-    app: SharedAppState,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("devices")
-        .and(warp::post())
-        .and(with_app(app))
-        .and_then(handlers::list_devices)
-}
-
 fn devices_update(
     app: SharedAppState,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("devices")
+    warp::path!("devices" / String)
         .and(warp::put())
+        .and(warp::body::json())
         .and(with_app(app))
-        .and_then(handlers::list_devices)
+        .and_then(handlers::add_or_replace_device)
 }
 
 fn devices_delete(
     app: SharedAppState,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("devices")
+    warp::path!("devices" / String)
         .and(warp::delete())
         .and(with_app(app))
-        .and_then(handlers::list_devices)
+        .and_then(handlers::remove_device)
 }

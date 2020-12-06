@@ -6,7 +6,7 @@ pub mod value;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub use parse::{Value, Unit, DateTimeValue, LocationValue, BoolExpr};
+pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub enum SamplingMode {
@@ -63,7 +63,7 @@ pub struct Input {
     pub name: String,
     pub device_id: String,
     pub device_input_id: usize,
-    pub unit: Unit
+    pub unit: Unit,
 }
 
 /**
@@ -107,7 +107,7 @@ impl Config {
             name: None,
             listen: None,
             port: None,
-            lat: 0.0, 
+            lat: 0.0,
             long: 0.0,
             key_and_cert_path: None,
         }
@@ -115,7 +115,7 @@ impl Config {
 
     pub fn here(&self) -> LocationValue {
         LocationValue::LatLong(self.lat, self.long)
-    } 
+    }
 
     pub fn check_config(&self) -> Vec<ConfigError> {
         let errors = Vec::<ConfigError>::new();
@@ -154,11 +154,9 @@ pub enum ConfigError {
     }, // could check that i2c addresses are valid
 }
 
-
 #[cfg(test)]
 mod tests {
     // use crate::config::boolean;
     // use crate::config::{Config, Device, Input, Output, Type};
     // use std::path::PathBuf;
-
 }

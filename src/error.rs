@@ -1,9 +1,9 @@
+use hex::FromHexError;
 use rppal::i2c;
 use serde_derive::Serialize;
 use std::error;
 use std::fmt;
 use std::io;
-use hex::FromHexError;
 use std::sync::mpsc;
 
 /// Represent all common results of i2c
@@ -25,6 +25,8 @@ pub enum Error {
     StorageError(String),
     EncodingError(String),
 }
+
+impl warp::reject::Reject for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
