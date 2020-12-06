@@ -288,7 +288,7 @@ impl State {
         }
     }
 
-    pub fn read_sensor(&self, device_id: &str, sensor_id: usize) -> Result<(f64, Unit)> {
+    pub fn read_sensor(&self, device_id: &str, sensor_id: u32) -> Result<(f64, Unit)> {
         match self.devices.get(device_id) {
             Some(m) => m.read_sensor(sensor_id),
             None => Err(Error::NonExistant(

@@ -62,7 +62,7 @@ pub struct Device {
 pub struct Input {
     pub name: String,
     pub device_id: String,
-    pub device_input_id: usize,
+    pub device_input_id: u32,
     pub unit: Unit,
 }
 
@@ -73,7 +73,7 @@ pub struct Input {
 pub struct Output {
     pub name: String,
     pub device_id: String,
-    pub device_output_id: usize,
+    pub device_output_id: u32,
     pub active_low: Option<bool>,
     pub unit: Unit,
 
@@ -150,7 +150,7 @@ pub enum ConfigError {
     },
     IORefersToNonExistantDevicePin {
         io: IORef,
-        pin_id: usize,
+        pin_id: u32,
     }, // could check that i2c addresses are valid
 }
 
