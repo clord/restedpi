@@ -1,4 +1,3 @@
-use crate::config::value::Unit;
 use rppal::i2c;
 use serde_derive::Serialize;
 use std::error;
@@ -15,9 +14,10 @@ pub enum Error {
     InputNotFound(String),
     OutputNotFound(String),
     InvalidPinDirection,
+    ParseError,
     NonExistant(String),
     OutOfBounds(usize),
-    UnitError(Unit),
+    UnitError(String),
     I2cError(String),
     RecvError(String),
     SendError(String),
@@ -30,6 +30,7 @@ impl fmt::Display for Error {
         match self {
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
+            Error::ParseError => write!(f, "Parse error"),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
             Error::OutOfBounds(ref index) => write!(f, "Index '{:#?}' out of bounds", index),
             Error::I2cError(ref err) => write!(f, "I2C Bus Error: {}", err),

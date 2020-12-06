@@ -1,7 +1,6 @@
 use crate::app;
 use crate::error::Error;
 use mime_guess::from_path;
-use serde_derive::Serialize;
 use serde_json::json;
 use std::borrow::Cow;
 
@@ -262,6 +261,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert
         let code = match err {
             Error::IoError(_) => 1001,
             Error::InvalidPinDirection => 1008,
+            Error::ParseError => 1200,
             Error::I2cError(_) => 1016,
             Error::NonExistant(_) => 1017,
             Error::OutOfBounds(_) => 1019,

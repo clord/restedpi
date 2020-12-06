@@ -10,25 +10,14 @@ extern crate serde_derive;
 extern crate typenum;
 extern crate warp;
 
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate rust_embed;
-
-use crate::config::Config;
+use librpi::webapp;
+use librpi::config::Config;
+use librpi::app;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use warp::Filter;
-
-mod app;
-mod auth;
-mod config;
-mod rpi;
-mod webapp;
-mod error;
 
 /// big picture:
 /// read configuration and decide what sensors and switches are available. start up application, then
@@ -66,7 +55,7 @@ async fn main() {
             None => etc_dir_config_file,
         }
     };
-    let cloned_path = config_file.clone();
+    let mut cloned_path = config_file.clone();
 
     let contents = match fs::read_to_string(config_file) {
         Ok(cfg) => cfg,
@@ -87,8 +76,9 @@ async fn main() {
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
     let key_and_cert = config.key_and_cert_path.clone();
+    cloned_path.pop();
 
-    let app = app::channel::start_app().expect("app failed to start");
+    let app = app::channel::start_app((config.lat, config.long), &cloned_path).expect("app failed to start");
     let app = Arc::new(Mutex::new(app));
 
     let api = webapp::filters::api(app);

@@ -3,7 +3,6 @@ use crate::config;
 use crate::error::Result;
 use std::fs;
 use std::path::PathBuf;
-
 use chrono::prelude::*;
 
 use std::collections::HashMap;
@@ -497,7 +496,7 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
 ) -> Result<(HashMap<String, T>, Sender<HashMap<String, T>>)> {
     let cloned_path = path.clone();
     let contents = fs::read_to_string(path).unwrap_or("{}".to_string());
-    let config = serde_json::from_str(&contents).unwrap_or_else(|e| {
+    let config = toml::from_str(&contents).unwrap_or_else(|e| {
         error!("error parsing item: {}", e);
         HashMap::new()
     });
@@ -505,7 +504,7 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
 
     thread::spawn(move || loop {
         match receiver.recv() {
-            Ok(config) => match serde_json::to_string(&config) {
+            Ok(config) => match toml::to_string(&config) {
                 Ok(config_as_string) => {
                     fs::write(&cloned_path, config_as_string).expect("failed to write change");
                 }
@@ -522,14 +521,20 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     Ok((config, sender))
 }
 
-pub fn start_app() -> Result<AppChannel> {
+pub fn start_app(here: (f64,f64), path: &std::path::Path) -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
 
-    let (devices, devices_change) = read_item(PathBuf::from("/etc/restedpi/devices.json"))?;
-    let (inputs, inputs_change) = read_item(PathBuf::from("/etc/restedpi/inputs.json"))?;
-    let (outputs, outputs_change) = read_item(PathBuf::from("/etc/restedpi/outputs.json"))?;
+    let (devices, devices_change) = read_item(path.join("devices.toml"))?;
+    debug!("Devices: {:?}", devices);
+
+    let (inputs, inputs_change) = read_item(path.join("inputs.toml"))?;
+    debug!("Inputs: {:?}", inputs);
+
+    let (outputs, outputs_change) = read_item(path.join("outputs.toml"))?;
+    debug!("Outputs: {:?}", outputs);
 
     let mut state = state::new_state(
+        here,
         devices,
         devices_change,
         inputs,

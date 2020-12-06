@@ -1,7 +1,7 @@
 extern crate chrono;
 
 use crate::config;
-use crate::config::value::Unit;
+use crate::config::Unit;
 use crate::error::{Error,Result};
 use crate::rpi::device::Device;
 use crate::rpi;
@@ -24,6 +24,7 @@ pub struct State {
     outputs_change: Sender<HashMap<String, config::Output>>,
 
     i2c: rpi::RpiApi,
+    here: (f64, f64),
     bool_variables: HashMap<String, bool>,
 }
 
@@ -39,6 +40,9 @@ impl State {
             .unwrap_or(());
         Ok(())
     }
+
+    pub fn lat(&self) -> f64 { self.here.0 }
+    pub fn long(&self) -> f64 { self.here.1 }
 
     pub fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
         self.inputs.insert(id.to_string(), config.clone());
@@ -83,21 +87,8 @@ impl State {
     pub fn inputs_using_device(&self, id: &str) -> HashMap<String, config::Input> {
         let mut affected = HashMap::new();
         for (iid, input) in &self.inputs {
-            match input {
-                config::Input::FloatWithUnitFromDevice { device_id, .. } => {
-                    if device_id == id {
-                        affected.insert(iid.clone(), input.clone());
-                    }
-                }
-
-                config::Input::BoolFromDevice { device_id, .. } => {
-                    if device_id == id {
-                        affected.insert(iid.clone(), input.clone());
-                    }
-                }
-
-                // TODO: BoolExpr could refer to an input of this device!
-                _ => (),
+            if input.device_id == id {
+                affected.insert(iid.clone(), input.clone());
             }
         }
         affected
@@ -106,13 +97,8 @@ impl State {
     pub fn outputs_using_device(&self, id: &str) -> HashMap<String, config::Output> {
         let mut affected = HashMap::new();
         for (oid, output) in &self.outputs {
-            match output {
-                config::Output::BoolToDevice { device_id, .. } => {
-                    if device_id == id {
-                        affected.insert(oid.clone(), output.clone());
-                    }
-                }
-                _ => (),
+            if output.device_id == id {
+                affected.insert(oid.clone(), output.clone());
             }
         }
         affected
@@ -197,33 +183,24 @@ impl State {
      */
     pub fn read_input_bool(&self, input_id: &str) -> Result<bool> {
         let m_input = self.inputs.get(input_id);
-        match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
-            config::Input::BoolFromDevice {
-                name: _,
+
+        let config::Input {
                 device_id,
                 device_input_id,
-                active_low: _,
-            } => {
+                unit,
+                ..
+        } =  m_input.ok_or(Error::InputNotFound(input_id.to_owned()))?;
                 let device = self
                     .devices
                     .get(device_id)
-                    .ok_or(Error::NonExistant(format!("BoolFromDevice: {}", device_id)))?;
+                    .ok_or(Error::NonExistant(format!("read_input_bool: {}", device_id)))?;
+        if  *unit !=    Unit::Boolean  {
+    warn!("Can't read {:?}  from input {}", unit, input_id);
+        return Err(Error::UnitError("can't read".to_string()));
+
+        }
                 let value = device.read_boolean(*device_input_id)?;
                 Ok(value)
-            }
-            config::Input::BoolFromVariable => {
-                self.bool_variables
-                    .get(input_id)
-                    .cloned()
-                    .ok_or(Error::NonExistant(
-                        format!("BoolFromVariable: {}", input_id).to_string(),
-                    ))
-            }
-            config::Input::FloatWithUnitFromDevice { .. } => {
-                // TODO: Could read the float and convert to boolean using thresholds in config...
-                Err(Error::UnitError(Unit::Boolean))
-            }
-        }
     }
 
     /**
@@ -232,31 +209,27 @@ impl State {
     pub fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
         let m_output = self.outputs.get(output_id);
         let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
-        match output {
-            config::Output::BoolToDevice {
+        let config::Output{
                 device_id,
                 active_low,
+                unit,
                 device_output_id,
                 ..
-            } => {
+        } = output;
+
                 let device = self
                     .devices
                     .get_mut(device_id)
-                    .ok_or(Error::NonExistant(format!("BoolToDevice: {}", device_id)))?;
-                device.write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)?;
-                Ok(())
-            }
+                    .ok_or(Error::NonExistant(format!("write_output_bool: {}", device_id)))?;
 
-            config::Output::BoolToVariable => match self.bool_variables.get_mut(output_id) {
-                Some(var) => {
-                    *var = value;
-                    Ok(())
-                }
-                None => Err(Error::NonExistant(
-                    format!("BoolToVariable: {}", output_id).to_string(),
-                )),
-            },
+        if  *unit !=    Unit::Boolean  {
+    warn!("Can't write {:?} to output {}", unit, output_id);
+        return Err(Error::UnitError("can't write".to_string()));
+
         }
+
+                device.write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)
+
     }
 
     pub fn emit_automations(&mut self) {
@@ -264,15 +237,19 @@ impl State {
         for output_id in keys {
             debug!("automation for {}", output_id);
             let output = { self.outputs.get(&output_id).cloned() };
-            if let Some(config::Output::BoolToDevice { automation, .. }) = output {
-                if let Some(expr) = automation {
-                    match config::boolean::evaluate(self, &expr) {
+            if let Some(config::Output { on_when, .. }) = output {
+                if let Some(expr) = on_when {
+                    // TODO: Parse expr from string!
+                    match config::parse::bool_expr(&expr) {
+                        Ok(parsed) => 
+                    match config::boolean::evaluate(self, &parsed) {
                         Ok(result) => {
                             if let Err(e) = self.write_output_bool(&output_id, result) {
                                 error!("failed to write: {}", e);
                             }
                         }
                         Err(e) => error!("{:?} has an error: {}", expr, e),
+                    }, Err(_) => error!("error parsing")
                     }
                 }
             }
@@ -281,17 +258,13 @@ impl State {
 
     pub fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
         let m_input = self.inputs.get(input_id);
-        match m_input.ok_or(Error::InputNotFound(input_id.to_owned()))? {
-            config::Input::BoolFromDevice {
-                name: _,
-                device_id,
-                device_input_id,
-                active_low: _,
-            } => {
-                let device_handle = self.devices.get(device_id);
-                let device = device_handle.ok_or(Error::NonExistant(
-                    format!("BoolFromDevice: {}", device_id).to_string(),
-                ))?;
+        let config::Input{ device_id,  device_input_id, unit , ..} =  m_input.ok_or(Error::InputNotFound(input_id.to_owned()))?;
+        let device_handle = self.devices.get(device_id);
+        let device = device_handle.ok_or(Error::NonExistant(
+            format!("read_input_value: {}", device_id).to_string(),
+        ))?;
+        match unit {
+            Unit::Boolean => {
                 let value = device.read_boolean(*device_input_id)?;
                 Ok(if value {
                     (1.0, config::Unit::Boolean)
@@ -299,28 +272,9 @@ impl State {
                     (0.0, config::Unit::Boolean)
                 })
             }
-
-            config::Input::BoolFromVariable => {
-                let value =
-                    self.bool_variables
-                        .get(input_id)
-                        .cloned()
-                        .ok_or(Error::NonExistant(
-                            format!("BoolFromVariable: {}", input_id).to_string(),
-                        ))?;
-
-                Ok(if value {
-                    (1.0, config::Unit::Boolean)
-                } else {
-                    (0.0, config::Unit::Boolean)
-                })
+            _ => {
+                device.read_sensor(*device_input_id)
             }
-
-            config::Input::FloatWithUnitFromDevice {
-                name: _,
-                device_id,
-                device_input_id,
-            } => self.read_sensor(&device_id, *device_input_id),
         }
     }
 
@@ -335,6 +289,7 @@ impl State {
 }
 
 pub fn new_state(
+    here: (f64,f64), 
     devices: HashMap<String, config::Device>,
     devices_change: Sender<HashMap<String, config::Device>>,
 
@@ -360,6 +315,8 @@ pub fn new_state(
         device_configs: devices,
         devices: device_instances,
         devices_change,
+
+        here,
 
         inputs,
         inputs_change,
