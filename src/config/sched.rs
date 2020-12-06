@@ -27,3 +27,17 @@ pub fn noon_decl_sun(day_of_year: f64) -> f64 {
 pub fn hour_angle_sunrise(lat: f64, decl: f64) -> f64 {
     ((90.833f64.to_radians().cos() / (lat.cos() * decl.cos())) - lat.tan() * decl.tan()).acos()
 }
+
+
+#[cfg(test)]
+mod tests {
+    use crate::config::sched;
+
+    #[test]
+    fn basic() {
+        assert_eq!(sched::noon_decl_sun(50.0), 0.19687317368965335);
+        assert_eq!(sched::hour_angle_sunrise(54.2779, sched::noon_decl_sun(150.0)), 1.0490809168404056);
+        assert_eq!(sched::hour_angle_sunrise(10.0, 10.0), 2.0275325603852377);
+        assert_eq!(sched::day_length_hrs(54.2779, 10.0), 8.397929984485263);
+    }
+}

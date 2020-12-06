@@ -3,12 +3,13 @@ use serde_derive::Serialize;
 use std::error;
 use std::fmt;
 use std::io;
+use hex::FromHexError;
 use std::sync::mpsc;
 
 /// Represent all common results of i2c
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Serialize)]
 pub enum Error {
     IoError(String),
     InputNotFound(String),
@@ -53,6 +54,12 @@ impl From<toml::ser::Error> for Error {
     }
 }
 
+impl From<FromHexError> for Error {
+    fn from(err: FromHexError) -> Error {
+        Error::EncodingError(format!("hex: {}", err))
+    }
+}
+
 impl From<toml::de::Error> for Error {
     fn from(err: toml::de::Error) -> Error {
         Error::EncodingError(format!("de: {}", err))
@@ -76,11 +83,13 @@ impl From<std::sync::mpsc::RecvError> for Error {
         Error::RecvError(format!("{}", err))
     }
 }
+
 impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error {
     fn from(err: std::sync::mpsc::SendError<crate::app::channel::AppMessage>) -> Error {
         Error::SendError(format!("{}", err))
     }
 }
+
 impl From<std::sync::mpsc::SendError<crate::rpi::RpiMessage>> for Error {
     fn from(err: std::sync::mpsc::SendError<crate::rpi::RpiMessage>) -> Error {
         Error::SendError(format!("{}", err))

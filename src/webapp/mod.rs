@@ -3,6 +3,8 @@ use crate::error::Error;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
+use crate::auth::password;
+use crate::auth::token;
 
 use warp::filters::path::Tail;
 use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};

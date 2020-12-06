@@ -6,7 +6,7 @@ use crypto::pbkdf2::{pbkdf2_check, pbkdf2_simple};
  */
 fn iterations_for_version(version: usize) -> Option<u32> {
     match version {
-        1 => Some(1_000_000u32),
+        1 => Some(1_000u32),
         _ => None,
     }
 }
@@ -31,5 +31,18 @@ pub fn verify(password: &str, hashed: &str) -> Result<bool> {
     match pbkdf2_check(password, hashed) {
         Ok(b) => Ok(b),
         Err(e) => Err(Error::NonExistant(e.to_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic() -> Result<()> {
+        assert_eq!(verify("f00", &hash("f00", 1)?)?, true);
+        assert_eq!(verify("f00a", &hash("f00", 1)?)?, false);
+        assert_eq!(verify("", &hash("", 1)?)?, true);
+        Ok(())
     }
 }
