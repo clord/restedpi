@@ -75,9 +75,7 @@
  
 (\b([a-zA-Z_])([0-9]|[a-zA-Z_])*\b|'[^']+') "identifier"
 
-
-
-[ \t\n]+ ;
+[[:space:]]+ ;
 
 . "UNMATCHED"
 
