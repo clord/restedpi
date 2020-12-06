@@ -19,7 +19,7 @@ pub fn u2be(r: u16) -> u16 {
 
 #[cfg(test)]
 mod tests {
-    use crate::i2c::util;
+    use crate::rpi::i2c::util;
 
     #[test]
     fn basic() {
