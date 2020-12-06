@@ -22,6 +22,7 @@ pub async fn add_or_replace_device(
         Err(e) => Err(reject::custom(e)),
     }
 }
+
 pub async fn remove_device(device_id: String, app: AppChannel) -> Result<impl Reply, Rejection> {
     match app.remove_device(device_id) {
         Ok(r) => Ok(reply::json(&r)),
