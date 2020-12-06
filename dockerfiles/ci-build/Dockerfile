@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM i386/ubuntu
 
 MAINTAINER christopher@lord.ac
 
