@@ -4,6 +4,8 @@ MAINTAINER christopher@lord.ac
 
 WORKDIR /root
 
+RUN dpkg --add-architecture i386
+
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y apt-utils \
  && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure apt-utils \
@@ -19,6 +21,12 @@ RUN apt-get update \
         sudo \
         xz-utils
 
+RUN git clone --depth=1 https://github.com/raspberrypi/tools.git
+
+RUN DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+                    libc6:i386 libncurses5:i386 libstdc++6:i386 \
+                    lib32z1 gcc-multilib
+
 RUN DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
                     libc6-armel-cross libc6-dev-armel-cross \
                     binutils-arm-linux-gnueabi libncurses5-dev build-essential \
@@ -33,11 +41,9 @@ ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 RUN rustup target add arm-unknown-linux-gnueabihf
 COPY config /root/.cargo/config
 
-RUN git clone --depth=1 https://github.com/raspberrypi/tools.git
 ENV PATH=/root/tools/arm-bcm2708/arm-linux-gnueabihf/bin:$PATH
 
-# RUN mkdir restedpi-rust
-# COPY . restedpi-rust/
+RUN mkdir restedpi-rust
 # WORKDIR restedpi-rust
 
 # RUN cargo build --target=arm-unknown-linux-gnueabihf --release
