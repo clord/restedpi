@@ -1,4 +1,4 @@
-FROM i386/ubuntu
+FROM ubuntu
 
 MAINTAINER christopher@lord.ac
 
@@ -19,10 +19,15 @@ RUN apt-get update \
         sudo \
         xz-utils
 
-RUN curl https://sh.rustup.rs -sSf | \
-    sh -s -- -y
+RUN DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+                    libc6-armel-cross libc6-dev-armel-cross \
+                    binutils-arm-linux-gnueabi libncurses5-dev build-essential \
+                    bison flex libssl-dev bc 
 
-ENV PATH=/root/.cargo/bin:$PATH
+RUN curl https://sh.rustup.rs -o rustup.sh && \
+    sh rustup.sh --default-host i686-unknown-linux-gnu --default-toolchain nightly-2020-10-07 -y
+
+ENV PATH=/root/.cargo/bin:/root/tools/arm-bcm2708/arm-linux-gnueabihf/bin:$PATH
 ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 
 RUN rustup target add arm-unknown-linux-gnueabihf
