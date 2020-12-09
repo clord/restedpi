@@ -1,16 +1,16 @@
-import { GlobalStyles } from "twin.macro";
-import React from "react";
+import { GlobalStyles } from 'twin.macro'
+import React from 'react'
 
-export function Sidebar() {
+function Sidebar() {
   return (
     <div tw="h-0 flex-1 flex flex-col overflow-y-auto">
       <AccountDropdown />
       <Nav />
     </div>
-  );
+  )
 }
 
-export function StaticSidebar() {
+function StaticSidebar() {
   return (
     <div tw="flex flex-shrink-0">
       <div tw="flex flex-col w-64 border-r border-gray-200 pt-5 pb-4 bg-gray-100">
@@ -18,9 +18,9 @@ export function StaticSidebar() {
         <Sidebar />
       </div>
     </div>
-  );
+  )
 }
-export function Nav() {
+function Nav() {
   return (
     <nav tw="px-3 mt-6">
       <div tw="space-y-1">
@@ -112,9 +112,10 @@ export function Nav() {
         </a>
       </div>
     </nav>
-  );
+  )
 }
-export function AccountDropdown() {
+
+function AccountDropdown() {
   return (
     <div tw="px-3 mt-6 relative inline-block text-left">
       <button
@@ -135,19 +136,15 @@ export function AccountDropdown() {
         </span>
       </button>
     </div>
-  );
+  )
 }
-export function MainColumn() {
+
+function MainColumn() {
   return (
-    <main
-      tw="flex-1 relative z-0 overflow-y-auto focus:outline-none"
-      tabIndex={0}
-    >
+    <main tw="flex-1 relative z-0 overflow-y-auto focus:outline-none" tabIndex={0}>
       <div tw="border-b border-gray-200 px-4 py-4 sm:flex sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div tw="flex-1 min-w-0">
-          <h1 tw="text-lg font-medium leading-6 text-gray-900 sm:truncate">
-            Home
-          </h1>
+          <h1 tw="text-lg font-medium leading-6 text-gray-900 sm:truncate">Home</h1>
         </div>
         <div tw="mt-4 flex sm:mt-0 sm:ml-4">
           <button
@@ -199,9 +196,7 @@ export function MainColumn() {
 
       <div tw="mt-10 sm:hidden">
         <div tw="px-4 sm:px-6">
-          <h2 tw="text-gray-500 text-xs font-medium uppercase tracking-wide">
-            Projects
-          </h2>
+          <h2 tw="text-gray-500 text-xs font-medium uppercase tracking-wide">Projects</h2>
         </div>
         <ul tw="mt-3 border-t border-gray-200 divide-y divide-gray-100">
           <li>
@@ -216,9 +211,7 @@ export function MainColumn() {
                 ></span>
                 <span tw="font-medium truncate text-sm leading-6">
                   GraphQL API
-                  <span tw="truncate font-normal text-gray-500">
-                    in Engineering
-                  </span>
+                  <span tw="truncate font-normal text-gray-500">in Engineering</span>
                 </span>
               </span>
               <svg
@@ -267,9 +260,7 @@ export function MainColumn() {
                     <a href="#" tw="truncate hover:text-gray-600">
                       <span>
                         GraphQL API
-                        <span tw="text-gray-500 font-normal">
-                          in Engineering
-                        </span>
+                        <span tw="text-gray-500 font-normal">in Engineering</span>
                       </span>
                     </a>
                   </div>
@@ -333,19 +324,23 @@ export function MainColumn() {
         </div>
       </div>
     </main>
-  );
+  )
 }
 
 export default function App() {
-  return (
-    <div>
-      <GlobalStyles />
-      <div tw="h-screen flex overflow-hidden bg-white">
-        <StaticSidebar />
-        <div tw="flex flex-col w-0 flex-1 overflow-hidden">
-          <MainColumn />
+  const authenticated = true
+  if (authenticated) {
+    return (
+      <div>
+        <GlobalStyles />
+        <div tw="h-screen flex overflow-hidden bg-white">
+          <StaticSidebar />
+          <div tw="flex flex-col w-0 flex-1 overflow-hidden">
+            <MainColumn />
+          </div>
         </div>
       </div>
-    </div>
-  );
+    )
+  }
+  return <div></div>
 }
