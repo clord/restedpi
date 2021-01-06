@@ -51,11 +51,6 @@ pub async fn server_name() -> Result<impl Reply, Infallible> {
     Ok(reply::json(&reply))
 }
 
-fn hash_for(user: &str) -> String {
-    // look in config for user's hash
-    return "".to_string();
-}
-
 pub async fn authentication(
     app: AppChannel,
     form: HashMap<String, String>,
@@ -64,8 +59,15 @@ pub async fn authentication(
         std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
     let user = form.get("username").unwrap();
     let pw = form.get("password").unwrap();
-    match password::verify(pw, &hash_for(user)) {
-        Ok(true) => match token::make_token(WebSession { version: 1 }, &secret) {
+    let user_hash = app.hash_for(user).expect("User not found");
+    match password::verify(pw, user_hash) {
+        Ok(true) => match token::make_token(
+            WebSession {
+                version: 1,
+                user: user.clone(),
+            },
+            &secret,
+        ) {
             Ok(token) => {
                 let reply = json!({ "token": token });
                 Ok(reply::json(&reply))

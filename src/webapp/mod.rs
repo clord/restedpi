@@ -19,6 +19,7 @@ type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebSession {
     version: u8,
+    user: String,
 }
 
 impl std::str::FromStr for WebSession {

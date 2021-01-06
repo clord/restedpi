@@ -174,11 +174,16 @@ pub enum AppMessage {
 #[derive(Clone, Debug)]
 pub struct AppChannel {
     sender: Sender<AppMessage>,
+    users: HashMap<String, String>,
 }
 
 impl AppChannel {
     pub fn terminate(&self) -> Result<()> {
         Ok(self.sender.send(AppMessage::Terminate)?)
+    }
+
+    pub fn hash_for(&self, user: &str) -> Option<&String> {
+        self.users.get(user)
     }
 
     pub fn set_now(&self) -> Result<()> {
@@ -521,7 +526,11 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     Ok((config, sender))
 }
 
-pub fn start_app(here: (f64, f64), path: &std::path::Path) -> Result<AppChannel> {
+pub fn start_app(
+    here: (f64, f64),
+    path: &std::path::Path,
+    users: HashMap<String, String>,
+) -> Result<AppChannel> {
     let (sender, receiver) = channel::<AppMessage>();
 
     let (devices, devices_change) = read_item(path.join("devices.toml"))?;
@@ -573,5 +582,5 @@ pub fn start_app(here: (f64, f64), path: &std::path::Path) -> Result<AppChannel>
         }
     });
 
-    Ok(AppChannel { sender })
+    Ok(AppChannel { sender, users })
 }

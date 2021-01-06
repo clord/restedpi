@@ -3,11 +3,11 @@ extern crate log;
 
 use librpi::app;
 use librpi::auth::password;
-use librpi::config::parse;
 use librpi::config::Config;
+use librpi::config::parse;
 use librpi::webapp;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::error::ReadlineError;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -152,8 +152,7 @@ async fn main() {
 
         Command::ConfigRepl => {
             let mut history_path = config_file.clone();
-            history_path.pop();
-            history_path.push("repl.history");
+            history_path.set_file_name("repl.history");
             println!("restedpi boolean expression evaluator");
             println!("=====================================");
             println!("");
@@ -192,16 +191,18 @@ async fn main() {
             rl.save_history(&history_path).unwrap();
         }
 
-        Command::Server { .. } => {
+        Command::Server { app_secret } => {
             let mut config_file = config_file.clone();
             let config = get_config(&config_file);
+            env::set_var("APP_SECRET", app_secret);
 
             let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
             let port = config.port.unwrap_or(3030);
             let key_and_cert = config.key_and_cert_path.clone();
             config_file.pop();
+            let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
 
-            let app = app::channel::start_app((config.lat, config.long), &config_file)
+            let app = app::channel::start_app((config.lat, config.long), &config_file, users)
                 .expect("app failed to start");
             let app = Arc::new(Mutex::new(app));
 
