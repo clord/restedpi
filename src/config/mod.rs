@@ -4,6 +4,7 @@ pub mod sched;
 pub mod value;
 
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
@@ -100,8 +101,8 @@ pub struct Config {
     // tls key and cert in that order
     pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
 
-    // List of allowed user passwords
-    pub user_keys: Option<Vec<String>>
+    // Map from username to hashed passwords
+    pub users: Option<HashMap<String, String>>,
 }
 
 impl Config {
@@ -113,7 +114,7 @@ impl Config {
             lat: 0.0,
             long: 0.0,
             key_and_cert_path: None,
-            user_keys: None,
+            users: None,
         }
     }
 

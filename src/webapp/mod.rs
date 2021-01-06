@@ -1,5 +1,4 @@
 use crate::app;
-use crate::auth::password;
 use crate::auth::token;
 use crate::error::Error;
 use mime_guess::from_path;
@@ -19,13 +18,14 @@ type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebSession {
-    version: u8
+    version: u8,
 }
 
 impl std::str::FromStr for WebSession {
     type Err = token::SessionError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let secret = std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+        let secret =
+            std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
         token::validate_token::<WebSession>(s, &secret)
     }
 }

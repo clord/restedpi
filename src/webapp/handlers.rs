@@ -1,8 +1,8 @@
 use super::WebSession;
 use crate::app::channel::AppChannel;
+use crate::auth::{password, token};
 use rppal::system::DeviceInfo;
 use std::collections::HashMap;
-use crate::auth::{password, token};
 use std::convert::Infallible;
 use warp::{reject, reply, Rejection, Reply};
 
@@ -53,30 +53,26 @@ pub async fn server_name() -> Result<impl Reply, Infallible> {
 
 fn hash_for(user: &str) -> String {
     // look in config for user's hash
-    return "".to_string()
+    return "".to_string();
 }
 
 pub async fn authentication(
     app: AppChannel,
     form: HashMap<String, String>,
 ) -> Result<impl Reply, Rejection> {
-    let secret = std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+    let secret =
+        std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
     let user = form.get("username").unwrap();
     let pw = form.get("password").unwrap();
     match password::verify(pw, &hash_for(user)) {
-        Ok(true) => {
-            match token::make_token(WebSession { version: 1 }, &secret) {
-                Ok(token) => {
-                    let reply = json!({ "token": token });
-                    Ok(reply::json(&reply))
-                }, 
-                Err(_e) => {
-                    Err(reject::reject())
-                }
+        Ok(true) => match token::make_token(WebSession { version: 1 }, &secret) {
+            Ok(token) => {
+                let reply = json!({ "token": token });
+                Ok(reply::json(&reply))
             }
-        }, _ => {
-            Err(reject::reject())
-        }
+            Err(_e) => Err(reject::reject()),
+        },
+        _ => Err(reject::reject()),
     }
 }
 
