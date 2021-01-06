@@ -17,13 +17,18 @@ use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 use warp::Filter;
 
+// big picture:
+// read configuration and decide what sensors and switches are available. start up application, then
+// start running state machine. finally, present a rest api to the outside world to interact with the
+// application.
+
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "restedpi",
     about = "restedpi talks to gpio, i2c, spi, etc., and provides easy io and scheduling"
 )]
 struct Opt {
-    #[structopt(short, long, env, default_value = "restedpi=info")]
+    #[structopt(short, long, env, default_value = "info")]
     log_level: String,
 
     #[structopt(subcommand)]
@@ -44,7 +49,7 @@ enum Command {
     },
 
     /// A REPL that shows how boolean expressions parse.
-    ConfigRepl,
+    BooleanRepl,
 
     /// Add a user to the config file
     AddUser {
@@ -96,10 +101,6 @@ fn get_config(config_file: &Path) -> Config {
     }
 }
 
-/// big picture:
-/// read configuration and decide what sensors and switches are available. start up application, then
-/// start running state machine. finally, present a rest api to the outside world to interact with the
-/// application.
 #[tokio::main]
 async fn main() {
     let Opt {
@@ -150,11 +151,15 @@ async fn main() {
             }
         }
 
-        Command::ConfigRepl => {
+        Command::BooleanRepl => {
             let mut history_path = config_file.clone();
             history_path.set_file_name("repl.history");
+
             println!("restedpi boolean expression evaluator");
             println!("=====================================");
+            println!("");
+            println!("example: ");
+            println!("   a or b and x and y");
             println!("");
 
             let mut rl = Editor::<()>::new();
