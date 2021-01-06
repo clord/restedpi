@@ -3,11 +3,11 @@ extern crate log;
 
 use librpi::app;
 use librpi::auth::password;
-use librpi::config::Config;
 use librpi::config::parse;
+use librpi::config::Config;
 use librpi::webapp;
-use rustyline::Editor;
 use rustyline::error::ReadlineError;
+use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
 use std::fs;

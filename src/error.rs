@@ -16,6 +16,9 @@ pub enum Error {
     OutputNotFound(String),
     InvalidPinDirection,
     ParseError,
+    UserNotFound,
+    TokenIssue,
+    PasswordIssue,
     NonExistant(String),
     OutOfBounds(usize),
     UnitError(String),
@@ -44,6 +47,9 @@ impl fmt::Display for Error {
             Error::EncodingError(ref err) => write!(f, "Encoding error: {}", err),
             Error::InputNotFound(n) => write!(f, "Input error: {}", n),
             Error::OutputNotFound(n) => write!(f, "Output error: {}", n),
+            Error::UserNotFound => write!(f, "User not found"),
+            Error::TokenIssue => write!(f, "Issue with token"),
+            Error::PasswordIssue => write!(f, "Password issue"),
         }
     }
 }

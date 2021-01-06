@@ -7,6 +7,7 @@ pub enum SessionError {
     BincodeError(String),
     HexcodeError(String),
     ValidationFailure,
+    Expired,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -27,6 +28,9 @@ struct SignedToken {
     pub payload: Vec<u8>,
 }
 
+/**
+ * If we increment this then old tokens will not be valid. 
+ */
 static VERSION: u8 = 1u8;
 
 /**

@@ -1,3 +1,4 @@
+#![feature(async_closure)]
 use super::handlers;
 use super::{SharedAppState, WebSession};
 use crate::app::channel::AppChannel;
@@ -19,10 +20,10 @@ pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rej
     path("api")
         .and(
             devices(app.clone())
+                .or(auth(app.clone()))
                 .or(about_server())
-                .or(available_devices(app.clone())),
+                .or(available_devices(app)),
         )
-        .or(auth(app))
         .or(static_filter())
         .or(static_index_html())
 }
@@ -60,9 +61,10 @@ fn available_devices(
 }
 
 fn auth(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("auth")
+    warp::path!("authenticate")
         .and(post())
         .and(with_app(app))
+        .and(warp::body::content_length_limit(1024 * 32))
         .and(warp::body::form())
         .and_then(handlers::authentication)
 }

@@ -5,7 +5,7 @@ use mime_guess::from_path;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::borrow::Cow;
-
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use warp::filters::path::Tail;
 use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
 pub mod filters;
@@ -18,8 +18,8 @@ type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebSession {
-    version: u8,
     user: String,
+    expires: u64,
 }
 
 impl std::str::FromStr for WebSession {
@@ -27,7 +27,16 @@ impl std::str::FromStr for WebSession {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let secret =
             std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
-        token::validate_token::<WebSession>(s, &secret)
+        let start = SystemTime::now();
+        let now_timestamp = start
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| token::SessionError::Expired)?;
+        let res = token::validate_token::<WebSession>(s, &secret)?;
+        if res.expires < now_timestamp.as_secs() {
+            Err(token::SessionError::Expired)
+        } else {
+            Ok(res)
+        }
     }
 }
 
@@ -273,22 +282,25 @@ pub async fn static_serve_tail(path: Tail) -> Result<impl Reply, Rejection> {
 // }
 
 /// Produce a json-compatible error report
-pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::Infallible> {
+pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<Error>() {
         let code = match err {
-            Error::IoError(_) => 1001,
-            Error::InvalidPinDirection => 1008,
-            Error::ParseError => 1200,
-            Error::I2cError(_) => 1016,
-            Error::NonExistant(_) => 1017,
-            Error::OutOfBounds(_) => 1019,
-            Error::RecvError(_) => 1020,
-            Error::UnitError(_) => 1021,
-            Error::SendError(_) => 1024,
-            Error::StorageError(_) => 1120,
-            Error::EncodingError(_) => 1121,
-            Error::InputNotFound(_) => 1150,
-            Error::OutputNotFound(_) => 1151,
+            Error::IoError(_) => 0x1000,
+            Error::InvalidPinDirection => 0x1001,
+            Error::ParseError => 0x1002,
+            Error::I2cError(_) => 0x1003,
+            Error::NonExistant(_) => 0x0010,
+            Error::OutOfBounds(_) => 0x0011,
+            Error::RecvError(_) => 0x0100,
+            Error::SendError(_) => 0x0101,
+            Error::StorageError(_) => 0x0102,
+            Error::UnitError(_) => 0x0001,
+            Error::EncodingError(_) => 0x0002,
+            Error::InputNotFound(_) => 0x0003,
+            Error::OutputNotFound(_) => 0x0004,
+            Error::UserNotFound => 0x0005,
+            Error::TokenIssue => 0x0006,
+            Error::PasswordIssue => 0x0007,
         };
 
         let message = err.to_string();
@@ -302,11 +314,6 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert
         let json = json!({ "type": "error", "code": 404, "message": "Not found" });
         Ok(reply::with_status(json.to_string(), StatusCode::NOT_FOUND))
     } else {
-        error!("unhandled error: {:?}", err);
-        let json = json!({ "type": "error", "code": 500, "message": "Internal Server Error" });
-        Ok(reply::with_status(
-            json.to_string(),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        ))
+        Err(err)
     }
 }
