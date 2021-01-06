@@ -99,6 +99,9 @@ pub struct Config {
 
     // tls key and cert in that order
     pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
+
+    // List of allowed user passwords
+    pub user_keys: Option<Vec<String>>
 }
 
 impl Config {
@@ -110,6 +113,7 @@ impl Config {
             lat: 0.0,
             long: 0.0,
             key_and_cert_path: None,
+            user_keys: None,
         }
     }
 

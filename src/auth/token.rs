@@ -1,16 +1,12 @@
-use crate::error::{Error, Result};
 use crypto::hmac::Hmac;
 use crypto::mac::Mac;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct SessionToken {
-    /**
-     * format of unsigned token
-     */
-    pub session_version: u8,
-
-    pub id: usize,
+#[derive(PartialEq, Debug)]
+pub enum SessionError {
+    BincodeError(String),
+    HexcodeError(String),
+    ValidationFailure,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -41,10 +37,11 @@ static VERSION: u8 = 1u8;
  *
  * output is hex-encoded
  */
-pub fn make_token<T: serde::Serialize>(token: T, secret: &str) -> Result<String> {
+pub fn make_token<T: serde::Serialize>(token: T, secret: &str) -> Result<String, SessionError> {
     let payload = bincode::serialize(&token)
-        .map_err(|x| Error::EncodingError(format!("bincode_ser: {}", x)))?;
-    let secret_u8 = hex::decode(secret)?;
+        .map_err(|x| SessionError::BincodeError(format!("bincode_ser: {}", x)))?;
+    let secret_u8 =
+        hex::decode(secret).map_err(|x| SessionError::HexcodeError(format!("hexcode: {}", x)))?;
     let mut hmac = Hmac::new(crypto::sha2::Sha256::new(), &secret_u8);
     hmac.input(&[VERSION]); // version of signature
     hmac.input(&payload); // bytes of payload
@@ -59,7 +56,7 @@ pub fn make_token<T: serde::Serialize>(token: T, secret: &str) -> Result<String>
     };
 
     let raw = bincode::serialize(&signed)
-        .map_err(|x| Error::EncodingError(format!("bincode_ser: {}", x)))?;
+        .map_err(|x| SessionError::BincodeError(format!("bincode_ser: {}", x)))?;
 
     Ok(hex::encode(raw))
 }
@@ -68,13 +65,18 @@ pub fn make_token<T: serde::Serialize>(token: T, secret: &str) -> Result<String>
  * given a serialized token and the secret, will determine if the token is valid according to
  * secret.
  */
-pub fn validate_token<T: serde::de::DeserializeOwned>(token: &str, secret: &str) -> Result<T> {
-    let raw = hex::decode(token)?;
+pub fn validate_token<T: serde::de::DeserializeOwned>(
+    token: &str,
+    secret: &str,
+) -> Result<T, SessionError> {
+    let raw =
+        hex::decode(token).map_err(|x| SessionError::HexcodeError(format!("hexcode: {}", x)))?;
     let signed_token: SignedToken = bincode::deserialize(&raw)
-        .map_err(|x| Error::EncodingError(format!("bincode_deser: {}", x)))?;
+        .map_err(|x| SessionError::BincodeError(format!("bincode_deser_wrap: {}", x)))?;
     let decoded: T = bincode::deserialize(&signed_token.payload)
-        .map_err(|x| Error::EncodingError(format!("bincode_deser: {}", x)))?;
-    let secret_u8 = hex::decode(secret)?;
+        .map_err(|x| SessionError::BincodeError(format!("bincode_deser_tok: {}", x)))?;
+    let secret_u8 =
+        hex::decode(secret).map_err(|x| SessionError::HexcodeError(format!("hexcode: {}", x)))?;
     let mut hmac = Hmac::new(crypto::sha2::Sha256::new(), &secret_u8);
 
     hmac.input(&[VERSION]); // version of signature
@@ -86,9 +88,7 @@ pub fn validate_token<T: serde::de::DeserializeOwned>(token: &str, secret: &str)
     {
         Ok(decoded)
     } else {
-        Err(Error::EncodingError(
-            "Failed to verify signature".to_string(),
-        ))
+        Err(SessionError::ValidationFailure)
     }
 }
 
@@ -96,8 +96,18 @@ pub fn validate_token<T: serde::de::DeserializeOwned>(token: &str, secret: &str)
 mod tests {
     use super::*;
 
+    #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+    pub struct SessionToken {
+        /**
+         * format of unsigned token
+         */
+        pub session_version: u8,
+
+        pub id: usize,
+    }
+
     #[test]
-    fn basic() -> Result<()> {
+    fn basic() -> Result<(), SessionError> {
         let valid = SessionToken {
             session_version: 1,
             id: 1212,
@@ -107,9 +117,7 @@ mod tests {
         assert_eq!(validate_token::<SessionToken>(&token, secret)?, valid);
         assert_eq!(
             validate_token::<SessionToken>(&token, "123123123123"),
-            Err(Error::EncodingError(
-                "Failed to verify signature".to_string()
-            ))
+            Err(SessionError::ValidationFailure)
         );
         Ok(())
     }

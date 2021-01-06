@@ -1,11 +1,14 @@
+use super::WebSession;
 use crate::app::channel::AppChannel;
 use rppal::system::DeviceInfo;
+use std::collections::HashMap;
+use crate::auth::{password, token};
 use std::convert::Infallible;
 use warp::{reject, reply, Rejection, Reply};
 
 use serde_json::json;
 
-pub async fn list_devices(app: AppChannel) -> Result<impl Reply, Rejection> {
+pub async fn list_devices(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
     match app.all_devices() {
         Ok(r) => Ok(reply::json(&r)),
         Err(e) => Err(reject::custom(e)),
@@ -14,6 +17,7 @@ pub async fn list_devices(app: AppChannel) -> Result<impl Reply, Rejection> {
 
 pub async fn add_or_replace_device(
     device_id: String,
+    _session: WebSession,
     device: crate::config::Device,
     app: AppChannel,
 ) -> Result<impl Reply, Rejection> {
@@ -23,7 +27,11 @@ pub async fn add_or_replace_device(
     }
 }
 
-pub async fn remove_device(device_id: String, app: AppChannel) -> Result<impl Reply, Rejection> {
+pub async fn remove_device(
+    device_id: String,
+    _session: WebSession,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
     match app.remove_device(device_id) {
         Ok(r) => Ok(reply::json(&r)),
         Err(e) => Err(reject::custom(e)),
@@ -43,7 +51,39 @@ pub async fn server_name() -> Result<impl Reply, Infallible> {
     Ok(reply::json(&reply))
 }
 
-pub async fn get_available_devices(app: AppChannel) -> Result<impl Reply, Infallible> {
+fn hash_for(user: &str) -> String {
+    // look in config for user's hash
+    return "".to_string()
+}
+
+pub async fn authentication(
+    app: AppChannel,
+    form: HashMap<String, String>,
+) -> Result<impl Reply, Rejection> {
+    let secret = std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+    let user = form.get("username").unwrap();
+    let pw = form.get("password").unwrap();
+    match password::verify(pw, &hash_for(user)) {
+        Ok(true) => {
+            match token::make_token(WebSession { version: 1 }, &secret) {
+                Ok(token) => {
+                    let reply = json!({ "token": token });
+                    Ok(reply::json(&reply))
+                }, 
+                Err(_e) => {
+                    Err(reject::reject())
+                }
+            }
+        }, _ => {
+            Err(reject::reject())
+        }
+    }
+}
+
+pub async fn get_available_devices(
+    _session: WebSession,
+    _app: AppChannel,
+) -> Result<impl Reply, Infallible> {
     let reply = json!([
         { "name": "BMP085"
         , "device": "/api/devices/available/Bmp085"

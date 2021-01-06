@@ -1,7 +1,7 @@
 import React from 'react'
 import 'twin.macro'
 import { AccountDropdown } from './AccountDropdown'
-import { SideNav } from './Nav'
+import { SideNav } from './SideNav'
 
 export function Sidebar() {
   return (

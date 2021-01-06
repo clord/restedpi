@@ -63,7 +63,7 @@ Term -> Result<Value, ()>:
 
 Factor -> Result<Value, ()>:
       'number' { 
-        Ok(Value::Const($lexer.span_str($span).parse().map_err(|x| {
+        Ok(Value::Const($lexer.span_str($span).parse().map_err(|_x| {
           ()
         })?)) 
       }
@@ -127,31 +127,31 @@ Unit -> Result<Unit, ()>:
 
 DegNS -> Result<f64, ()>:
     'number' 'degN' {
-      let num_span = $1.map_err(|x| ())?.span();
+      let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
-      let num : f64 = num_str.parse().map_err(|x| ())?;
+      let num: f64 = num_str.parse().map_err(|_x| ())?;
       Ok(num) 
       }
   | 'number' 'degS' {
-      let num_span = $1.map_err(|x| ())?.span();
+      let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
-      let num : f64 = num_str.parse().map_err(|x| ())?;
+      let num: f64 = num_str.parse().map_err(|_x| ())?;
       Ok(-num) 
     }
   ;
 
 DegEW -> Result<f64, ()>:
     'number' 'degE' {
-      let num_span = $1.map_err(|x| ())?.span();
+      let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
-      let num : f64 = num_str.parse().map_err(|x| ())?;
+      let num: f64 = num_str.parse().map_err(|_x| ())?;
       Ok(num) 
     }
 
   | 'number' 'degW' {
-      let num_span = $1.map_err(|x| ())?.span();
+      let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
-      let num : f64 = num_str.parse().map_err(|x| ())?;
+      let num: f64 = num_str.parse().map_err(|_x| ())?;
       Ok(-num) 
     }
   ;

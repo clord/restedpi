@@ -90,8 +90,7 @@ pub fn start() -> RpiApi {
                 match next {
                     RpiMessage::ReadGpio { pin, response } => {
                         debug!("TODO: read gpio {}", pin);
-                        // TODO: Actually read the pin
-                        response.send(Ok(rppal::gpio::Level::High));
+                        response.send(Ok(rppal::gpio::Level::High)).unwrap();
                     }
                     RpiMessage::WriteI2C {
                         address,

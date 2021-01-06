@@ -1,9 +1,13 @@
 use super::handlers;
-use super::SharedAppState;
+use super::{SharedAppState, WebSession};
 use crate::app::channel::AppChannel;
 use std::convert::Infallible;
 use warp::http::header::{HeaderMap, HeaderValue};
-use warp::{any, get, path, reply, Filter, Rejection, Reply};
+use warp::{any, get, header, path, post, reply, Filter, Rejection, Reply};
+
+fn with_session() -> impl Filter<Extract = (WebSession,), Error = Rejection> + Clone {
+    any().and(header::<WebSession>("authorization"))
+}
 
 fn with_app(
     app: SharedAppState,
@@ -16,8 +20,9 @@ pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rej
         .and(
             devices(app.clone())
                 .or(about_server())
-                .or(available_devices(app)),
+                .or(available_devices(app.clone())),
         )
+        .or(auth(app))
         .or(static_filter())
         .or(static_index_html())
 }
@@ -48,9 +53,18 @@ fn available_devices(
     );
     warp::path!("available-devices")
         .and(get())
+        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::get_available_devices)
         .with(reply::with::headers(short_cache_header))
+}
+
+fn auth(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("auth")
+        .and(post())
+        .and(with_app(app))
+        .and(warp::body::form())
+        .and_then(handlers::authentication)
 }
 
 fn devices(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -64,6 +78,7 @@ fn devices_list(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices")
         .and(get())
+        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::list_devices)
 }
@@ -73,6 +88,7 @@ fn devices_update(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices" / String)
         .and(warp::put())
+        .and(with_session())
         .and(warp::body::json())
         .and(with_app(app))
         .and_then(handlers::add_or_replace_device)
@@ -83,6 +99,7 @@ fn devices_delete(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices" / String)
         .and(warp::delete())
+        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::remove_device)
 }

@@ -28,9 +28,11 @@ async fn main() {
     if env::var_os("LOG").is_none() {
         // Set `RUST_LOG=restedpi=debug` to see debug logs,
         env::set_var("LOG", "restedpi=info");
-        info!("defaulting to info level logging. RUST_LOG='restedpi=info'");
+        info!("defaulting to info level logging. LOG='restedpi=info'");
     }
     pretty_env_logger::init_custom_env("LOG");
+
+    std::env::var("APP_SECRET").expect("read APP_SECRET environment variable");
 
     // If ~/.config/restedpi/config.toml exists, use as config,
     let config_dir_config_file = dirs::config_dir().map(|x| {

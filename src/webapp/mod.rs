@@ -3,6 +3,7 @@ use crate::auth::password;
 use crate::auth::token;
 use crate::error::Error;
 use mime_guess::from_path;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::borrow::Cow;
 
@@ -15,6 +16,19 @@ pub mod slugify;
 use std::sync::{Arc, Mutex};
 // We have to share the app state since warp uses a thread pool
 type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct WebSession {
+    version: u8
+}
+
+impl std::str::FromStr for WebSession {
+    type Err = token::SessionError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let secret = std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+        token::validate_token::<WebSession>(s, &secret)
+    }
+}
 
 #[derive(RustEmbed)]
 #[folder = "static/"]
