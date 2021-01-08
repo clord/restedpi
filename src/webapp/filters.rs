@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use super::handlers;
 use super::{SharedAppState, WebSession};
 use crate::app::channel::AppChannel;

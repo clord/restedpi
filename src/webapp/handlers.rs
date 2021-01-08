@@ -1,14 +1,11 @@
-#![feature(duration_saturating_ops)]
-
-use super::WebSession;
 use crate::app::channel::AppChannel;
 use crate::auth::{password, token};
 use crate::error::Error;
-
 use rppal::system::DeviceInfo;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use super::WebSession;
 use warp::{reject, reply, Rejection, Reply};
 
 use serde_json::json;

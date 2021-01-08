@@ -25,7 +25,6 @@ pub struct State {
 
     i2c: rpi::RpiApi,
     here: (f64, f64),
-    bool_variables: HashMap<String, bool>,
 }
 
 // Internal State machine for the application. this is core logic.
@@ -334,7 +333,6 @@ pub fn new_state(
         outputs,
         outputs_change,
 
-        bool_variables: HashMap::new(),
     };
 
     Ok(state)
