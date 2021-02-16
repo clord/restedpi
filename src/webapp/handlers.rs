@@ -1,20 +1,23 @@
+use super::WebSession;
 use crate::app::channel::AppChannel;
 use crate::auth::{password, token};
 use crate::error::Error;
 use rppal::system::DeviceInfo;
+use serde_json::json;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use super::WebSession;
 use warp::{reject, reply, Rejection, Reply};
 
-use serde_json::json;
-
-pub async fn list_devices(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
-    match app.all_devices() {
+fn do_result<T: serde::Serialize>(input: Result<T, Error>) -> Result<impl Reply, Rejection> {
+    match input {
         Ok(r) => Ok(reply::json(&r)),
         Err(e) => Err(reject::custom(e)),
     }
+}
+
+pub async fn list_devices(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
+    do_result(app.all_devices())
 }
 
 pub async fn add_or_replace_device(
@@ -23,10 +26,7 @@ pub async fn add_or_replace_device(
     device: crate::config::Device,
     app: AppChannel,
 ) -> Result<impl Reply, Rejection> {
-    match app.add_or_replace_device(device_id, device) {
-        Ok(r) => Ok(reply::json(&r)),
-        Err(e) => Err(reject::custom(e)),
-    }
+    do_result(app.add_or_replace_device(device_id, device))
 }
 
 pub async fn remove_device(
@@ -34,10 +34,57 @@ pub async fn remove_device(
     _session: WebSession,
     app: AppChannel,
 ) -> Result<impl Reply, Rejection> {
-    match app.remove_device(device_id) {
-        Ok(r) => Ok(reply::json(&r)),
-        Err(e) => Err(reject::custom(e)),
-    }
+    do_result(app.remove_device(device_id))
+}
+
+pub async fn read_input(
+    input_id: String,
+    _session: WebSession,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    do_result(app.read_value(input_id))
+}
+
+pub async fn list_outputs(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
+    do_result(app.all_outputs())
+}
+
+pub async fn add_or_replace_output(
+    output_id: String,
+    _session: WebSession,
+    output: crate::config::Output,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    do_result(app.add_or_replace_output(output_id, output))
+}
+
+pub async fn remove_output(
+    output_id: String,
+    _session: WebSession,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    do_result(app.remove_output(output_id))
+}
+
+pub async fn list_inputs(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
+    do_result(app.all_inputs())
+}
+
+pub async fn add_or_replace_input(
+    input_id: String,
+    _session: WebSession,
+    input: crate::config::Input,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    do_result(app.add_or_replace_input(input_id, input))
+}
+
+pub async fn remove_input(
+    input_id: String,
+    _session: WebSession,
+    app: AppChannel,
+) -> Result<impl Reply, Rejection> {
+    do_result(app.remove_input(input_id))
 }
 
 pub async fn server_name() -> Result<impl Reply, Infallible> {

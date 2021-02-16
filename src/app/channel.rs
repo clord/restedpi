@@ -1,11 +1,10 @@
+use chrono::prelude::*;
 use crate::app::state;
 use crate::config;
 use crate::error::Result;
-use chrono::prelude::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-
-use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::time::Duration;
@@ -38,6 +37,20 @@ pub enum AppMessage {
                 ),
             >,
         >,
+    },
+
+    /**
+     * Return all outputs
+     */
+    AllOutputs {
+        response: Sender<HashMap<String, config::Output>>,
+    },
+
+    /**
+     * Return all inputs
+     */
+    AllInputs {
+        response: Sender<HashMap<String, config::Input>>,
     },
 
     /**
@@ -204,6 +217,18 @@ impl AppChannel {
             response,
         })?;
         receiver.recv()?
+    }
+
+    pub fn all_outputs(&self) -> Result<HashMap<String, config::Output>> {
+        let (response, receiver) = channel();
+        self.sender.send(AppMessage::AllOutputs { response })?;
+        Ok(receiver.recv()?)
+    }
+
+    pub fn all_inputs(&self) -> Result<HashMap<String, config::Input>> {
+        let (response, receiver) = channel();
+        self.sender.send(AppMessage::AllInputs { response })?;
+        Ok(receiver.recv()?)
     }
 
     pub fn all_devices(
@@ -403,6 +428,22 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
         AppMessage::AllDevices { response } => {
             let result = state.devices();
             match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {}", e),
+            };
+        }
+
+        AppMessage::AllOutputs { response } => {
+            let result = state.outputs();
+            match response.send(result.clone()) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {}", e),
+            };
+        }
+
+        AppMessage::AllInputs { response } => {
+            let result = state.inputs();
+            match response.send(result.clone()) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {}", e),
             };

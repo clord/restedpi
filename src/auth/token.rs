@@ -29,7 +29,7 @@ struct SignedToken {
 }
 
 /**
- * If we increment this then old tokens will not be valid. 
+ * If we increment this then old tokens will not be valid.
  */
 static VERSION: u8 = 1u8;
 

@@ -148,8 +148,16 @@ impl State {
         Ok(())
     }
 
+    pub fn outputs(&self) -> &HashMap<String, config::Output> {
+        &self.outputs
+    }
+
+    pub fn inputs(&self) -> &HashMap<String, config::Input> {
+        &self.inputs
+    }
+
     pub fn devices(
-        &mut self,
+        &self,
     ) -> HashMap<
         String,
         (
@@ -332,7 +340,6 @@ pub fn new_state(
 
         outputs,
         outputs_change,
-
     };
 
     Ok(state)
