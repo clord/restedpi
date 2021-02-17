@@ -1,12 +1,9 @@
-use super::WebSession;
-use crate::app::channel::AppChannel;
-use crate::auth::{password, token};
 use crate::error::Error;
+use crate::session::{authenticate, AppContext};
 use rppal::system::DeviceInfo;
 use serde_json::json;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use warp::{reject, reply, Rejection, Reply};
 
 fn do_result<T: serde::Serialize>(input: Result<T, Error>) -> Result<impl Reply, Rejection> {
@@ -16,75 +13,56 @@ fn do_result<T: serde::Serialize>(input: Result<T, Error>) -> Result<impl Reply,
     }
 }
 
-pub async fn list_devices(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
-    do_result(app.all_devices())
+pub async fn list_devices(ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().all_devices())
 }
 
 pub async fn add_or_replace_device(
     device_id: String,
-    _session: WebSession,
     device: crate::config::Device,
-    app: AppChannel,
+    ctx: AppContext,
 ) -> Result<impl Reply, Rejection> {
-    do_result(app.add_or_replace_device(device_id, device))
+    do_result(ctx.channel().add_or_replace_device(device_id, device))
 }
 
-pub async fn remove_device(
-    device_id: String,
-    _session: WebSession,
-    app: AppChannel,
-) -> Result<impl Reply, Rejection> {
-    do_result(app.remove_device(device_id))
+pub async fn remove_device(device_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().remove_device(device_id))
 }
 
-pub async fn read_input(
-    input_id: String,
-    _session: WebSession,
-    app: AppChannel,
-) -> Result<impl Reply, Rejection> {
-    do_result(app.read_value(input_id))
+pub async fn read_input(input_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().read_value(input_id))
 }
 
-pub async fn list_outputs(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
-    do_result(app.all_outputs())
+pub async fn list_outputs(ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().all_outputs())
 }
 
 pub async fn add_or_replace_output(
     output_id: String,
-    _session: WebSession,
     output: crate::config::Output,
-    app: AppChannel,
+    ctx: AppContext,
 ) -> Result<impl Reply, Rejection> {
-    do_result(app.add_or_replace_output(output_id, output))
+    do_result(ctx.channel().add_or_replace_output(output_id, output))
 }
 
-pub async fn remove_output(
-    output_id: String,
-    _session: WebSession,
-    app: AppChannel,
-) -> Result<impl Reply, Rejection> {
-    do_result(app.remove_output(output_id))
+pub async fn remove_output(output_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().remove_output(output_id))
 }
 
-pub async fn list_inputs(_session: WebSession, app: AppChannel) -> Result<impl Reply, Rejection> {
-    do_result(app.all_inputs())
+pub async fn list_inputs(ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().all_inputs())
 }
 
 pub async fn add_or_replace_input(
     input_id: String,
-    _session: WebSession,
     input: crate::config::Input,
-    app: AppChannel,
+    ctx: AppContext,
 ) -> Result<impl Reply, Rejection> {
-    do_result(app.add_or_replace_input(input_id, input))
+    do_result(ctx.channel().add_or_replace_input(input_id, input))
 }
 
-pub async fn remove_input(
-    input_id: String,
-    _session: WebSession,
-    app: AppChannel,
-) -> Result<impl Reply, Rejection> {
-    do_result(app.remove_input(input_id))
+pub async fn remove_input(input_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
+    do_result(ctx.channel().remove_input(input_id))
 }
 
 pub async fn server_name() -> Result<impl Reply, Infallible> {
@@ -100,55 +78,22 @@ pub async fn server_name() -> Result<impl Reply, Infallible> {
     Ok(reply::json(&reply))
 }
 
-const TOKEN_DURATION: u64 = 60 * 60 * 24 * 660;
-
 pub async fn authentication(
-    app: AppChannel,
+    ctx: AppContext,
     form: HashMap<String, String>,
 ) -> Result<impl Reply, Rejection> {
-    let secret =
-        std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
     let user = form.get("username").unwrap();
     let pw = form.get("password").unwrap();
-    let start = SystemTime::now();
-    let since_the_epoch = start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-    match app.hash_for(user) {
-        Some(user_hash) => match password::verify(pw, user_hash) {
-            Ok(false) => Err(reject::custom(Error::UserNotFound)),
-            Ok(true) => match token::make_token(
-                WebSession {
-                    user: user.clone(),
-                    expires: since_the_epoch
-                        .checked_add(Duration::new(TOKEN_DURATION, 0))
-                        .unwrap()
-                        .as_secs(),
-                },
-                &secret,
-            ) {
-                Ok(token) => {
-                    let reply = json!({ "token": token });
-                    Ok(reply::json(&reply))
-                }
-                Err(e) => {
-                    error!("Error generating token: {:?}", e);
-                    Err(reject::custom(Error::TokenIssue))
-                }
-            },
-            Err(e) => {
-                error!("Password issue: {}", e);
-                Err(reject::custom(Error::PasswordIssue))
-            }
-        },
-        None => Err(reject::custom(Error::UserNotFound)),
+    match authenticate(ctx, user, pw).await {
+        Ok(token) => {
+            let reply = json!({ "token": token });
+            Ok(reply::json(&reply))
+        }
+        Err(e) => Err(reject::custom(e)),
     }
 }
 
-pub async fn get_available_devices(
-    _session: WebSession,
-    _app: AppChannel,
-) -> Result<impl Reply, Infallible> {
+pub async fn get_available_devices(_ctx: AppContext) -> Result<impl Reply, Infallible> {
     let reply = json!([
         { "name": "BMP085"
         , "device": "/api/devices/available/Bmp085"

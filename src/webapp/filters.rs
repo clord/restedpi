@@ -1,18 +1,22 @@
 use super::handlers;
-use super::{SharedAppState, WebSession};
-use crate::app::channel::AppChannel;
-use std::convert::Infallible;
+use super::SharedAppState;
+use crate::session::{AppContext, WebSession};
+use std::str::FromStr;
 use warp::http::header::{HeaderMap, HeaderValue};
 use warp::{any, get, header, path, post, reply, Filter, Rejection, Reply};
 
-fn with_session() -> impl Filter<Extract = (WebSession,), Error = Rejection> + Clone {
-    any().and(header::<WebSession>("authorization"))
-}
-
 fn with_app(
     app: SharedAppState,
-) -> impl Filter<Extract = (AppChannel,), Error = Infallible> + Clone {
-    any().map(move || app.clone().lock().expect("locked state").clone())
+) -> impl Filter<Extract = (AppContext,), Error = Rejection> + Clone {
+    any()
+        .and(header::<String>("authorization"))
+        .map(move |token_str: String| {
+            let token: Option<WebSession> = match WebSession::from_str(&token_str) {
+                Ok(s) => Some(s),
+                Err(_) => None,
+            };
+            AppContext::new(app.clone(), token)
+        })
 }
 
 pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -55,7 +59,6 @@ fn available_devices(
     );
     warp::path!("available-devices")
         .and(get())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::get_available_devices)
         .with(reply::with::headers(short_cache_header))
@@ -81,7 +84,6 @@ fn devices_list(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices")
         .and(get())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::list_devices)
 }
@@ -91,7 +93,6 @@ fn devices_update(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices" / String)
         .and(warp::put())
-        .and(with_session())
         .and(warp::body::json())
         .and(with_app(app))
         .and_then(handlers::add_or_replace_device)
@@ -102,7 +103,6 @@ fn devices_delete(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("devices" / String)
         .and(warp::delete())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::remove_device)
 }
@@ -117,7 +117,6 @@ fn inputs(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Reje
 fn input_list(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("inputs")
         .and(get())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::list_inputs)
 }
@@ -127,7 +126,6 @@ fn input_update(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("inputs" / String)
         .and(warp::put())
-        .and(with_session())
         .and(warp::body::json())
         .and(with_app(app))
         .and_then(handlers::add_or_replace_input)
@@ -138,7 +136,6 @@ fn input_delete(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("inputs" / String)
         .and(warp::delete())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::remove_input)
 }
@@ -146,7 +143,6 @@ fn input_delete(
 fn read_input(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("inputs" / String / "read")
         .and(warp::get())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::read_input)
 }
@@ -162,7 +158,6 @@ fn output_list(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("outputs")
         .and(get())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::list_outputs)
 }
@@ -172,7 +167,6 @@ fn output_update(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("outputs" / String)
         .and(warp::put())
-        .and(with_session())
         .and(warp::body::json())
         .and(with_app(app))
         .and_then(handlers::add_or_replace_output)
@@ -183,7 +177,6 @@ fn output_delete(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("outputs" / String)
         .and(warp::delete())
-        .and(with_session())
         .and(with_app(app))
         .and_then(handlers::remove_output)
 }

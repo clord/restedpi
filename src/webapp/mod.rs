@@ -1,11 +1,8 @@
 use crate::app;
-use crate::auth::token;
 use crate::error::Error;
 use mime_guess::from_path;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::borrow::Cow;
-use std::time::{SystemTime, UNIX_EPOCH};
 use warp::filters::path::Tail;
 use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
 pub mod filters;
@@ -13,32 +10,9 @@ mod handlers;
 pub mod slugify;
 
 use std::sync::{Arc, Mutex};
+
 // We have to share the app state since warp uses a thread pool
-type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct WebSession {
-    user: String,
-    expires: u64,
-}
-
-impl std::str::FromStr for WebSession {
-    type Err = token::SessionError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let secret =
-            std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
-        let start = SystemTime::now();
-        let now_timestamp = start
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| token::SessionError::Expired)?;
-        let res = token::validate_token::<WebSession>(s, &secret)?;
-        if res.expires < now_timestamp.as_secs() {
-            Err(token::SessionError::Expired)
-        } else {
-            Ok(res)
-        }
-    }
-}
+pub type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;
 
 #[derive(RustEmbed)]
 #[folder = "static/"]

@@ -20,5 +20,7 @@ pub mod app;
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod graphql;
 pub mod rpi;
+pub mod session;
 pub mod webapp;
