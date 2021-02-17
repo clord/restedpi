@@ -211,7 +211,7 @@ async fn main() {
                 .expect("app failed to start");
             let app = Arc::new(Mutex::new(app));
 
-            let api = webapp::filters::api(app);
+            let api = webapp::filters::graphql_api(app);
             let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
 
             let serve = warp::serve(api.with(warp::log("web")).recover(webapp::handle_rejection));

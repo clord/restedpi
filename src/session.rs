@@ -28,6 +28,8 @@ impl AppContext {
     }
 }
 
+impl juniper::Context for AppContext {}
+
 /// We can parse sessions from strings.
 /// If invalid for any reason (crypto, expired, etc) then it will result in an error.
 impl FromStr for WebSession {

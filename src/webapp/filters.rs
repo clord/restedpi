@@ -1,7 +1,9 @@
 use super::handlers;
 use super::SharedAppState;
+use crate::graphql::create_schema;
 use crate::session::{AppContext, WebSession};
-use std::str::FromStr;
+use juniper_warp::{make_graphql_filter, playground_filter};
+
 use warp::http::header::{HeaderMap, HeaderValue};
 use warp::{any, get, header, path, post, reply, Filter, Rejection, Reply};
 
@@ -9,14 +11,21 @@ fn with_app(
     app: SharedAppState,
 ) -> impl Filter<Extract = (AppContext,), Error = Rejection> + Clone {
     any()
-        .and(header::<String>("authorization"))
-        .map(move |token_str: String| {
-            let token: Option<WebSession> = match WebSession::from_str(&token_str) {
-                Ok(s) => Some(s),
-                Err(_) => None,
-            };
-            AppContext::new(app.clone(), token)
-        })
+        .and(header::optional::<WebSession>("authorization"))
+        .map(move |t| AppContext::new(app.clone(), t))
+}
+
+pub fn graphql_api(
+    app: SharedAppState,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path("graphql")
+        .and(
+            post()
+                .and(make_graphql_filter(create_schema(), with_app(app).boxed()))
+                .or(get().and(playground_filter("/graphql", None))),
+        )
+        .or(static_filter())
+        .or(static_index_html())
 }
 
 pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {

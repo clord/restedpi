@@ -1,11 +1,11 @@
 use crate::session::AppContext;
-use juniper::{FieldResult, RootNode};
+use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
 
 pub struct Query;
 
-#[juniper::object(Context = AppContext)]
+#[graphql_object(Context = AppContext)]
 impl Query {
-    pub fn active_user(context: &AppContext) -> FieldResult<bool> {
+    pub fn active_user(_context: &AppContext) -> FieldResult<bool> {
         Ok(false)
     }
 
@@ -20,7 +20,7 @@ impl Query {
 
 pub struct Mutation;
 
-#[juniper::object(Context = AppContext)]
+#[graphql_object(Context = AppContext)]
 impl Mutation {
     pub fn sign_in(
         context: &AppContext,
@@ -38,8 +38,8 @@ impl Mutation {
     }
 }
 
-pub type Schema = RootNode<'static, Query, Mutation>;
+pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<AppContext>>;
 
 pub fn create_schema() -> Schema {
-    Schema::new(Query, Mutation)
+    Schema::new(Query, Mutation, EmptySubscription::new())
 }
