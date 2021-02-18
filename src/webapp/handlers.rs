@@ -1,6 +1,5 @@
 use crate::error::Error;
 use crate::session::{authenticate, AppContext};
-use rppal::system::DeviceInfo;
 use serde_json::json;
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -30,7 +29,7 @@ pub async fn remove_device(device_id: String, ctx: AppContext) -> Result<impl Re
 }
 
 pub async fn read_input(input_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().read_value(input_id))
+    do_result(ctx.channel().read_value(&input_id))
 }
 
 pub async fn list_outputs(ctx: AppContext) -> Result<impl Reply, Rejection> {
@@ -65,26 +64,13 @@ pub async fn remove_input(input_id: String, ctx: AppContext) -> Result<impl Repl
     do_result(ctx.channel().remove_input(input_id))
 }
 
-pub async fn server_name() -> Result<impl Reply, Infallible> {
-    let server_name = match DeviceInfo::new() {
-        Ok(model) => model.model().to_string(),
-        Err(e) => {
-            warn!("reading model: {}", e);
-            "Unknown".to_string()
-        }
-    };
-
-    let reply = json!({ "server-name": server_name });
-    Ok(reply::json(&reply))
-}
-
 pub async fn authentication(
     ctx: AppContext,
     form: HashMap<String, String>,
 ) -> Result<impl Reply, Rejection> {
     let user = form.get("username").unwrap();
     let pw = form.get("password").unwrap();
-    match authenticate(ctx, user, pw).await {
+    match authenticate(&ctx, user, pw).await {
         Ok(token) => {
             let reply = json!({ "token": token });
             Ok(reply::json(&reply))

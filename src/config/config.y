@@ -191,7 +191,7 @@ use lrpar::Span;
 use serde_derive::{Deserialize, Serialize};
 use chrono::{NaiveDate, Local, NaiveDateTime, DateTime};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug, juniper::GraphQLEnum)]
 pub enum Unit {
     Boolean,
     DegC,

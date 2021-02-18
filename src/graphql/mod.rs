@@ -1,20 +1,48 @@
-use crate::session::AppContext;
-use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
+use crate::session::{AppContext, authenticate};
+use crate::error::Error;
+use rppal::system::DeviceInfo;
+use crate::config::{Input, Output};
+use juniper::{graphql_object, EmptySubscription, FieldResult, FieldError, RootNode};
 
 pub struct Query;
 
 #[graphql_object(Context = AppContext)]
 impl Query {
-    pub fn active_user(_context: &AppContext) -> FieldResult<bool> {
-        Ok(false)
+    pub fn active_user(context: &AppContext) -> FieldResult<Option<String>> {
+        Ok(context.session.as_ref().map(|a| a.user.clone()))
     }
 
-    pub fn inputs(context: &AppContext) -> FieldResult<bool> {
-        Ok(false)
+    pub fn server_name(_context: &AppContext) -> FieldResult<String> {
+        let device = DeviceInfo::new()?;
+        Ok(device.model().to_string())
     }
 
-    pub fn outputs(context: &AppContext) -> FieldResult<bool> {
-        Ok(false)
+    pub fn input(context: &AppContext, id: String) -> FieldResult<Input> {
+        let inputs = context.channel().all_inputs()?;
+        match inputs.get(&id) {
+            Some(input) => {
+                let mut cloned = input.clone();
+                cloned.input_id = Some(id);
+                Ok(cloned)
+            },
+            None => 
+                Err(FieldError::from(Error::InputNotFound(id)))
+            
+        }
+    }
+
+    pub fn output(context: &AppContext, id: String) -> FieldResult<Output> {
+        let outputs = context.channel().all_outputs()?;
+        match outputs.get(&id) {
+            Some(output) => {
+                let mut cloned = output.clone();
+                cloned.output_id = Some(id);
+                Ok(cloned)
+            },
+            None =>      
+                Err(FieldError::from(Error::OutputNotFound(id)))
+            
+        }
     }
 }
 
@@ -22,17 +50,15 @@ pub struct Mutation;
 
 #[graphql_object(Context = AppContext)]
 impl Mutation {
-    pub fn sign_in(
+    pub async fn sign_in(
         context: &AppContext,
         email: String,
         plaintext_password: String,
-    ) -> FieldResult<bool> {
-        // do a password check, and start a session if ok.
-        // return user that was signed in?
-        Ok(false)
+    ) -> FieldResult<String> {
+        Ok(authenticate(context, &email, &plaintext_password).await?)
     }
 
-    pub fn sign_out(context: &AppContext) -> FieldResult<bool> {
+    pub fn sign_out(_context: &AppContext) -> FieldResult<bool> {
         // expire all existing sessions by bumping session count
         Ok(false)
     }

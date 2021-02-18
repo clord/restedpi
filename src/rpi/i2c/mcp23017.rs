@@ -1,6 +1,6 @@
 use super::super::RpiApi;
 use super::I2cAddress;
-use crate::config::Dir;
+use crate::config::{Directions, Dir};
 use crate::error::{Error, Result};
 use bit_array::BitArray;
 
@@ -95,24 +95,25 @@ struct BankState<T> {
 /**
  * the last-modified values
  */
-#[derive(Debug, PartialEq, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Clone)]
 struct State {
-    direction: [Dir; 8],
+    direction: Directions,
     values: Bits,
 }
 
 impl State {
     pub fn new() -> Self {
         State {
-            direction: [Dir::In(false); 8],
+            direction: Directions::new(),
             values: Bits::new(),
         }
     }
     pub fn get_direction(&self, pin: Pin) -> Dir {
-        self.direction[pin_to_ordinal(pin)]
+        *self.direction.get(pin_to_ordinal(pin))
     }
     pub fn set_direction(&mut self, pin: Pin, dir: Dir) {
-        self.direction[pin_to_ordinal(pin)] = dir;
+        let dir_loc = self.direction.get_mut(pin_to_ordinal(pin));
+        *dir_loc = dir;
     }
     pub fn pin_value(&self, pin: Pin) -> bool {
         self.values.get(7 - pin_to_ordinal(pin)).unwrap_or(false)
@@ -127,8 +128,9 @@ impl State {
     pub fn pullup_word(&self) -> u8 {
         let mut ba = Bits::new();
         let mut dex = 0;
-        for x in self.direction.iter() {
-            if let Dir::In(true) = x {
+        for pinord in 0..7usize {
+            let dir = self.direction.get(pinord);
+            if let Dir::InWithPD = dir {
                 ba.set(7 - dex, true);
             }
             dex += 1;
@@ -145,8 +147,12 @@ impl State {
     pub fn inout_word(&self) -> u8 {
         let mut ba = Bits::new();
         let mut dex = 0;
-        for x in self.direction.iter() {
-            if let Dir::In(_) = x {
+        for pinord in 0..7usize {
+            let dir = self.direction.get(pinord);
+            if let Dir::InWithPD = dir {
+                ba.set(7 - dex, true);
+            };
+            if let Dir::In = dir {
                 ba.set(7 - dex, true);
             };
             dex += 1;
@@ -239,15 +245,11 @@ impl Mcp23017State {
         &mut self,
         address: I2cAddress,
         bank: Bank,
-        directions: &[Dir],
+        directions: &Directions,
         rapi: &RpiApi,
     ) -> Result<()> {
         let bank_state = self.mut_state_for_bank(bank);
-        let mut i = 0;
-        for dir in directions {
-            bank_state.direction[i] = *dir;
-            i += 1;
-        }
+        bank_state.direction = *directions;
         self.write_gpio_dir(address, bank, rapi)?;
         for p in 0..7 {
             self.set_pin(address, bank, ordinal_to_pin(p), false, rapi)?;
@@ -286,7 +288,8 @@ impl Mcp23017State {
         rapi: &RpiApi,
     ) -> Result<()> {
         match self.get_pin_direction(bank, pin) {
-            Dir::In(..) => Err(Error::InvalidPinDirection),
+            Dir::In => Err(Error::InvalidPinDirection),
+            Dir::InWithPD => Err(Error::InvalidPinDirection),
             Dir::OutH => {
                 debug!(
                     "set_pin: a:{} b:{:?} p:{:?} <- {}",
@@ -323,7 +326,11 @@ impl Mcp23017State {
         match state.get_direction(pin) {
             Dir::OutL => Ok(!state.pin_value(pin)),
             Dir::OutH => Ok(state.pin_value(pin)),
-            Dir::In(..) => {
+            Dir::In => {
+                let value = self.read_gpio_value(address, bank, rapi)?;
+                return Ok(value[7 - pin_to_ordinal(pin)]);
+            }
+            Dir::InWithPD => {
                 let value = self.read_gpio_value(address, bank, rapi)?;
                 return Ok(value[7 - pin_to_ordinal(pin)]);
             }

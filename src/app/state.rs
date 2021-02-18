@@ -6,6 +6,7 @@ use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;
 use chrono::prelude::*;
+
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 
@@ -188,6 +189,36 @@ impl State {
     pub fn set_current_dt(&mut self, new_dt: DateTime<Local>) {
         self.dt = new_dt;
     }
+
+    /**
+     * read what is currently being outputed
+     */
+    pub fn read_output_bool(&self, output_id: &str) -> Result<bool> {
+        let m_output = self.outputs.get(output_id);
+
+        let config::Output {
+            device_id,
+            unit,
+            device_output_id,
+            ..
+        } = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
+
+        let device = self
+            .devices
+            .get(device_id)
+            .ok_or(Error::NonExistant(format!(
+                "read_output_bool: {}",
+                device_id
+            )))?;
+
+        if *unit != Unit::Boolean {
+            warn!("Can't read {:?}  from output {}", unit, output_id);
+            return Err(Error::UnitError("can't read".to_string()));
+        }
+        let value = device.read_boolean(*device_output_id)?;
+        Ok(value)
+    }
+
 
     /**
      * read a named input

@@ -4,12 +4,13 @@ pub mod sched;
 pub mod value;
 
 use serde_derive::{Deserialize, Serialize};
+use crate::session::AppContext;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
+use juniper::{GraphQLEnum, GraphQLUnion, GraphQLObject, graphql_object};
 pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug, GraphQLEnum)]
 pub enum SamplingMode {
     UltraLowPower,
     Standard,
@@ -17,35 +18,98 @@ pub enum SamplingMode {
     UltraHighRes,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug, GraphQLEnum)]
 pub enum SunPosition {
     Set,
     High,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-#[serde(tag = "name")]
-pub enum Type {
-    MCP9808 {
-        address: u16,
-    },
-    BMP085 {
-        address: u16,
-        mode: SamplingMode,
-    },
-    MCP23017 {
-        address: u16,
-        pin_direction: [Dir; 16],
-    },
+#[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
+pub struct MCP9808Config {
+    pub address: i32
 }
 
-#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Copy, Clone, Debug)]
+#[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
+pub struct BMP085Config {
+    pub address: i32,
+    pub mode: SamplingMode,
+}
+
+#[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
+pub struct Directions {
+     pub p0: Dir,
+     pub p1: Dir,
+     pub p2: Dir,
+     pub p3: Dir,
+     pub p4: Dir,
+     pub p5: Dir,
+     pub p6: Dir,
+     pub p7: Dir,
+}
+impl Directions {
+    pub fn new() -> Self {
+        Directions { 
+            p0: Dir::OutH,
+            p1: Dir::OutH,
+            p2: Dir::OutH,
+            p3: Dir::OutH,
+            p4: Dir::OutH,
+            p5: Dir::OutH,
+            p6: Dir::OutH,
+            p7: Dir::OutH,
+        }
+    }
+    pub fn get(&self, pin: usize) -> &Dir {
+        match pin % 8 {
+           0 =>  &self.p0,
+           1 =>  &self.p1,
+           2 =>  &self.p2,
+           3 =>  &self.p3,
+           4 =>  &self.p4,
+           5 =>  &self.p5,
+           6 =>  &self.p6,
+           7 =>  &self.p7,
+           _ =>  &self.p0,
+        }
+    }
+    pub fn get_mut(&mut self, pin: usize) -> &mut Dir {
+        match pin % 8 {
+           0 => &mut self.p0,
+           1 => &mut self.p1,
+           2 => &mut self.p2,
+           3 => &mut self.p3,
+           4 => &mut self.p4,
+           5 => &mut self.p5,
+           6 => &mut self.p6,
+           7 => &mut self.p7,
+           _ => &mut self.p0,
+        }
+    }
+}
+
+#[derive( Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
+pub struct MCP23017Config {
+        pub address: i32,
+        pub bank_a: Directions,
+        pub bank_b: Directions,
+}
+
+#[derive(Copy, Serialize, Deserialize, GraphQLUnion, PartialEq, Clone, Debug)]
+#[serde(tag = "name")]
+pub enum Type {
+    MCP9808(MCP9808Config),
+    BMP085(BMP085Config),
+    MCP23017(MCP23017Config),
+}
+
+#[derive(Serialize, Deserialize, GraphQLEnum, PartialEq, PartialOrd, Copy, Clone, Debug)]
 pub enum Dir {
     // Active High output
     OutH,
     // Active Low output
     OutL,
-    In(bool),
+    In,
+    InWithPD,
 }
 
 /**
@@ -59,13 +123,68 @@ pub struct Device {
     pub disabled: Option<bool>,
 }
 
+#[graphql_object]
+impl Device {
+    pub fn model(&self) -> Type {
+        self.model
+    } 
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    } 
+    pub fn disabled(&self) -> Option<bool> {
+        self.disabled
+    } 
+    pub fn description(&self) -> &str {
+        self.description.as_str()
+    } 
+}
+#[derive(Serialize, Deserialize, GraphQLObject, Debug, PartialEq, Clone)]
+pub struct InputValue {
+    pub value: f64,
+    pub unit: Unit
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Input {
     pub name: String,
+    pub input_id: Option<String>,
     pub device_id: String,
     pub device_input_id: u32,
     pub unit: Unit,
 }
+
+#[graphql_object(context = AppContext)]
+impl Input {
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn input_id(&self) -> Option<&String> {
+        self.input_id.as_ref()
+    }
+
+    pub fn unit(&self) -> Unit {
+        self.unit
+    }
+
+    pub fn device(&self, context: &AppContext) -> Option<Device> {
+        context.channel().get_device_config(&self.device_id).ok().map(|(cfg,_, _)| cfg)
+    }
+
+    pub fn bool_value(&self, context: &AppContext) -> Option<bool> {
+        self.input_id.as_ref().map(|id| { 
+             context.channel().read_boolean(id).ok()
+        }).flatten()
+    }
+    pub fn value(&self, context: &AppContext) -> Option<InputValue> {
+        self.input_id.as_ref().map(|id| { 
+             context.channel().read_value(id).ok().map(|(value, unit)| 
+                 InputValue {value, unit}
+                )
+        }).flatten()
+    }
+}
+
 
 /**
  * we can write a boolean value to a given device via name
@@ -73,6 +192,7 @@ pub struct Input {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Output {
     pub name: String,
+    pub output_id: Option<String>,
     pub device_id: String,
     pub device_output_id: u32,
     pub active_low: Option<bool>,
@@ -80,6 +200,39 @@ pub struct Output {
 
     // If set to an expression, the system will compute this output every state change and write it to the output
     pub on_when: Option<String>,
+}
+
+#[graphql_object(context = AppContext)]
+impl Output {
+    pub fn output_id(&self) -> Option<&String> {
+        self.output_id.as_ref()
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn unit(&self) -> Unit {
+        self.unit
+    }
+
+    pub fn device(&self, context: &AppContext) -> Option<Device> {
+        context.channel().get_device_config(&self.device_id).ok().map(|(cfg,_, _)| cfg)
+    }
+
+    pub fn active_low(&self) -> Option<bool> {
+        self.active_low
+    }
+
+    pub fn on_when(&self) -> Option<String> {
+        self.on_when.clone()
+    }
+
+    pub fn value(&self, context: &AppContext) -> Option<bool> {
+        self.output_id.as_ref().map(|oid| { 
+            context.channel().current_output_value(oid).ok()
+        }).flatten()
+    }
 }
 
 /**

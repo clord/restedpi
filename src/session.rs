@@ -53,7 +53,7 @@ impl FromStr for WebSession {
 
 const TOKEN_DURATION: u64 = 60 * 60 * 24 * 660;
 
-pub async fn authenticate(ctx: AppContext, user: &str, pw: &str) -> Result<String> {
+pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<String> {
     let secret =
         std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
     let start = SystemTime::now();

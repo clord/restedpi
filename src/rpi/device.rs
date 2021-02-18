@@ -3,6 +3,7 @@ use super::RpiApi;
 use crate::config;
 use crate::error::{Error, Result};
 use serde_derive::Serialize;
+use std::convert::TryInto;
 
 #[derive(Clone, Serialize, Debug)]
 pub enum Status {
@@ -42,34 +43,35 @@ impl Device {
 
     pub fn reset(&mut self) -> Result<()> {
         match &self.config.model {
-            config::Type::MCP9808 { .. } => Ok(()),
-            config::Type::MCP23017 {
+            config::Type::MCP9808(_) => Ok(()),
+            config::Type::MCP23017(config::MCP23017Config {
                 address,
-                pin_direction,
-            } => {
-                self.mcp23017_state.reset(*address, &self.rapi)?;
+                bank_a,
+                bank_b
+            }) => {
+                self.mcp23017_state.reset((*address).try_into().unwrap(), &self.rapi)?;
                 self.mcp23017_state.set_pin_directions(
-                    *address,
+                    (*address).try_into().unwrap(),
                     mcp23017::Bank::A,
-                    &pin_direction[0..7],
+                    bank_a,
                     &self.rapi,
                 )?;
                 self.mcp23017_state.set_pin_directions(
-                    *address,
+                    (*address).try_into().unwrap(),
                     mcp23017::Bank::B,
-                    &pin_direction[8..15],
+                    bank_b,
                     &self.rapi,
                 )?;
                 // by writing false, we will update with correct state for all pins after dir change
                 self.mcp23017_state.set_pin(
-                    *address,
+                    (*address).try_into().unwrap(),
                     mcp23017::Bank::A,
                     mcp23017::Pin::Pin0,
                     false,
                     &self.rapi,
                 )?;
                 self.mcp23017_state.set_pin(
-                    *address,
+                    (*address).try_into().unwrap(),
                     mcp23017::Bank::B,
                     mcp23017::Pin::Pin0,
                     false,
@@ -77,7 +79,8 @@ impl Device {
                 )?;
                 Ok(())
             }
-            config::Type::BMP085 { address, .. } => self.bmp085_state.reset(*address, &self.rapi),
+            config::Type::BMP085(config::BMP085Config { address, .. }) => 
+                self.bmp085_state.reset((*address).try_into().unwrap(), &self.rapi),
         }
     }
 
@@ -101,11 +104,11 @@ impl Device {
         match &self.config.model {
             config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
             config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP23017 { address, .. } => {
+            config::Type::MCP23017(config::MCP23017Config { address, .. }) => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let pin = self
                     .mcp23017_state
-                    .get_pin(*address, bank, pin, &self.rapi)?;
+                    .get_pin((*address).try_into().unwrap(), bank, pin, &self.rapi)?;
                 Ok(pin)
             }
         }
@@ -113,51 +116,57 @@ impl Device {
 
     pub fn read_sensor(&self, index: u32) -> Result<(f64, config::Unit)> {
         match &self.config.model {
-            config::Type::BMP085 { address, mode } => match index {
+            config::Type::BMP085(config::BMP085Config{ address, mode }) => match index {
                 0 => {
-                    let v = self.bmp085_state.temperature_in_c(*address, &self.rapi)?;
+                    let v = self.bmp085_state.temperature_in_c((*address).try_into().unwrap(), &self.rapi)?;
                     Ok((v as f64, config::Unit::DegC))
                 }
                 1 => {
                     let v = self
                         .bmp085_state
-                        .pressure_kpa(*address, *mode, &self.rapi)?;
+                        .pressure_kpa((*address).try_into().unwrap(), *mode, &self.rapi)?;
                     Ok((v as f64, config::Unit::KPa))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            config::Type::MCP9808 { address } => match index {
+            config::Type::MCP9808(config::MCP9808Config{ address }) => match index {
                 0 => {
-                    let temp = mcp9808::read_temp(&self.rapi, *address)?;
+                    let temp = mcp9808::read_temp(&self.rapi, (*address).try_into().unwrap())?;
                     Ok((temp as f64, config::Unit::DegC))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            config::Type::MCP23017 { .. } => Err(Error::OutOfBounds(index as usize)),
+            config::Type::MCP23017 ( _ ) => Err(Error::OutOfBounds(index as usize)),
         }
     }
 
     pub fn write_boolean(&mut self, index: u32, value: bool) -> Result<()> {
         match &self.config.model {
-            config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP23017 {
+            config::Type::BMP085 (_) => Err(Error::OutOfBounds(index as usize)),
+            config::Type::MCP9808 (_) => Err(Error::OutOfBounds(index as usize)),
+            config::Type::MCP23017(config::MCP23017Config{
                 address,
-                pin_direction,
-            } => {
+                bank_a,
+                bank_b
+            }) => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let old_dir = self.mcp23017_state.get_pin_direction(bank, pin);
-                if old_dir != pin_direction[index as usize] {
+                let dir_bank = match bank {
+                    mcp23017::Bank::A => bank_a,
+                    mcp23017::Bank::B => bank_b,
+                };
+
+                if old_dir != *dir_bank.get(index as usize) {
                     self.mcp23017_state.set_pin_direction(
-                        *address,
+(*address).try_into().unwrap(),
                         bank,
                         pin,
-                        pin_direction[index as usize],
+                        *dir_bank.get(index as usize),
                         &self.rapi,
                     )?;
                 }
                 self.mcp23017_state
-                    .set_pin(*address, bank, pin, value, &self.rapi)
+                    .set_pin((*address).try_into().unwrap(), bank, pin, value, &self.rapi)
             }
         }
     }

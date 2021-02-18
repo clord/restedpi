@@ -35,7 +35,6 @@ pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rej
                 .or(inputs(app.clone()))
                 .or(outputs(app.clone()))
                 .or(auth(app.clone()))
-                .or(about_server())
                 .or(available_devices(app)),
         )
         .or(static_filter())
@@ -44,12 +43,6 @@ pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rej
 
 fn static_index_html() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     get().and_then(|| super::static_serve("index.html"))
-}
-
-fn about_server() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    get()
-        .and(path!("about-server"))
-        .and_then(handlers::server_name)
 }
 
 fn static_filter() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {

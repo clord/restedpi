@@ -71,6 +71,11 @@ pub enum AppMessage {
         response: Sender<Result<(f64, config::Unit)>>,
     },
 
+    CurrentOutputValue {
+        output_id: String,
+        response: Sender<Result<bool>>,
+    },
+
     /**
      * Read a single boolean value from an input
      * result is the value read, or an error
@@ -257,10 +262,10 @@ impl AppChannel {
         Ok(receiver.recv()?)
     }
 
-    pub fn read_boolean(&self, input_id: String) -> Result<bool> {
+    pub fn read_boolean(&self, input_id: &str) -> Result<bool> {
         let (response, receiver) = channel();
         self.sender
-            .send(AppMessage::ReadBoolean { response, input_id })?;
+            .send(AppMessage::ReadBoolean { response, input_id: input_id.to_string()})?;
         receiver.recv()?
     }
 
@@ -274,10 +279,17 @@ impl AppChannel {
         receiver.recv()?
     }
 
-    pub fn read_value(&self, input_id: String) -> Result<(f64, config::Unit)> {
+    pub fn current_output_value(&self, output_id: &str)->Result<bool> {
         let (response, receiver) = channel();
         self.sender
-            .send(AppMessage::ReadValue { response, input_id })?;
+            .send(AppMessage::CurrentOutputValue { response, output_id: output_id.to_string()})?;
+        receiver.recv()?
+    }
+
+    pub fn read_value(&self, input_id: &str) -> Result<(f64, config::Unit)> {
+        let (response, receiver) = channel();
+        self.sender
+            .send(AppMessage::ReadValue { response, input_id : input_id.to_string()})?;
         receiver.recv()?
     }
 
@@ -324,7 +336,7 @@ impl AppChannel {
 
     pub fn get_device_config(
         &self,
-        device_id: String,
+        device_id: &str,
     ) -> Result<(
         config::Device,
         HashMap<String, config::Input>,
@@ -333,7 +345,7 @@ impl AppChannel {
         let (response, receiver) = channel();
         self.sender.send(AppMessage::GetDeviceConfig {
             response,
-            device_id,
+            device_id:device_id.to_string(),
         })?;
         receiver.recv()?
     }
@@ -517,6 +529,14 @@ fn process_message(message: AppMessage, state: &mut state::State) -> bool {
                 Err(e) => error!("send failed: {}", e),
             };
         }
+
+        AppMessage::CurrentOutputValue { output_id, response } => {
+            let result = state.read_output_bool(&output_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {}", e),
+            };
+        },
 
         AppMessage::ReadValue { input_id, response } => {
             let result = state.read_input_value(&input_id);
