@@ -2,6 +2,7 @@ use crate::session::{AppContext, authenticate};
 use crate::error::Error;
 use rppal::system::DeviceInfo;
 use crate::config::{Input, Output};
+use std::collections::HashMap;
 use juniper::{graphql_object, EmptySubscription, FieldResult, FieldError, RootNode};
 
 pub struct Query;
@@ -15,6 +16,16 @@ impl Query {
     pub fn server_name(_context: &AppContext) -> FieldResult<String> {
         let device = DeviceInfo::new()?;
         Ok(device.model().to_string())
+    }
+
+    pub fn inputs(context: &AppContext) -> FieldResult<Vec<String>> {
+        let inputs = context.channel().all_inputs()?;
+        Ok(inputs.keys().map(|x| x.to_owned()).collect())
+    }
+
+    pub fn outputs(context: &AppContext) -> FieldResult<Vec<String>> {
+        let outputs = context.channel().all_outputs()?;
+        Ok(outputs.keys().map(|x| x.to_owned()).collect())
     }
 
     pub fn input(context: &AppContext, id: String) -> FieldResult<Input> {
