@@ -1,8 +1,8 @@
-use crate::session::{AppContext, authenticate};
-use crate::error::Error;
-use rppal::system::DeviceInfo;
 use crate::config::{Input, Output};
-use juniper::{graphql_object, EmptySubscription, FieldResult, FieldError, RootNode};
+use crate::error::Error;
+use crate::session::{authenticate, AppContext};
+use juniper::{graphql_object, EmptySubscription, FieldError, FieldResult, RootNode};
+use rppal::system::DeviceInfo;
 
 pub struct Query;
 
@@ -34,9 +34,8 @@ impl Query {
                 let mut cloned = input.clone();
                 cloned.input_id = Some(id);
                 Ok(cloned)
-            },
-            None => 
-                Err(FieldError::from(Error::InputNotFound(id)))
+            }
+            None => Err(FieldError::from(Error::InputNotFound(id))),
         }
     }
 
@@ -47,10 +46,8 @@ impl Query {
                 let mut cloned = output.clone();
                 cloned.output_id = Some(id);
                 Ok(cloned)
-            },
-            None =>      
-                Err(FieldError::from(Error::OutputNotFound(id)))
-            
+            }
+            None => Err(FieldError::from(Error::OutputNotFound(id))),
         }
     }
 }

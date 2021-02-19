@@ -5,10 +5,10 @@ use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use std::time::Duration;
 use std::vec::Vec;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 
 /**
  * Supported messages we can send to the app
@@ -207,33 +207,49 @@ impl AppChannel {
 
     pub async fn set_now(&self) -> Result<()> {
         let time = Local::now();
-        Ok(self.sender.clone().send(AppMessage::SetTime { time }).await?)
+        Ok(self
+            .sender
+            .clone()
+            .send(AppMessage::SetTime { time })
+            .await?)
     }
 
     pub async fn get_now(&self) -> Result<DateTime<Local>> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::GetTime { response }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::GetTime { response })
+            .await?;
         receiver.await?
     }
 
     pub async fn reset_device(&self, device_id: String) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::ResetDevice {
-            device_id,
-            response,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::ResetDevice {
+                device_id,
+                response,
+            })
+            .await?;
         receiver.await?
     }
 
     pub async fn all_outputs(&self) -> Result<HashMap<String, config::Output>> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AllOutputs { response }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AllOutputs { response })
+            .await?;
         Ok(receiver.await?)
     }
 
     pub async fn all_inputs(&self) -> Result<HashMap<String, config::Input>> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AllInputs { response }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AllInputs { response })
+            .await?;
         Ok(receiver.await?)
     }
 
@@ -250,57 +266,88 @@ impl AppChannel {
         >,
     > {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AllDevices { response }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AllDevices { response })
+            .await?;
         Ok(receiver.await?)
     }
 
     pub async fn read_booleans(&self, input_ids: Vec<String>) -> Result<Vec<Result<bool>>> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::ReadBooleans {
-            response,
-            input_ids,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::ReadBooleans {
+                response,
+                input_ids,
+            })
+            .await?;
         Ok(receiver.await?)
     }
 
     pub async fn read_boolean(&self, input_id: &str) -> Result<bool> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone()
-            .send(AppMessage::ReadBoolean { response, input_id: input_id.to_string()}).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::ReadBoolean {
+                response,
+                input_id: input_id.to_string(),
+            })
+            .await?;
         receiver.await?
     }
 
     pub async fn write_boolean(&self, output_id: String, value: bool) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::WriteBoolean {
-            response,
-            output_id,
-            value,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::WriteBoolean {
+                response,
+                output_id,
+                value,
+            })
+            .await?;
         receiver.await?
     }
 
-    pub async fn current_output_value(&self, output_id: &str)->Result<bool> {
+    pub async fn current_output_value(&self, output_id: &str) -> Result<bool> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone()
-            .send(AppMessage::CurrentOutputValue { response, output_id: output_id.to_string()}).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::CurrentOutputValue {
+                response,
+                output_id: output_id.to_string(),
+            })
+            .await?;
         receiver.await?
     }
 
     pub async fn read_value(&self, input_id: &str) -> Result<(f64, config::Unit)> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone()
-            .send(AppMessage::ReadValue { response, input_id : input_id.to_string()}).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::ReadValue {
+                response,
+                input_id: input_id.to_string(),
+            })
+            .await?;
         receiver.await?
     }
 
-    pub async fn add_or_replace_device(&self, device_id: String, config: config::Device) -> Result<()> {
+    pub async fn add_or_replace_device(
+        &self,
+        device_id: String,
+        config: config::Device,
+    ) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AddOrReplaceDevice {
-            response,
-            device_id,
-            config,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AddOrReplaceDevice {
+                response,
+                device_id,
+                config,
+            })
+            .await?;
         receiver.await?
     }
 
@@ -312,26 +359,34 @@ impl AppChannel {
         HashMap<String, config::Output>,
     )> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::RemoveDevice {
-            response,
-            device_id,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::RemoveDevice {
+                response,
+                device_id,
+            })
+            .await?;
         receiver.await?
     }
 
     pub async fn remove_input(&self, input_id: String) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone()
-            .send(AppMessage::RemoveInput { response, input_id }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::RemoveInput { response, input_id })
+            .await?;
         receiver.await?
     }
 
     pub async fn remove_output(&self, output_id: String) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::RemoveOutput {
-            response,
-            output_id,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::RemoveOutput {
+                response,
+                output_id,
+            })
+            .await?;
         receiver.await?
     }
 
@@ -344,30 +399,43 @@ impl AppChannel {
         HashMap<String, config::Output>,
     )> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::GetDeviceConfig {
-            response,
-            device_id:device_id.to_string(),
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::GetDeviceConfig {
+                response,
+                device_id: device_id.to_string(),
+            })
+            .await?;
         receiver.await?
     }
 
     pub async fn add_or_replace_input(&self, input_id: String, input: config::Input) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AddOrReplaceInput {
-            response,
-            input,
-            input_id,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AddOrReplaceInput {
+                response,
+                input,
+                input_id,
+            })
+            .await?;
         receiver.await?
     }
 
-    pub async fn add_or_replace_output(&self, output_id: String, output: config::Output) -> Result<()> {
+    pub async fn add_or_replace_output(
+        &self,
+        output_id: String,
+        output: config::Output,
+    ) -> Result<()> {
         let (response, receiver) = oneshot::channel();
-        self.sender.clone().send(AppMessage::AddOrReplaceOutput {
-            response,
-            output,
-            output_id,
-        }).await?;
+        self.sender
+            .clone()
+            .send(AppMessage::AddOrReplaceOutput {
+                response,
+                output,
+                output_id,
+            })
+            .await?;
         receiver.await?
     }
 }
@@ -531,13 +599,16 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::CurrentOutputValue { output_id, response } => {
+        AppMessage::CurrentOutputValue {
+            output_id,
+            response,
+        } => {
             let result = state.read_output_bool(&output_id);
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
             };
-        },
+        }
 
         AppMessage::ReadValue { input_id, response } => {
             let result = state.read_input_value(&input_id);
@@ -570,7 +641,7 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
 
     let (sender, mut receiver) = mpsc::channel::<HashMap<String, T>>(3);
 
-    tokio::spawn(async move { 
+    tokio::spawn(async move {
         loop {
             match receiver.recv().await {
                 Some(config) => match toml::to_string(&config) {
@@ -622,9 +693,12 @@ pub fn start_app(
     tokio::spawn(async move {
         loop {
             tokio::time::delay_for(Duration::from_secs(1)).await;
-            match sender_clone.send(AppMessage::SetTime { time: Local::now() }).await {
+            match sender_clone
+                .send(AppMessage::SetTime { time: Local::now() })
+                .await
+            {
                 Ok(()) => (),
-                Err(e) => { 
+                Err(e) => {
                     warn!("Error in time loop: {}", e);
                     break;
                 }
@@ -632,7 +706,7 @@ pub fn start_app(
         }
     });
 
-    tokio::spawn(async move { 
+    tokio::spawn(async move {
         loop {
             match receiver.recv().await {
                 Some(next) => {
@@ -647,9 +721,7 @@ pub fn start_app(
                     // TODO: Support sending real time change notification by allowing clients to send a sender to us,
                     // which we'll keep in a list and notify each time we get to here, with removal upon error.
                 }
-                None => {
-                    break
-                }
+                None => break,
             }
         }
     });

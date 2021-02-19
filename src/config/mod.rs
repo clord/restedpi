@@ -4,12 +4,12 @@ pub mod parse;
 pub mod sched;
 pub mod value;
 
-use serde_derive::{Deserialize, Serialize};
 use crate::session::AppContext;
+use juniper::{graphql_object, GraphQLEnum, GraphQLObject, GraphQLUnion};
+pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use juniper::{GraphQLEnum, GraphQLUnion, GraphQLObject, graphql_object};
-pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug, GraphQLEnum)]
 pub enum SamplingMode {
@@ -27,7 +27,7 @@ pub enum SunPosition {
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct MCP9808Config {
-    pub address: i32
+    pub address: i32,
 }
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
@@ -38,18 +38,18 @@ pub struct BMP085Config {
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Directions {
-     pub p0: Dir,
-     pub p1: Dir,
-     pub p2: Dir,
-     pub p3: Dir,
-     pub p4: Dir,
-     pub p5: Dir,
-     pub p6: Dir,
-     pub p7: Dir,
+    pub p0: Dir,
+    pub p1: Dir,
+    pub p2: Dir,
+    pub p3: Dir,
+    pub p4: Dir,
+    pub p5: Dir,
+    pub p6: Dir,
+    pub p7: Dir,
 }
 impl Directions {
     pub fn new() -> Self {
-        Directions { 
+        Directions {
             p0: Dir::OutH,
             p1: Dir::OutH,
             p2: Dir::OutH,
@@ -62,37 +62,37 @@ impl Directions {
     }
     pub fn get(&self, pin: usize) -> &Dir {
         match pin % 8 {
-           0 =>  &self.p0,
-           1 =>  &self.p1,
-           2 =>  &self.p2,
-           3 =>  &self.p3,
-           4 =>  &self.p4,
-           5 =>  &self.p5,
-           6 =>  &self.p6,
-           7 =>  &self.p7,
-           _ =>  &self.p0,
+            0 => &self.p0,
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            _ => &self.p0,
         }
     }
     pub fn get_mut(&mut self, pin: usize) -> &mut Dir {
         match pin % 8 {
-           0 => &mut self.p0,
-           1 => &mut self.p1,
-           2 => &mut self.p2,
-           3 => &mut self.p3,
-           4 => &mut self.p4,
-           5 => &mut self.p5,
-           6 => &mut self.p6,
-           7 => &mut self.p7,
-           _ => &mut self.p0,
+            0 => &mut self.p0,
+            1 => &mut self.p1,
+            2 => &mut self.p2,
+            3 => &mut self.p3,
+            4 => &mut self.p4,
+            5 => &mut self.p5,
+            6 => &mut self.p6,
+            7 => &mut self.p7,
+            _ => &mut self.p0,
         }
     }
 }
 
-#[derive( Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct MCP23017Config {
-        pub address: i32,
-        pub bank_a: Directions,
-        pub bank_b: Directions,
+    pub address: i32,
+    pub bank_a: Directions,
+    pub bank_b: Directions,
 }
 
 #[derive(Copy, Serialize, Deserialize, GraphQLUnion, PartialEq, Clone, Debug)]
@@ -128,21 +128,21 @@ pub struct Device {
 impl Device {
     pub fn model(&self) -> Type {
         self.model
-    } 
+    }
     pub fn name(&self) -> &str {
         self.name.as_str()
-    } 
+    }
     pub fn disabled(&self) -> Option<bool> {
         self.disabled
-    } 
+    }
     pub fn description(&self) -> &str {
         self.description.as_str()
-    } 
+    }
 }
 #[derive(Serialize, Deserialize, GraphQLObject, Debug, PartialEq, Clone)]
 pub struct InputValue {
     pub value: f64,
-    pub unit: Unit
+    pub unit: Unit,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -169,27 +169,32 @@ impl Input {
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
-        context.channel().get_device_config(&self.device_id).await.ok().map(|(cfg,_, _)| cfg)
+        context
+            .channel()
+            .get_device_config(&self.device_id)
+            .await
+            .ok()
+            .map(|(cfg, _, _)| cfg)
     }
 
     pub async fn bool_value(&self, context: &AppContext) -> Option<bool> {
-
         match self.input_id.as_ref() {
-         Some(id) =>     context.channel().read_boolean(id).await.ok()
-                ,
-             None => None
+            Some(id) => context.channel().read_boolean(id).await.ok(),
+            None => None,
         }
     }
     pub async fn value(&self, context: &AppContext) -> Option<InputValue> {
         match self.input_id.as_ref() {
-         Some(id) =>     context.channel().read_value(id).await.ok().map(|(value, unit)| 
-                 InputValue {value, unit}
-                ),
-             None => None
+            Some(id) => context
+                .channel()
+                .read_value(id)
+                .await
+                .ok()
+                .map(|(value, unit)| InputValue { value, unit }),
+            None => None,
         }
     }
 }
-
 
 /**
  * we can write a boolean value to a given device via name
@@ -222,7 +227,12 @@ impl Output {
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
-        context.channel().get_device_config(&self.device_id).await.ok().map(|(cfg,_, _)| cfg)
+        context
+            .channel()
+            .get_device_config(&self.device_id)
+            .await
+            .ok()
+            .map(|(cfg, _, _)| cfg)
     }
 
     pub fn active_low(&self) -> Option<bool> {

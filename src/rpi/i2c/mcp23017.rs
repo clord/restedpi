@@ -1,6 +1,6 @@
 use super::super::RpiApi;
 use super::I2cAddress;
-use crate::config::{Directions, Dir};
+use crate::config::{Dir, Directions};
 use crate::error::{Error, Result};
 use bit_array::BitArray;
 

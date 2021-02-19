@@ -30,10 +30,7 @@ pub fn graphql_api(
 
 pub fn api(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     path("api")
-        .and(
-                auth(app.clone())
-                .or(available_devices(app)),
-        )
+        .and(auth(app.clone()).or(available_devices(app)))
         .or(static_filter())
         .or(static_index_html())
 }
@@ -71,4 +68,3 @@ fn auth(app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Reject
         .and(warp::body::form())
         .and_then(handlers::authentication)
 }
-

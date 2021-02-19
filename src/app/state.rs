@@ -120,9 +120,7 @@ impl State {
         let afflicted_outputs = self.outputs_using_device(name);
 
         self.devices.remove(name);
-        self.devices_change
-            .send(self.device_configs.clone())
-            .await;
+        self.devices_change.send(self.device_configs.clone()).await;
 
         for o in &afflicted_outputs {
             // TODO: should start them all, tben await them all
@@ -217,7 +215,6 @@ impl State {
         let value = device.read_boolean(*device_output_id)?;
         Ok(value)
     }
-
 
     /**
      * read a named input

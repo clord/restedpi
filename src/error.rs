@@ -1,10 +1,10 @@
 use hex::FromHexError;
 use rppal::i2c;
 use serde_derive::Serialize;
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::io;
-use std::collections::HashMap;
 use std::sync::mpsc;
 
 /// Represent all common results of i2c
@@ -110,13 +110,21 @@ impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error
     }
 }
 
-impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>> for Error {
-    fn from(err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>) -> Error {
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>>
+    for Error
+{
+    fn from(
+        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>,
+    ) -> Error {
         Error::SendError(format!("{}", err))
     }
 }
-impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>> for Error {
-    fn from(err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>) -> Error {
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>>
+    for Error
+{
+    fn from(
+        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>,
+    ) -> Error {
         Error::SendError(format!("{}", err))
     }
 }
