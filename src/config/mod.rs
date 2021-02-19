@@ -4,7 +4,7 @@ pub mod sched;
 pub mod value;
 
 use crate::session::AppContext;
-use juniper::{graphql_object, GraphQLEnum, GraphQLObject, GraphQLUnion};
+use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
 pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -245,10 +245,10 @@ impl Output {
         self.on_when.clone()
     }
 
-    pub async fn value(&self, context: &AppContext) -> Option<bool> {
+    pub async fn value(&self, context: &AppContext) -> FieldResult<bool> {
         match self.output_id.as_ref() {
-            Some(oid) => context.channel().await.current_output_value(oid).await.ok(),
-            None => None,
+            Some(oid) => Ok(context.channel().await.current_output_value(oid).await?),
+            None => Err(FieldError::from("Value Not Found")),
         }
     }
 }
