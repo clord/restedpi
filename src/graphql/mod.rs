@@ -2,7 +2,6 @@ use crate::session::{AppContext, authenticate};
 use crate::error::Error;
 use rppal::system::DeviceInfo;
 use crate::config::{Input, Output};
-use std::collections::HashMap;
 use juniper::{graphql_object, EmptySubscription, FieldResult, FieldError, RootNode};
 
 pub struct Query;
@@ -18,18 +17,18 @@ impl Query {
         Ok(device.model().to_string())
     }
 
-    pub fn inputs(context: &AppContext) -> FieldResult<Vec<String>> {
-        let inputs = context.channel().all_inputs()?;
+    pub async fn inputs(context: &AppContext) -> FieldResult<Vec<String>> {
+        let inputs = context.channel().all_inputs().await?;
         Ok(inputs.keys().map(|x| x.to_owned()).collect())
     }
 
-    pub fn outputs(context: &AppContext) -> FieldResult<Vec<String>> {
-        let outputs = context.channel().all_outputs()?;
+    pub async fn outputs(context: &AppContext) -> FieldResult<Vec<String>> {
+        let outputs = context.channel().all_outputs().await?;
         Ok(outputs.keys().map(|x| x.to_owned()).collect())
     }
 
-    pub fn input(context: &AppContext, id: String) -> FieldResult<Input> {
-        let inputs = context.channel().all_inputs()?;
+    pub async fn input(context: &AppContext, id: String) -> FieldResult<Input> {
+        let inputs = context.channel().all_inputs().await?;
         match inputs.get(&id) {
             Some(input) => {
                 let mut cloned = input.clone();
@@ -38,12 +37,11 @@ impl Query {
             },
             None => 
                 Err(FieldError::from(Error::InputNotFound(id)))
-            
         }
     }
 
-    pub fn output(context: &AppContext, id: String) -> FieldResult<Output> {
-        let outputs = context.channel().all_outputs()?;
+    pub async fn output(context: &AppContext, id: String) -> FieldResult<Output> {
+        let outputs = context.channel().all_outputs().await?;
         match outputs.get(&id) {
             Some(output) => {
                 let mut cloned = output.clone();

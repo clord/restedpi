@@ -1,3 +1,4 @@
+#![feature(async_closure)]
 pub mod boolean;
 pub mod parse;
 pub mod sched;
@@ -167,21 +168,25 @@ impl Input {
         self.unit
     }
 
-    pub fn device(&self, context: &AppContext) -> Option<Device> {
-        context.channel().get_device_config(&self.device_id).ok().map(|(cfg,_, _)| cfg)
+    pub async fn device(&self, context: &AppContext) -> Option<Device> {
+        context.channel().get_device_config(&self.device_id).await.ok().map(|(cfg,_, _)| cfg)
     }
 
-    pub fn bool_value(&self, context: &AppContext) -> Option<bool> {
-        self.input_id.as_ref().map(|id| { 
-             context.channel().read_boolean(id).ok()
-        }).flatten()
+    pub async fn bool_value(&self, context: &AppContext) -> Option<bool> {
+
+        match self.input_id.as_ref() {
+         Some(id) =>     context.channel().read_boolean(id).await.ok()
+                ,
+             None => None
+        }
     }
-    pub fn value(&self, context: &AppContext) -> Option<InputValue> {
-        self.input_id.as_ref().map(|id| { 
-             context.channel().read_value(id).ok().map(|(value, unit)| 
+    pub async fn value(&self, context: &AppContext) -> Option<InputValue> {
+        match self.input_id.as_ref() {
+         Some(id) =>     context.channel().read_value(id).await.ok().map(|(value, unit)| 
                  InputValue {value, unit}
-                )
-        }).flatten()
+                ),
+             None => None
+        }
     }
 }
 
@@ -216,8 +221,8 @@ impl Output {
         self.unit
     }
 
-    pub fn device(&self, context: &AppContext) -> Option<Device> {
-        context.channel().get_device_config(&self.device_id).ok().map(|(cfg,_, _)| cfg)
+    pub async fn device(&self, context: &AppContext) -> Option<Device> {
+        context.channel().get_device_config(&self.device_id).await.ok().map(|(cfg,_, _)| cfg)
     }
 
     pub fn active_low(&self) -> Option<bool> {
@@ -228,10 +233,11 @@ impl Output {
         self.on_when.clone()
     }
 
-    pub fn value(&self, context: &AppContext) -> Option<bool> {
-        self.output_id.as_ref().map(|oid| { 
-            context.channel().current_output_value(oid).ok()
-        }).flatten()
+    pub async fn value(&self, context: &AppContext) -> Option<bool> {
+        match self.output_id.as_ref() {
+            Some(oid) => context.channel().current_output_value(oid).await.ok(),
+            None => None,
+        }
     }
 }
 

@@ -4,6 +4,7 @@ use serde_derive::Serialize;
 use std::error;
 use std::fmt;
 use std::io;
+use std::collections::HashMap;
 use std::sync::mpsc;
 
 /// Represent all common results of i2c
@@ -55,7 +56,6 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
-
 impl From<toml::ser::Error> for Error {
     fn from(err: toml::ser::Error) -> Error {
         Error::EncodingError(format!("ser: {}", err))
@@ -92,9 +92,38 @@ impl From<std::sync::mpsc::RecvError> for Error {
     }
 }
 
+impl From<tokio::sync::mpsc::error::RecvError> for Error {
+    fn from(err: tokio::sync::mpsc::error::RecvError) -> Error {
+        Error::RecvError(format!("tokio recv error: {}", err))
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for Error {
+    fn from(err: tokio::sync::oneshot::error::RecvError) -> Error {
+        Error::RecvError(format!("tokio recv error: {}", err))
+    }
+}
+
 impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error {
     fn from(err: std::sync::mpsc::SendError<crate::app::channel::AppMessage>) -> Error {
         Error::SendError(format!("{}", err))
+    }
+}
+
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>> for Error {
+    fn from(err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>) -> Error {
+        Error::SendError(format!("{}", err))
+    }
+}
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>> for Error {
+    fn from(err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>) -> Error {
+        Error::SendError(format!("{}", err))
+    }
+}
+
+impl From<tokio::sync::mpsc::error::SendError<crate::app::channel::AppMessage>> for Error {
+    fn from(err: tokio::sync::mpsc::error::SendError<crate::app::channel::AppMessage>) -> Error {
+        Error::SendError(format!("tokio send error: {}", err))
     }
 }
 

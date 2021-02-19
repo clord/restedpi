@@ -8,7 +8,7 @@ use crate::rpi::device::Device;
 use chrono::prelude::*;
 
 use std::collections::HashMap;
-use std::sync::mpsc::Sender;
+use tokio::sync::mpsc;
 
 // Keep current app state in memory, together with device state
 pub struct State {
@@ -16,13 +16,13 @@ pub struct State {
 
     devices: HashMap<String, Device>,
     device_configs: HashMap<String, config::Device>,
-    devices_change: Sender<HashMap<String, config::Device>>,
+    devices_change: mpsc::Sender<HashMap<String, config::Device>>,
 
     inputs: HashMap<String, config::Input>,
-    inputs_change: Sender<HashMap<String, config::Input>>,
+    inputs_change: mpsc::Sender<HashMap<String, config::Input>>,
 
     outputs: HashMap<String, config::Output>,
-    outputs_change: Sender<HashMap<String, config::Output>>,
+    outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
 
     i2c: rpi::RpiApi,
     here: (f64, f64),
@@ -30,14 +30,12 @@ pub struct State {
 
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub fn add_device(&mut self, id: &str, config: config::Device) -> Result<()> {
+    pub async fn add_device(&mut self, id: &str, config: config::Device) -> Result<()> {
         let mut device = Device::new(config.clone(), self.i2c.clone());
         info!("Adding or replacing device with id: {}", id);
         device.reset()?;
         self.devices.insert(id.to_string(), device);
-        self.devices_change
-            .send(self.device_configs.clone())
-            .unwrap_or(());
+        self.devices_change.send(self.device_configs.clone()).await;
         Ok(())
     }
 
@@ -48,15 +46,15 @@ impl State {
         self.here.1
     }
 
-    pub fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
+    pub async fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
         self.inputs.insert(id.to_string(), config.clone());
-        self.inputs_change.send(self.inputs.clone()).unwrap_or(());
+        self.inputs_change.send(self.inputs.clone()).await;
         Ok(())
     }
 
-    pub fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
+    pub async fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
         self.outputs.insert(id.to_string(), config.clone());
-        self.outputs_change.send(self.outputs.clone()).unwrap_or(());
+        self.outputs_change.send(self.outputs.clone()).await;
         Ok(())
     }
 
@@ -108,7 +106,7 @@ impl State {
         affected
     }
 
-    pub fn remove_device(
+    pub async fn remove_device(
         &mut self,
         name: &str,
     ) -> Result<(
@@ -124,28 +122,29 @@ impl State {
         self.devices.remove(name);
         self.devices_change
             .send(self.device_configs.clone())
-            .unwrap_or(());
+            .await;
 
         for o in &afflicted_outputs {
-            self.remove_output(&o.0)?;
+            // TODO: should start them all, tben await them all
+            self.remove_output(&o.0).await?;
         }
 
         for i in &afflicted_inputs {
-            self.remove_input(&i.0)?;
+            self.remove_input(&i.0).await?;
         }
 
         Ok((afflicted_inputs, afflicted_outputs))
     }
 
-    pub fn remove_input(&mut self, id: &str) -> Result<()> {
+    pub async fn remove_input(&mut self, id: &str) -> Result<()> {
         self.inputs.remove(id);
-        self.inputs_change.send(self.inputs.clone()).unwrap_or(());
+        self.inputs_change.send(self.inputs.clone()).await;
         Ok(())
     }
 
-    pub fn remove_output(&mut self, id: &str) -> Result<()> {
+    pub async fn remove_output(&mut self, id: &str) -> Result<()> {
         self.outputs.remove(id);
-        self.outputs_change.send(self.outputs.clone()).unwrap_or(());
+        self.outputs_change.send(self.outputs.clone()).await;
         Ok(())
     }
 
@@ -339,13 +338,13 @@ impl State {
 pub fn new_state(
     here: (f64, f64),
     devices: HashMap<String, config::Device>,
-    devices_change: Sender<HashMap<String, config::Device>>,
+    devices_change: mpsc::Sender<HashMap<String, config::Device>>,
 
     inputs: HashMap<String, config::Input>,
-    inputs_change: Sender<HashMap<String, config::Input>>,
+    inputs_change: mpsc::Sender<HashMap<String, config::Input>>,
 
     outputs: HashMap<String, config::Output>,
-    outputs_change: Sender<HashMap<String, config::Output>>,
+    outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
 ) -> Result<State> {
     let dt = Local::now();
     let i2c = rpi::start();

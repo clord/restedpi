@@ -12,58 +12,6 @@ fn do_result<T: serde::Serialize>(input: Result<T, Error>) -> Result<impl Reply,
     }
 }
 
-pub async fn list_devices(ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().all_devices())
-}
-
-pub async fn add_or_replace_device(
-    device_id: String,
-    device: crate::config::Device,
-    ctx: AppContext,
-) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().add_or_replace_device(device_id, device))
-}
-
-pub async fn remove_device(device_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().remove_device(device_id))
-}
-
-pub async fn read_input(input_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().read_value(&input_id))
-}
-
-pub async fn list_outputs(ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().all_outputs())
-}
-
-pub async fn add_or_replace_output(
-    output_id: String,
-    output: crate::config::Output,
-    ctx: AppContext,
-) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().add_or_replace_output(output_id, output))
-}
-
-pub async fn remove_output(output_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().remove_output(output_id))
-}
-
-pub async fn list_inputs(ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().all_inputs())
-}
-
-pub async fn add_or_replace_input(
-    input_id: String,
-    input: crate::config::Input,
-    ctx: AppContext,
-) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().add_or_replace_input(input_id, input))
-}
-
-pub async fn remove_input(input_id: String, ctx: AppContext) -> Result<impl Reply, Rejection> {
-    do_result(ctx.channel().remove_input(input_id))
-}
-
 pub async fn authentication(
     ctx: AppContext,
     form: HashMap<String, String>,
