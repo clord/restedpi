@@ -35,7 +35,6 @@ pub enum RpiMessage {
 /**
  * Represent the system I2C bus to arbitrary threads. read and write
  * actions are atomically performed, including any address change.
- * Delay command blocks the bus and prevents other actions.
  */
 #[derive(Clone, Debug)]
 pub struct RpiApi {
@@ -90,7 +89,7 @@ impl RpiApi {
     }
 }
 
-pub async fn start() -> RpiApi {
+pub fn start() -> RpiApi {
     let (sender, mut receiver) = mpsc::channel::<RpiMessage>(10);
 
     tokio::spawn(async move {
@@ -172,5 +171,6 @@ pub async fn start() -> RpiApi {
             }
         }
     });
+
     RpiApi { sender }
 }

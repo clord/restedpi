@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
+use std::time::Instant;
 use std::vec::Vec;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -710,16 +711,19 @@ pub async fn start_app(
     });
 
     tokio::spawn(async move {
+        let mut last_emit = Instant::now();
         loop {
             match receiver.recv().await {
                 Some(next) => {
                     debug!("processing message: {:?}", &next);
+
                     if process_message(next, &mut state).await {
                         info!("terminating channel");
                         break;
-                    } else {
+                    } else if last_emit.elapsed().as_millis() > 700 {
                         debug!("running automation...");
-                        state.emit_automations();
+                        state.emit_automations().await;
+                        last_emit = Instant::now();
                     }
 
                     // TODO: Support sending real time change notification by allowing clients to send a sender to us,

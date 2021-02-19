@@ -7,7 +7,7 @@ use chrono::offset::LocalResult;
 use chrono::prelude::*;
 use chrono::Duration;
 use std::str::FromStr;
-use tracing::{debug, error};
+use tracing::error;
 
 pub enum ParseUnitError {
     NotKnown,
@@ -203,6 +203,5 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::Trunc(x) => Ok(evaluate(app, x).await?.trunc()),
         Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v).await?),
     };
-    debug!("Eval: {:?} -> {:?}", expr, res);
     res
 }

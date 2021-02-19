@@ -1,16 +1,8 @@
-use crate::error::Error;
 use crate::session::{authenticate, AppContext};
 use serde_json::json;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use warp::{reject, reply, Rejection, Reply};
-
-fn do_result<T: serde::Serialize>(input: Result<T, Error>) -> Result<impl Reply, Rejection> {
-    match input {
-        Ok(r) => Ok(reply::json(&r)),
-        Err(e) => Err(reject::custom(e)),
-    }
-}
 
 pub async fn authentication(
     ctx: AppContext,

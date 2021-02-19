@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 pub mod boolean;
 pub mod parse;
 pub mod sched;

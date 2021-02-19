@@ -37,7 +37,10 @@ impl State {
         info!("Adding or replacing device with id: {}", id);
         device.reset().await?;
         self.devices.insert(id.to_string(), device);
-        self.devices_change.send(self.device_configs.clone()).await;
+        self.devices_change
+            .send(self.device_configs.clone())
+            .await
+            .map_err(|_| Error::SendError("add device".to_string()))?;
         Ok(())
     }
 
@@ -50,13 +53,19 @@ impl State {
 
     pub async fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
         self.inputs.insert(id.to_string(), config.clone());
-        self.inputs_change.send(self.inputs.clone()).await;
+        self.inputs_change
+            .send(self.inputs.clone())
+            .await
+            .map_err(|_| Error::SendError("add input".to_string()))?;
         Ok(())
     }
 
     pub async fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
         self.outputs.insert(id.to_string(), config.clone());
-        self.outputs_change.send(self.outputs.clone()).await;
+        self.outputs_change
+            .send(self.outputs.clone())
+            .await
+            .map_err(|_| Error::SendError("add output".to_string()))?;
         Ok(())
     }
 
@@ -122,7 +131,10 @@ impl State {
         let afflicted_outputs = self.outputs_using_device(name);
 
         self.devices.remove(name);
-        self.devices_change.send(self.device_configs.clone()).await;
+        self.devices_change
+            .send(self.device_configs.clone())
+            .await
+            .map_err(|_| Error::SendError("remove device".to_string()))?;
 
         for o in &afflicted_outputs {
             // TODO: should start them all, tben await them all
@@ -138,13 +150,19 @@ impl State {
 
     pub async fn remove_input(&mut self, id: &str) -> Result<()> {
         self.inputs.remove(id);
-        self.inputs_change.send(self.inputs.clone()).await;
+        self.inputs_change
+            .send(self.inputs.clone())
+            .await
+            .map_err(|_| Error::SendError("remove input".to_string()))?;
         Ok(())
     }
 
     pub async fn remove_output(&mut self, id: &str) -> Result<()> {
         self.outputs.remove(id);
-        self.outputs_change.send(self.outputs.clone()).await;
+        self.outputs_change
+            .send(self.outputs.clone())
+            .await
+            .map_err(|_| Error::SendError("remove output".to_string()))?;
         Ok(())
     }
 
@@ -348,7 +366,7 @@ pub async fn new_state(
     outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
 ) -> Result<State> {
     let dt = Local::now();
-    let i2c = rpi::start().await;
+    let i2c = rpi::start();
     let mut device_instances: HashMap<String, Device> = HashMap::new();
 
     for (k, cfg) in &devices {
