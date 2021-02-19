@@ -100,6 +100,7 @@ struct BankState<T> {
 struct State {
     direction: Directions,
     values: Bits,
+    initial: bool,
 }
 
 impl State {
@@ -107,6 +108,7 @@ impl State {
         State {
             direction: Directions::new(),
             values: Bits::new(),
+            initial: true,
         }
     }
     pub fn get_direction(&self, pin: Pin) -> Dir {
@@ -283,10 +285,14 @@ impl Mcp23017State {
         Ok(())
     }
 
-    fn mutate_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> u8 {
+    fn mutate_pin(&mut self, bank: Bank, pin: Pin, value: bool) -> (u8, bool) {
         let state = self.mut_state_for_bank(bank);
+        let initial = state.initial;
+        let old_value = state.value_as_word();
         state.set_value(pin, value);
-        state.value_as_word()
+        state.initial = false;
+        let new_value = state.value_as_word();
+        (new_value, initial || new_value != old_value)
     }
 
     pub async fn set_pin(
@@ -305,9 +311,11 @@ impl Mcp23017State {
                     "set_pin: a:{} b:{:?} p:{:?} <- {}",
                     address, bank, pin, value
                 );
-                let new_values = self.mutate_pin(bank, pin, value);
-                self.write_gpio_value(address, bank, vec![new_values], rapi)
-                    .await?;
+                let (new_values, changed) = self.mutate_pin(bank, pin, value);
+                if changed {
+                    self.write_gpio_value(address, bank, vec![new_values], rapi)
+                        .await?;
+                }
                 Ok(())
             }
             Dir::OutL => {
@@ -315,9 +323,11 @@ impl Mcp23017State {
                     "set_pin: a:{} b:{:?} p:{:?} <- {} (OutL)",
                     address, bank, pin, value
                 );
-                let new_values = self.mutate_pin(bank, pin, !value);
-                self.write_gpio_value(address, bank, vec![new_values], rapi)
-                    .await?;
+                let (new_values, changed) = self.mutate_pin(bank, pin, !value);
+                if changed {
+                    self.write_gpio_value(address, bank, vec![new_values], rapi)
+                        .await?;
+                }
                 Ok(())
             }
         }
