@@ -2,10 +2,12 @@ use crate::app::state::State;
 use crate::config::sched;
 use crate::config::{DateTimeValue, LocationValue, Unit, Value};
 use crate::error::Result;
+use async_recursion::async_recursion;
 use chrono::offset::LocalResult;
 use chrono::prelude::*;
 use chrono::Duration;
 use std::str::FromStr;
+use tracing::{debug, error};
 
 pub enum ParseUnitError {
     NotKnown,
@@ -74,22 +76,23 @@ impl FromStr for Unit {
 }
 
 /// An evaluator for value expressions.
-pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
+#[async_recursion]
+pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
     let res = match expr {
         Value::Const(a) => Ok(*a),
 
         Value::ReadInput(input_id, unit) => {
-            let value = app.read_input_value(input_id)?;
+            let value = app.read_input_value(input_id).await?;
             if *unit == value.1 {
                 Ok(value.0)
             } else {
                 Err(crate::error::Error::UnitError(format!("{:?}", unit)))
             }
         }
-        Value::Sub(a, b) => Ok(evaluate(app, a)? - evaluate(app, b)?),
-        Value::Add(a, b) => Ok(evaluate(app, a)? + evaluate(app, b)?),
-        Value::Mul(a, b) => Ok(evaluate(app, a)? * evaluate(app, b)?),
-        Value::Div(a, b) => Ok(evaluate(app, a)? / evaluate(app, b)?),
+        Value::Sub(a, b) => Ok(evaluate(app, a).await? - evaluate(app, b).await?),
+        Value::Add(a, b) => Ok(evaluate(app, a).await? + evaluate(app, b).await?),
+        Value::Mul(a, b) => Ok(evaluate(app, a).await? * evaluate(app, b).await?),
+        Value::Div(a, b) => Ok(evaluate(app, a).await? / evaluate(app, b).await?),
 
         Value::HourOffset(location) => Ok(sched::exact_offset_hrs(long_for_loc(app, location))),
 
@@ -188,15 +191,17 @@ pub fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         }
 
         Value::Lerp(a, t, b) => {
-            let tev = evaluate(app, t)?;
-            let aev = evaluate(app, a)?;
-            let bev = evaluate(app, b)?;
+            let tev = evaluate(app, t).await?;
+            let aev = evaluate(app, a).await?;
+            let bev = evaluate(app, b).await?;
             Ok(aev * (1f64 - tev) + bev * tev)
         }
 
-        Value::Linear(a, x, b) => Ok(evaluate(app, a)? * evaluate(app, x)? + evaluate(app, b)?),
-        Value::Trunc(x) => Ok(evaluate(app, x)?.trunc()),
-        Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v)?),
+        Value::Linear(a, x, b) => {
+            Ok(evaluate(app, a).await? * evaluate(app, x).await? + evaluate(app, b).await?)
+        }
+        Value::Trunc(x) => Ok(evaluate(app, x).await?.trunc()),
+        Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v).await?),
     };
     debug!("Eval: {:?} -> {:?}", expr, res);
     res

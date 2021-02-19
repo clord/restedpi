@@ -3,6 +3,7 @@ use super::I2cAddress;
 use crate::config::{Dir, Directions};
 use crate::error::{Error, Result};
 use bit_array::BitArray;
+use tracing::debug;
 
 type Bits = BitArray<u32, typenum::U8>;
 
@@ -191,7 +192,7 @@ impl Mcp23017State {
     }
 
     // Unconditionally writes current value to device
-    fn write_gpio_value(
+    async fn write_gpio_value(
         &self,
         address: I2cAddress,
         bank: Bank,
@@ -203,45 +204,53 @@ impl Mcp23017State {
             Bank::B => WRITE_B,
         };
         debug!("will write: {}: {:?}", address, &values);
-        rapi.write_i2c(address, register, values)
+        rapi.write_i2c(address, register, values).await
     }
 
     // Unconditionally reads values from the device and stores in device state
-    fn read_gpio_value(&self, address: I2cAddress, bank: Bank, rapi: &RpiApi) -> Result<Bits> {
+    async fn read_gpio_value(
+        &self,
+        address: I2cAddress,
+        bank: Bank,
+        rapi: &RpiApi,
+    ) -> Result<Bits> {
         let register = match bank {
             Bank::A => READ_A,
             Bank::B => READ_B,
         };
 
-        let result = rapi.read_i2c(address, register, 1)?;
+        let result = rapi.read_i2c(address, register, 1).await?;
         debug!("did read: {}: {:?}", address, result);
         Ok(read_word(result[0]))
     }
 
     // Unconditionally writes current direction to device
-    fn write_gpio_dir(&self, address: I2cAddress, bank: Bank, rapi: &RpiApi) -> Result<()> {
+    async fn write_gpio_dir(&self, address: I2cAddress, bank: Bank, rapi: &RpiApi) -> Result<()> {
         let state = self.state_for_bank(bank);
         let (dir_reg, polarity_reg, pullup_reg) = match bank {
             Bank::A => (DIRECTION_A, IN_POLARITY_A, PULLUP_A),
             Bank::B => (DIRECTION_B, IN_POLARITY_B, PULLUP_B),
         };
-        rapi.write_i2c(address, dir_reg, vec![state.inout_word()])?;
-        rapi.write_i2c(address, polarity_reg, vec![state.input_polarity_word()])?;
-        rapi.write_i2c(address, pullup_reg, vec![state.pullup_word()])?;
+        rapi.write_i2c(address, dir_reg, vec![state.inout_word()])
+            .await?;
+        rapi.write_i2c(address, polarity_reg, vec![state.input_polarity_word()])
+            .await?;
+        rapi.write_i2c(address, pullup_reg, vec![state.pullup_word()])
+            .await?;
         Ok(())
     }
 
-    pub fn reset(&mut self, address: I2cAddress, rapi: &RpiApi) -> Result<()> {
+    pub async fn reset(&mut self, address: I2cAddress, rapi: &RpiApi) -> Result<()> {
         self.state = BankState {
             a: State::new(),
             b: State::new(),
         };
-        self.write_gpio_dir(address, Bank::A, rapi)?;
-        self.write_gpio_dir(address, Bank::B, rapi)?;
+        self.write_gpio_dir(address, Bank::A, rapi).await?;
+        self.write_gpio_dir(address, Bank::B, rapi).await?;
         Ok(())
     }
 
-    pub fn set_pin_directions(
+    pub async fn set_pin_directions(
         &mut self,
         address: I2cAddress,
         bank: Bank,
@@ -250,14 +259,15 @@ impl Mcp23017State {
     ) -> Result<()> {
         let bank_state = self.mut_state_for_bank(bank);
         bank_state.direction = *directions;
-        self.write_gpio_dir(address, bank, rapi)?;
+        self.write_gpio_dir(address, bank, rapi).await?;
         for p in 0..7 {
-            self.set_pin(address, bank, ordinal_to_pin(p), false, rapi)?;
+            self.set_pin(address, bank, ordinal_to_pin(p), false, rapi)
+                .await?;
         }
         Ok(())
     }
 
-    pub fn set_pin_direction(
+    pub async fn set_pin_direction(
         &mut self,
         address: I2cAddress,
         bank: Bank,
@@ -268,7 +278,7 @@ impl Mcp23017State {
         let bank_state = self.mut_state_for_bank(bank);
         if bank_state.get_direction(pin) != direction {
             bank_state.set_direction(pin, direction);
-            self.write_gpio_dir(address, bank, rapi)?;
+            self.write_gpio_dir(address, bank, rapi).await?;
         }
         Ok(())
     }
@@ -279,7 +289,7 @@ impl Mcp23017State {
         state.value_as_word()
     }
 
-    pub fn set_pin(
+    pub async fn set_pin(
         &mut self,
         address: I2cAddress,
         bank: Bank,
@@ -296,7 +306,8 @@ impl Mcp23017State {
                     address, bank, pin, value
                 );
                 let new_values = self.mutate_pin(bank, pin, value);
-                self.write_gpio_value(address, bank, vec![new_values], rapi)?;
+                self.write_gpio_value(address, bank, vec![new_values], rapi)
+                    .await?;
                 Ok(())
             }
             Dir::OutL => {
@@ -305,7 +316,8 @@ impl Mcp23017State {
                     address, bank, pin, value
                 );
                 let new_values = self.mutate_pin(bank, pin, !value);
-                self.write_gpio_value(address, bank, vec![new_values], rapi)?;
+                self.write_gpio_value(address, bank, vec![new_values], rapi)
+                    .await?;
                 Ok(())
             }
         }
@@ -315,7 +327,7 @@ impl Mcp23017State {
         self.state_for_bank(bank).get_direction(pin)
     }
 
-    pub fn get_pin(
+    pub async fn get_pin(
         &self,
         address: I2cAddress,
         bank: Bank,
@@ -327,11 +339,11 @@ impl Mcp23017State {
             Dir::OutL => Ok(!state.pin_value(pin)),
             Dir::OutH => Ok(state.pin_value(pin)),
             Dir::In => {
-                let value = self.read_gpio_value(address, bank, rapi)?;
+                let value = self.read_gpio_value(address, bank, rapi).await?;
                 return Ok(value[7 - pin_to_ordinal(pin)]);
             }
             Dir::InWithPD => {
-                let value = self.read_gpio_value(address, bank, rapi)?;
+                let value = self.read_gpio_value(address, bank, rapi).await?;
                 return Ok(value[7 - pin_to_ordinal(pin)]);
             }
         }

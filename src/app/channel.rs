@@ -9,6 +9,7 @@ use std::time::Duration;
 use std::vec::Vec;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tracing::{debug, error, info, instrument, warn};
 
 /**
  * Supported messages we can send to the app
@@ -445,6 +446,7 @@ impl AppChannel {
  *
  * @returns true if channel should terminate
  */
+#[instrument]
 async fn process_message(message: AppMessage, state: &mut state::State) -> bool {
     let mut should_terminate = false;
     match message {
@@ -454,7 +456,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         } => {
             let mut result = Vec::new();
             for input_id in input_ids {
-                let r = state.read_input_bool(&input_id);
+                let r = state.read_input_bool(&input_id).await;
                 result.push(r);
             }
             match response.send(result) {
@@ -464,7 +466,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::ReadBoolean { input_id, response } => {
-            let result = state.read_input_bool(&input_id);
+            let result = state.read_input_bool(&input_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -476,7 +478,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             value,
             response,
         } => {
-            let result = state.write_output_bool(&output_id, value);
+            let result = state.write_output_bool(&output_id, value).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -568,7 +570,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             device_id,
             response,
         } => {
-            let result = state.reset_device(&device_id);
+            let result = state.reset_device(&device_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -603,7 +605,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             output_id,
             response,
         } => {
-            let result = state.read_output_bool(&output_id);
+            let result = state.read_output_bool(&output_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -611,7 +613,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::ReadValue { input_id, response } => {
-            let result = state.read_input_value(&input_id);
+            let result = state.read_input_value(&input_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -662,7 +664,7 @@ fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>
     Ok((config, sender))
 }
 
-pub fn start_app(
+pub async fn start_app(
     here: (f64, f64),
     path: &std::path::Path,
     users: HashMap<String, String>,
@@ -686,7 +688,8 @@ pub fn start_app(
         inputs_change,
         outputs,
         outputs_change,
-    )?;
+    )
+    .await?;
 
     let mut sender_clone = sender.clone();
 
@@ -715,6 +718,7 @@ pub fn start_app(
                         info!("terminating channel");
                         break;
                     } else {
+                        debug!("running automation...");
                         state.emit_automations();
                     }
 

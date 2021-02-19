@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 use librpi::app;
 use librpi::auth::password;
 use librpi::config::parse;
@@ -13,9 +10,13 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use structopt::StructOpt;
+use tokio::sync::Mutex;
 use warp::Filter;
+
+use tracing::{error, info, warn};
+use tracing_subscriber;
 
 // big picture:
 // read configuration and decide what sensors and switches are available. start up application, then
@@ -108,8 +109,9 @@ async fn main() {
         config_file,
         command,
     } = Opt::from_args();
-    env::set_var("LOG", log_level);
-    pretty_env_logger::init_custom_env("LOG");
+    env::set_var("RUST_LOG", log_level);
+    tracing_subscriber::fmt::init();
+    // pretty_env_logger::init_custom_env("LOG");
     let config_file = get_config_path(config_file);
 
     match command {
@@ -208,6 +210,7 @@ async fn main() {
             let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
 
             let app = app::channel::start_app((config.lat, config.long), &config_file, users)
+                .await
                 .expect("app failed to start");
             let app = Arc::new(Mutex::new(app));
 

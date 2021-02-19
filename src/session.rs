@@ -5,6 +5,7 @@ use crate::webapp::SharedAppState;
 use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::error;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebSession {
@@ -23,8 +24,8 @@ impl AppContext {
         Self { main, session }
     }
 
-    pub fn channel(&self) -> AppChannel {
-        self.main.clone().lock().expect("locked state").clone()
+    pub async fn channel(&self) -> AppChannel {
+        self.main.clone().lock().await.clone()
     }
 }
 
@@ -61,7 +62,7 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
 
-    match ctx.channel().hash_for(user) {
+    match ctx.channel().await.hash_for(user) {
         Some(user_hash) => match password::verify(pw, user_hash) {
             Ok(false) => Err(Error::UserNotFound),
             Ok(true) => match token::make_token(

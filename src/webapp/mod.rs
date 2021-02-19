@@ -3,13 +3,15 @@ use crate::error::Error;
 use mime_guess::from_path;
 use serde_json::json;
 use std::borrow::Cow;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing::error;
 use warp::filters::path::Tail;
 use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
+
 pub mod filters;
 mod handlers;
 pub mod slugify;
-
-use std::sync::{Arc, Mutex};
 
 // We have to share the app state since warp uses a thread pool
 pub type SharedAppState = Arc<Mutex<app::channel::AppChannel>>;

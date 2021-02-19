@@ -129,6 +129,12 @@ impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config:
     }
 }
 
+impl From<tokio::sync::mpsc::error::SendError<crate::rpi::RpiMessage>> for Error {
+    fn from(err: tokio::sync::mpsc::error::SendError<crate::rpi::RpiMessage>) -> Error {
+        Error::SendError(format!("tokio send error: {}", err))
+    }
+}
+
 impl From<tokio::sync::mpsc::error::SendError<crate::app::channel::AppMessage>> for Error {
     fn from(err: tokio::sync::mpsc::error::SendError<crate::app::channel::AppMessage>) -> Error {
         Error::SendError(format!("tokio send error: {}", err))

@@ -9,8 +9,10 @@ use chrono::prelude::*;
 
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tracing::{debug, error, info, warn};
 
 // Keep current app state in memory, together with device state
+#[derive(Debug)]
 pub struct State {
     dt: DateTime<Local>,
 
@@ -33,7 +35,7 @@ impl State {
     pub async fn add_device(&mut self, id: &str, config: config::Device) -> Result<()> {
         let mut device = Device::new(config.clone(), self.i2c.clone());
         info!("Adding or replacing device with id: {}", id);
-        device.reset()?;
+        device.reset().await?;
         self.devices.insert(id.to_string(), device);
         self.devices_change.send(self.device_configs.clone()).await;
         Ok(())
@@ -58,11 +60,11 @@ impl State {
         Ok(())
     }
 
-    pub fn reset_device(&mut self, id: &str) -> Result<()> {
+    pub async fn reset_device(&mut self, id: &str) -> Result<()> {
         let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
             format!("reset_device: {}", id).to_string(),
         ))?;
-        device.reset()?;
+        device.reset().await?;
         Ok(())
     }
 
@@ -190,7 +192,7 @@ impl State {
     /**
      * read what is currently being outputed
      */
-    pub fn read_output_bool(&self, output_id: &str) -> Result<bool> {
+    pub async fn read_output_bool(&self, output_id: &str) -> Result<bool> {
         let m_output = self.outputs.get(output_id);
 
         let config::Output {
@@ -212,14 +214,14 @@ impl State {
             warn!("Can't read {:?}  from output {}", unit, output_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
-        let value = device.read_boolean(*device_output_id)?;
+        let value = device.read_boolean(*device_output_id).await?;
         Ok(value)
     }
 
     /**
      * read a named input
      */
-    pub fn read_input_bool(&self, input_id: &str) -> Result<bool> {
+    pub async fn read_input_bool(&self, input_id: &str) -> Result<bool> {
         let m_input = self.inputs.get(input_id);
 
         let config::Input {
@@ -239,14 +241,14 @@ impl State {
             warn!("Can't read {:?}  from input {}", unit, input_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
-        let value = device.read_boolean(*device_input_id)?;
+        let value = device.read_boolean(*device_input_id).await?;
         Ok(value)
     }
 
     /**
      * Write a particular value to an output
      */
-    pub fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
+    pub async fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
         let m_output = self.outputs.get(output_id);
         let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
         let config::Output {
@@ -270,10 +272,12 @@ impl State {
             return Err(Error::UnitError("can't write".to_string()));
         }
 
-        device.write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)
+        device
+            .write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)
+            .await
     }
 
-    pub fn emit_automations(&mut self) {
+    pub async fn emit_automations(&mut self) {
         let keys: Vec<String> = { self.outputs.keys().cloned().collect() };
         for output_id in keys {
             debug!("automation for {}", output_id);
@@ -282,9 +286,9 @@ impl State {
                 if let Some(expr) = on_when {
                     // TODO: Parse expr from string!
                     match config::parse::bool_expr(&expr) {
-                        Ok(parsed) => match config::boolean::evaluate(self, &parsed) {
+                        Ok(parsed) => match config::boolean::evaluate(self, &parsed).await {
                             Ok(result) => {
-                                if let Err(e) = self.write_output_bool(&output_id, result) {
+                                if let Err(e) = self.write_output_bool(&output_id, result).await {
                                     error!("failed to write: {}", e);
                                 }
                             }
@@ -297,7 +301,7 @@ impl State {
         }
     }
 
-    pub fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
+    pub async fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
         let m_input = self.inputs.get(input_id);
         let config::Input {
             device_id,
@@ -311,20 +315,20 @@ impl State {
         ))?;
         match unit {
             Unit::Boolean => {
-                let value = device.read_boolean(*device_input_id)?;
+                let value = device.read_boolean(*device_input_id).await?;
                 Ok(if value {
                     (1.0, config::Unit::Boolean)
                 } else {
                     (0.0, config::Unit::Boolean)
                 })
             }
-            _ => device.read_sensor(*device_input_id),
+            _ => device.read_sensor(*device_input_id).await,
         }
     }
 
-    pub fn read_sensor(&self, device_id: &str, sensor_id: u32) -> Result<(f64, Unit)> {
+    pub async fn read_sensor(&self, device_id: &str, sensor_id: u32) -> Result<(f64, Unit)> {
         match self.devices.get(device_id) {
-            Some(m) => m.read_sensor(sensor_id),
+            Some(m) => m.read_sensor(sensor_id).await,
             None => Err(Error::NonExistant(
                 format!("read_sensor: {}", device_id).to_string(),
             )),
@@ -332,7 +336,7 @@ impl State {
     }
 }
 
-pub fn new_state(
+pub async fn new_state(
     here: (f64, f64),
     devices: HashMap<String, config::Device>,
     devices_change: mpsc::Sender<HashMap<String, config::Device>>,
@@ -344,7 +348,7 @@ pub fn new_state(
     outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
 ) -> Result<State> {
     let dt = Local::now();
-    let i2c = rpi::start();
+    let i2c = rpi::start().await;
     let mut device_instances: HashMap<String, Device> = HashMap::new();
 
     for (k, cfg) in &devices {

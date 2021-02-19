@@ -1,7 +1,4 @@
-extern crate pretty_env_logger;
-
-#[macro_use]
-extern crate log;
+extern crate tracing;
 
 extern crate bit_array;
 extern crate regex;
