@@ -10,9 +10,7 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use structopt::StructOpt;
-use tokio::sync::Mutex;
 use warp::Filter;
 
 use tracing::{error, info, warn};
@@ -212,7 +210,6 @@ async fn main() {
             let app = app::channel::start_app((config.lat, config.long), &config_file, users)
                 .await
                 .expect("app failed to start");
-            let app = Arc::new(Mutex::new(app));
 
             let api = webapp::filters::graphql_api(app);
             let addr = SocketAddr::new(listen.parse().expect("IP address"), port);

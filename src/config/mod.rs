@@ -170,7 +170,6 @@ impl Input {
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
         context
             .channel()
-            .await
             .get_device_config(&self.device_id)
             .await
             .ok()
@@ -179,7 +178,7 @@ impl Input {
 
     pub async fn bool_value(&self, context: &AppContext) -> Option<bool> {
         match self.input_id.as_ref() {
-            Some(id) => context.channel().await.read_boolean(id).await.ok(),
+            Some(id) => context.channel().read_boolean(id).await.ok(),
             None => None,
         }
     }
@@ -187,7 +186,6 @@ impl Input {
         match self.input_id.as_ref() {
             Some(id) => context
                 .channel()
-                .await
                 .read_value(id)
                 .await
                 .ok()
@@ -230,7 +228,6 @@ impl Output {
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
         context
             .channel()
-            .await
             .get_device_config(&self.device_id)
             .await
             .ok()
@@ -247,7 +244,7 @@ impl Output {
 
     pub async fn value(&self, context: &AppContext) -> FieldResult<bool> {
         match self.output_id.as_ref() {
-            Some(oid) => Ok(context.channel().await.current_output_value(oid).await?),
+            Some(oid) => Ok(context.channel().current_output_value(oid).await?),
             None => Err(FieldError::from("Value Not Found")),
         }
     }

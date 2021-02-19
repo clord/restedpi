@@ -24,8 +24,8 @@ impl AppContext {
         Self { main, session }
     }
 
-    pub async fn channel(&self) -> AppChannel {
-        self.main.clone().lock().await.clone()
+    pub fn channel(&self) -> &AppChannel {
+        &self.main
     }
 }
 
@@ -62,7 +62,7 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
 
-    match ctx.channel().await.hash_for(user) {
+    match ctx.channel().hash_for(user) {
         Some(user_hash) => match password::verify(pw, user_hash) {
             Ok(false) => Err(Error::UserNotFound),
             Ok(true) => match token::make_token(

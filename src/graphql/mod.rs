@@ -18,22 +18,22 @@ impl Query {
     }
 
     pub async fn current_date(context: &AppContext) -> FieldResult<String> {
-        let now = context.channel().await.get_now().await?;
+        let now = context.channel().get_now().await?;
         Ok(now.to_rfc3339())
     }
 
     pub async fn inputs(context: &AppContext) -> FieldResult<Vec<String>> {
-        let inputs = context.channel().await.all_inputs().await?;
+        let inputs = context.channel().all_inputs().await?;
         Ok(inputs.keys().map(|x| x.to_owned()).collect())
     }
 
     pub async fn outputs(context: &AppContext) -> FieldResult<Vec<String>> {
-        let outputs = context.channel().await.all_outputs().await?;
+        let outputs = context.channel().all_outputs().await?;
         Ok(outputs.keys().map(|x| x.to_owned()).collect())
     }
 
     pub async fn input(context: &AppContext, id: String) -> FieldResult<Input> {
-        let inputs = context.channel().await.all_inputs().await?;
+        let inputs = context.channel().all_inputs().await?;
         match inputs.get(&id) {
             Some(input) => {
                 let mut cloned = input.clone();
@@ -45,7 +45,7 @@ impl Query {
     }
 
     pub async fn output(context: &AppContext, id: String) -> FieldResult<Output> {
-        let outputs = context.channel().await.all_outputs().await?;
+        let outputs = context.channel().all_outputs().await?;
         match outputs.get(&id) {
             Some(output) => {
                 let mut cloned = output.clone();
