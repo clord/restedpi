@@ -17,6 +17,11 @@ impl Query {
         Ok(device.model().to_string())
     }
 
+    pub async fn current_date(context: &AppContext) -> FieldResult<String> {
+        let now = context.channel().get_now().await?;
+        Ok(now.to_rfc3339())
+    }
+
     pub async fn inputs(context: &AppContext) -> FieldResult<Vec<String>> {
         let inputs = context.channel().all_inputs().await?;
         Ok(inputs.keys().map(|x| x.to_owned()).collect())
