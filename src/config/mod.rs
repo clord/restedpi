@@ -195,6 +195,10 @@ impl Input {
     }
 }
 
+// Ok, we need the persistent format, and the executable, and the gql form. 
+// perhaps we can combine the executable and the gql form, since it has context anyway, but
+// we can't use the same for all three.
+
 /**
  * we can write a boolean value to a given device via name
  */

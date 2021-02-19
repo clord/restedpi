@@ -9,7 +9,7 @@ use chrono::prelude::*;
 
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{Instrument, instrument, debug, error, info, warn};
 
 // Keep current app state in memory, together with device state
 #[derive(Debug)]
@@ -295,27 +295,30 @@ impl State {
             .await
     }
 
+    #[instrument(skip(self))]
+    pub async fn emit_automation(&mut self, output_id: &str) {
+        let output = { self.outputs.get(output_id).cloned() };
+        if let Some(config::Output { on_when, .. }) = output {
+            if let Some(expr) = on_when {
+                match config::parse::bool_expr(&expr) {
+                    Ok(parsed) => match config::boolean::evaluate(self, &parsed).await {
+                        Ok(result) => {
+                            if let Err(e) = self.write_output_bool(&output_id, result).await {
+                                error!("failed to write: {}", e);
+                            }
+                        }
+                        Err(e) => error!("{:?} has an error: {}", expr, e),
+                    },
+                    Err(_) => error!("error parsing"),
+                }
+            }
+        }
+    }
+
     pub async fn emit_automations(&mut self) {
         let keys: Vec<String> = { self.outputs.keys().cloned().collect() };
         for output_id in keys {
-            debug!("automation for {}", output_id);
-            let output = { self.outputs.get(&output_id).cloned() };
-            if let Some(config::Output { on_when, .. }) = output {
-                if let Some(expr) = on_when {
-                    // TODO: Parse expr from string!
-                    match config::parse::bool_expr(&expr) {
-                        Ok(parsed) => match config::boolean::evaluate(self, &parsed).await {
-                            Ok(result) => {
-                                if let Err(e) = self.write_output_bool(&output_id, result).await {
-                                    error!("failed to write: {}", e);
-                                }
-                            }
-                            Err(e) => error!("{:?} has an error: {}", expr, e),
-                        },
-                        Err(_) => error!("error parsing"),
-                    }
-                }
-            }
+            self.emit_automation(&output_id).await;
         }
     }
 
