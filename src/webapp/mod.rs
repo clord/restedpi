@@ -259,6 +259,7 @@ pub async fn static_serve_tail(path: Tail) -> Result<impl Reply, Rejection> {
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<Error>() {
         let code = match err {
+            Error::DbError(_) => 0x2003,
             Error::IoError(_) => 0x1000,
             Error::InvalidPinDirection => 0x1001,
             Error::ParseError => 0x1002,

@@ -1,18 +1,18 @@
 use super::super::RpiApi;
 use super::util::{iv2be, uv2be};
 use super::I2cAddress;
-use crate::config;
+use crate::app::device::SamplingMode;
 use crate::error::Result;
 use std::thread;
 use std::time::Duration;
 
 /// How long should we accumulate before returning a result?
-fn sampling_mode(accuracy: config::SamplingMode) -> u8 {
+fn sampling_mode(accuracy: SamplingMode) -> u8 {
     match accuracy {
-        config::SamplingMode::UltraLowPower => 0u8,
-        config::SamplingMode::Standard => 1u8,
-        config::SamplingMode::HighRes => 2u8,
-        config::SamplingMode::UltraHighRes => 3u8,
+        SamplingMode::UltraLowPower => 0u8,
+        SamplingMode::Standard => 1u8,
+        SamplingMode::HighRes => 2u8,
+        SamplingMode::UltraHighRes => 3u8,
     }
 }
 
@@ -109,7 +109,7 @@ impl Bmp085State {
     pub async fn pressure_kpa(
         &self,
         address: I2cAddress,
-        accuracy: config::SamplingMode,
+        accuracy: SamplingMode,
         rapi: &RpiApi,
     ) -> Result<f32> {
         let (_, b5) = self.read_raw_temp(address, rapi).await?;
@@ -181,7 +181,7 @@ impl Bmp085State {
     async fn read_raw_pressure(
         &self,
         address: I2cAddress,
-        accuracy: config::SamplingMode,
+        accuracy: SamplingMode,
         rapi: &RpiApi,
     ) -> Result<i32> {
         let pressure_cmd = Control::ReadPressure as u8;
@@ -194,10 +194,10 @@ impl Bmp085State {
         .await?;
 
         let duration = match accuracy {
-            config::SamplingMode::UltraLowPower => Duration::from_millis(5),
-            config::SamplingMode::Standard => Duration::from_millis(8),
-            config::SamplingMode::HighRes => Duration::from_millis(14),
-            config::SamplingMode::UltraHighRes => Duration::from_millis(26),
+            SamplingMode::UltraLowPower => Duration::from_millis(5),
+            SamplingMode::Standard => Duration::from_millis(8),
+            SamplingMode::HighRes => Duration::from_millis(14),
+            SamplingMode::UltraHighRes => Duration::from_millis(26),
         };
 
         thread::sleep(duration);

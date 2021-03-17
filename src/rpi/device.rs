@@ -1,50 +1,59 @@
 use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
-use crate::config;
-use crate::error::{Error, Result};
-use serde_derive::Serialize;
+use crate::app::db;
+use crate::app::device;
 use std::convert::TryInto;
-
-#[derive(Clone, Serialize, Debug)]
-pub enum Status {
-    Ok,
-}
+use crate::error::{Error, Result};
 
 #[derive(Clone, Debug)]
 pub struct Device {
-    pub config: config::Device,
+    pub device: db::Device,
     rapi: RpiApi,
     mcp23017_state: mcp23017::Mcp23017State,
     bmp085_state: bmp085::Bmp085State,
 }
 
 impl Device {
-    pub fn new(config: config::Device, rapi: RpiApi) -> Self {
+    pub fn new(device: db::Device, rapi: RpiApi) -> Self {
         Device {
-            config,
+            device,
             rapi,
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),
         }
     }
 
-    pub fn status(&self) -> Status {
-        Status::Ok
+    pub fn model(&self) -> Result<device::Type> {
+        match self.device.model_type.to_lowercase().as_str() {
+            "mcp9808" => {
+                let config = serde_json::from_str(&self.device.model_config)?;
+                Ok(device::Type::MCP9808(config))
+            },
+            "mcp23017" => {
+                let config = serde_json::from_str(&self.device.model_config)?;
+                Ok(device::Type::MCP23017(config))
+            },
+            "bmp085" => {
+                let config = serde_json::from_str(&self.device.model_config)?;
+                Ok(device::Type::BMP085(config))
+            },
+            _ => Err(Error::NonExistant(format!("unknown device model '{}'", self.device.model_type)))
+        }
     }
 
-    pub fn config(&self) -> config::Device {
-        self.config.clone()
+    pub fn db_device(&self) -> db::Device {
+        self.device.clone()
     }
 
-    pub async fn set_config(&mut self, config: &config::Device) -> Result<()> {
-        self.config = config.clone();
+    pub async fn set_config(&mut self, db: &db::Device) -> Result<()> {
+        self.device = db.clone();
         self.reset().await
     }
 
     pub async fn reset(&mut self) -> Result<()> {
-        match &self.config.model {
-            config::Type::MCP9808(_) => Ok(()),
-            config::Type::MCP23017(config::MCP23017Config {
+        match &self.model()? {
+            device::Type::MCP9808(_) => Ok(()),
+            device::Type::MCP23017(device::MCP23017Config {
                 address,
                 bank_a,
                 bank_b,
@@ -89,7 +98,7 @@ impl Device {
                     .await?;
                 Ok(())
             }
-            config::Type::BMP085(config::BMP085Config { address, .. }) => {
+            device::Type::BMP085(device::BMP085Config { address, .. }) => {
                 self.bmp085_state
                     .reset((*address).try_into().unwrap(), &self.rapi)
                     .await
@@ -97,27 +106,27 @@ impl Device {
         }
     }
 
-    pub fn sensor_count(&self) -> u32 {
-        match &self.config.model {
-            config::Type::BMP085 { .. } => 2,
-            config::Type::MCP9808 { .. } => 1,
-            config::Type::MCP23017 { .. } => 0,
-        }
+    pub fn sensor_count(&self) -> Result<u32> {
+        Ok(match self.model()? {
+            device::Type::BMP085 { .. } => 2,
+            device::Type::MCP9808 { .. } => 1,
+            device::Type::MCP23017 { .. } => 0,
+        })
     }
 
-    pub fn boolean_count(&self) -> u32 {
-        match self.config.model {
-            config::Type::BMP085 { .. } => 0,
-            config::Type::MCP9808 { .. } => 0,
-            config::Type::MCP23017 { .. } => 16,
-        }
+    pub fn boolean_count(&self) -> Result<u32> {
+        Ok(match self.model()? {
+            device::Type::BMP085 { .. } => 0,
+            device::Type::MCP9808 { .. } => 0,
+            device::Type::MCP23017 { .. } => 16,
+        })
     }
 
     pub async fn read_boolean(&self, index: u32) -> Result<bool> {
-        match &self.config.model {
-            config::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP23017(config::MCP23017Config { address, .. }) => {
+        match &self.model()? {
+            device::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP23017(device::MCP23017Config { address, .. }) => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let pin = self
                     .mcp23017_state
@@ -128,42 +137,42 @@ impl Device {
         }
     }
 
-    pub async fn read_sensor(&self, index: u32) -> Result<(f64, config::Unit)> {
-        match &self.config.model {
-            config::Type::BMP085(config::BMP085Config { address, mode }) => match index {
+    pub async fn read_sensor(&self, index: u32) -> Result<(f64, device::Unit)> {
+        match &self.model()? {
+            device::Type::BMP085(device::BMP085Config { address, mode }) => match index {
                 0 => {
                     let v = self
                         .bmp085_state
                         .temperature_in_c((*address).try_into().unwrap(), &self.rapi)
                         .await?;
-                    Ok((v as f64, config::Unit::DegC))
+                    Ok((v as f64, device::Unit::DegC))
                 }
                 1 => {
                     let v = self
                         .bmp085_state
                         .pressure_kpa((*address).try_into().unwrap(), *mode, &self.rapi)
                         .await?;
-                    Ok((v as f64, config::Unit::KPa))
+                    Ok((v as f64, device::Unit::KPa))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            config::Type::MCP9808(config::MCP9808Config { address }) => match index {
+            device::Type::MCP9808(device::MCP9808Config { address }) => match index {
                 0 => {
                     let temp =
                         mcp9808::read_temp(&self.rapi, (*address).try_into().unwrap()).await?;
-                    Ok((temp as f64, config::Unit::DegC))
+                    Ok((temp as f64, device::Unit::DegC))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            config::Type::MCP23017(_) => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP23017(_) => Err(Error::OutOfBounds(index as usize)),
         }
     }
 
     pub async fn write_boolean(&mut self, index: u32, value: bool) -> Result<()> {
-        match &self.config.model {
-            config::Type::BMP085(_) => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP9808(_) => Err(Error::OutOfBounds(index as usize)),
-            config::Type::MCP23017(config::MCP23017Config {
+        match &self.model()? {
+            device::Type::BMP085(_) => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP9808(_) => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP23017(device::MCP23017Config {
                 address,
                 bank_a,
                 bank_b,

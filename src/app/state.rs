@@ -1,46 +1,37 @@
 extern crate chrono;
 
 use crate::config;
-use crate::config::Unit;
+use crate::app::AppID;
+use crate::app::device;
+use crate::app::input::Input;
+use crate::app::output::Output;
 use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;
+use crate::app::db;
 use chrono::prelude::*;
 
 use std::collections::HashMap;
-use tokio::sync::mpsc;
-use tracing::{Instrument, instrument, debug, error, info, warn};
+use tracing::{ instrument, error, info, warn};
+
 
 // Keep current app state in memory, together with device state
-#[derive(Debug)]
 pub struct State {
     dt: DateTime<Local>,
-
-    devices: HashMap<String, Device>,
-    device_configs: HashMap<String, config::Device>,
-    devices_change: mpsc::Sender<HashMap<String, config::Device>>,
-
-    inputs: HashMap<String, config::Input>,
-    inputs_change: mpsc::Sender<HashMap<String, config::Input>>,
-
-    outputs: HashMap<String, config::Output>,
-    outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
-
+    db: db::Db,
+    devices: HashMap<AppID, device::Device>,
     i2c: rpi::RpiApi,
     here: (f64, f64),
 }
 
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub async fn add_device(&mut self, id: &str, config: config::Device) -> Result<()> {
+    pub async fn add_device(&mut self, id: AppID, config: db::Device) -> Result<()> {
         let mut device = Device::new(config.clone(), self.i2c.clone());
         info!("Adding or replacing device with id: {}", id);
         device.reset().await?;
-        self.devices.insert(id.to_string(), device);
-        self.devices_change
-            .send(self.device_configs.clone())
-            .await
-            .map_err(|_| Error::SendError("add device".to_string()))?;
+        self.devices.insert(id, device);
+        // TODO: add-or-replace device in database
         Ok(())
     }
 
@@ -51,25 +42,19 @@ impl State {
         self.here.1
     }
 
-    pub async fn add_input(&mut self, id: &str, config: &config::Input) -> Result<()> {
-        self.inputs.insert(id.to_string(), config.clone());
-        self.inputs_change
-            .send(self.inputs.clone())
-            .await
-            .map_err(|_| Error::SendError("add input".to_string()))?;
+    pub async fn add_input(&mut self, id: AppID, config: &db::Input) -> Result<()> {
+        self.inputs.insert(id, config.clone());
+        // TODO: add-or-replace in database
         Ok(())
     }
 
-    pub async fn add_output(&mut self, id: &str, config: &config::Output) -> Result<()> {
-        self.outputs.insert(id.to_string(), config.clone());
-        self.outputs_change
-            .send(self.outputs.clone())
-            .await
-            .map_err(|_| Error::SendError("add output".to_string()))?;
+    pub async fn add_output(&mut self, id: AppID, config: &db::Output) -> Result<()> {
+        self.outputs.insert(id, config.clone());
+        // TODO: add-or-replace in database
         Ok(())
     }
 
-    pub async fn reset_device(&mut self, id: &str) -> Result<()> {
+    pub async fn reset_device(&mut self, id: AppID) -> Result<()> {
         let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
             format!("reset_device: {}", id).to_string(),
         ))?;
@@ -79,11 +64,11 @@ impl State {
 
     pub fn device_config(
         &self,
-        name: &str,
+        name: AppID,
     ) -> Result<(
-        config::Device,
-        HashMap<String, config::Input>,
-        HashMap<String, config::Output>,
+        Device,
+        HashMap<AppID, Input>,
+        HashMap<AppID, Output>,
     )> {
         match self.device_configs.get(name) {
             Some(config) => {
@@ -97,7 +82,7 @@ impl State {
         }
     }
 
-    pub fn inputs_using_device(&self, id: &str) -> HashMap<String, config::Input> {
+    pub fn inputs_using_device(&self, id: AppID) -> HashMap<AppID, Input> {
         let mut affected = HashMap::new();
         for (iid, input) in &self.inputs {
             if input.device_id == id {
@@ -107,7 +92,7 @@ impl State {
         affected
     }
 
-    pub fn outputs_using_device(&self, id: &str) -> HashMap<String, config::Output> {
+    pub fn outputs_using_device(&self, id: AppID) -> HashMap<AppID, Output> {
         let mut affected = HashMap::new();
         for (oid, output) in &self.outputs {
             if output.device_id == id {
@@ -119,10 +104,10 @@ impl State {
 
     pub async fn remove_device(
         &mut self,
-        name: &str,
+        name: AppID,
     ) -> Result<(
-        HashMap<String, config::Input>,
-        HashMap<String, config::Output>,
+        HashMap<AppID, Input>,
+        HashMap<AppID, Output>,
     )> {
         info!("Remove device: '{}'", name);
 
@@ -131,57 +116,45 @@ impl State {
         let afflicted_outputs = self.outputs_using_device(name);
 
         self.devices.remove(name);
-        self.devices_change
-            .send(self.device_configs.clone())
-            .await
-            .map_err(|_| Error::SendError("remove device".to_string()))?;
 
-        for o in &afflicted_outputs {
+        for o in afflicted_outputs {
             // TODO: should start them all, tben await them all
-            self.remove_output(&o.0).await?;
+            self.remove_output(o.0).await?;
         }
 
-        for i in &afflicted_inputs {
-            self.remove_input(&i.0).await?;
+        for i in afflicted_inputs {
+            self.remove_input(i.0).await?;
         }
 
         Ok((afflicted_inputs, afflicted_outputs))
     }
 
-    pub async fn remove_input(&mut self, id: &str) -> Result<()> {
-        self.inputs.remove(id);
-        self.inputs_change
-            .send(self.inputs.clone())
-            .await
-            .map_err(|_| Error::SendError("remove input".to_string()))?;
+    pub async fn remove_input(&mut self, id: AppID) -> Result<()> {
+        self.inputs().remove(id);
         Ok(())
     }
 
-    pub async fn remove_output(&mut self, id: &str) -> Result<()> {
-        self.outputs.remove(id);
-        self.outputs_change
-            .send(self.outputs.clone())
-            .await
-            .map_err(|_| Error::SendError("remove output".to_string()))?;
+    pub async fn remove_output(&mut self, id: AppID) -> Result<()> {
+        self.outputs().remove(id);
         Ok(())
     }
 
-    pub fn outputs(&self) -> &HashMap<String, config::Output> {
+    pub fn outputs(&self) -> &HashMap<AppID, Output> {
         &self.outputs
     }
 
-    pub fn inputs(&self) -> &HashMap<String, config::Input> {
+    pub fn inputs(&self) -> &HashMap<AppID, Input> {
         &self.inputs
     }
 
     pub fn devices(
         &self,
     ) -> HashMap<
-        String,
+        AppID,
         (
-            config::Device,
-            HashMap<String, config::Input>,
-            HashMap<String, config::Output>,
+            Device,
+            HashMap<AppID, Input>,
+            HashMap<AppID, Output>,
         ),
     > {
         let mut result = HashMap::new();
@@ -213,7 +186,7 @@ impl State {
     pub async fn read_output_bool(&self, output_id: &str) -> Result<bool> {
         let m_output = self.outputs.get(output_id);
 
-        let config::Output {
+        let Output {
             device_id,
             unit,
             device_output_id,
@@ -228,7 +201,7 @@ impl State {
                 device_id
             )))?;
 
-        if *unit != Unit::Boolean {
+        if *unit != device::Unit::Boolean {
             warn!("Can't read {:?}  from output {}", unit, output_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
@@ -239,10 +212,10 @@ impl State {
     /**
      * read a named input
      */
-    pub async fn read_input_bool(&self, input_id: &str) -> Result<bool> {
+    pub async fn read_input_bool(&self, input_id: AppID) -> Result<bool> {
         let m_input = self.inputs.get(input_id);
 
-        let config::Input {
+        let Input {
             device_id,
             device_input_id,
             unit,
@@ -255,7 +228,7 @@ impl State {
                 "read_input_bool: {}",
                 device_id
             )))?;
-        if *unit != Unit::Boolean {
+        if *unit != device::Unit::Boolean {
             warn!("Can't read {:?}  from input {}", unit, input_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
@@ -266,10 +239,10 @@ impl State {
     /**
      * Write a particular value to an output
      */
-    pub async fn write_output_bool(&mut self, output_id: &str, value: bool) -> Result<()> {
+    pub async fn write_output_bool(&mut self, output_id: AppID, value: bool) -> Result<()> {
         let m_output = self.outputs.get(output_id);
         let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
-        let config::Output {
+        let Output {
             device_id,
             active_low,
             unit,
@@ -285,7 +258,7 @@ impl State {
                 device_id
             )))?;
 
-        if *unit != Unit::Boolean {
+        if *unit != device::Unit::Boolean {
             warn!("Can't write {:?} to output {}", unit, output_id);
             return Err(Error::UnitError("can't write".to_string()));
         }
@@ -298,9 +271,9 @@ impl State {
     #[instrument(skip(self))]
     pub async fn emit_automation(&mut self, output_id: &str) {
         let output = { self.outputs.get(output_id).cloned() };
-        if let Some(config::Output { on_when, .. }) = output {
+        if let Some(Output { on_when, .. }) = output {
             if let Some(expr) = on_when {
-                match config::parse::bool_expr(&expr) {
+                match crate::config::parse::bool_expr(&expr) {
                     Ok(parsed) => match config::boolean::evaluate(self, &parsed).await {
                         Ok(result) => {
                             if let Err(e) = self.write_output_bool(&output_id, result).await {
@@ -316,15 +289,15 @@ impl State {
     }
 
     pub async fn emit_automations(&mut self) {
-        let keys: Vec<String> = { self.outputs.keys().cloned().collect() };
+        let keys: Vec<String> = { self.outputs().keys().cloned().collect() };
         for output_id in keys {
             self.emit_automation(&output_id).await;
         }
     }
 
-    pub async fn read_input_value(&self, input_id: &str) -> Result<(f64, Unit)> {
-        let m_input = self.inputs.get(input_id);
-        let config::Input {
+    pub async fn read_input_value(&self, input_id: &str) -> Result<(f64, device::Unit)> {
+        let m_input = self.inputs().get(input_id);
+        let Input {
             device_id,
             device_input_id,
             unit,
@@ -335,20 +308,20 @@ impl State {
             format!("read_input_value: {}", device_id).to_string(),
         ))?;
         match unit {
-            Unit::Boolean => {
+            device::Unit::Boolean => {
                 let value = device.read_boolean(*device_input_id).await?;
                 Ok(if value {
-                    (1.0, config::Unit::Boolean)
+                    (1.0, device::Unit::Boolean)
                 } else {
-                    (0.0, config::Unit::Boolean)
+                    (0.0, device::Unit::Boolean)
                 })
             }
             _ => device.read_sensor(*device_input_id).await,
         }
     }
 
-    pub async fn read_sensor(&self, device_id: &str, sensor_id: u32) -> Result<(f64, Unit)> {
-        match self.devices.get(device_id) {
+    pub async fn read_sensor(&self, device_id: AppID, sensor_id: u32) -> Result<(f64, device::Unit)> {
+        match self.devices.get(&device_id) {
             Some(m) => m.read_sensor(sensor_id).await,
             None => Err(Error::NonExistant(
                 format!("read_sensor: {}", device_id).to_string(),
@@ -359,39 +332,29 @@ impl State {
 
 pub async fn new_state(
     here: (f64, f64),
-    devices: HashMap<String, config::Device>,
-    devices_change: mpsc::Sender<HashMap<String, config::Device>>,
-
-    inputs: HashMap<String, config::Input>,
-    inputs_change: mpsc::Sender<HashMap<String, config::Input>>,
-
-    outputs: HashMap<String, config::Output>,
-    outputs_change: mpsc::Sender<HashMap<String, config::Output>>,
+    db: crate::app::db::Db
 ) -> Result<State> {
     let dt = Local::now();
     let i2c = rpi::start();
-    let mut device_instances: HashMap<String, Device> = HashMap::new();
 
-    for (k, cfg) in &devices {
-        info!("adding device: {}", cfg.name);
-        device_instances.insert(k.clone(), Device::new(cfg.clone(), i2c.clone()));
+    let mut device_instances: HashMap<AppID, Device> = HashMap::new();
+
+    // TODO: Bring up our runtime environment, which bootstraps from db, then updates db as things
+    // change. we only operate out of runtime environment normally, which has compiled expressions,
+    // etc. runtime environment is also where we pull queries from.
+
+    let devices = db.devices()?;
+    for dbDevice in &devices {
+        info!("adding device: {}", dbDevice.name);
+        device_instances.insert(dbDevice.device_id, Device::new(dbDevice.clone(), i2c.clone()));
     }
 
     let state = State {
         i2c,
         dt,
-
-        device_configs: devices,
+        db,
         devices: device_instances,
-        devices_change,
-
         here,
-
-        inputs,
-        inputs_change,
-
-        outputs,
-        outputs_change,
     };
 
     Ok(state)

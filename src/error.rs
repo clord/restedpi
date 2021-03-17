@@ -15,6 +15,7 @@ pub enum Error {
     IoError(String),
     InputNotFound(String),
     OutputNotFound(String),
+    DbError(String),
     InvalidPinDirection,
     ParseError,
     UserNotFound,
@@ -36,6 +37,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
+            Error::DbError(ref err) => write!(f, "DB error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::ParseError => write!(f, "Parse error"),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
@@ -52,6 +54,12 @@ impl fmt::Display for Error {
             Error::TokenIssue => write!(f, "Issue with token"),
             Error::PasswordIssue => write!(f, "Password issue"),
         }
+    }
+}
+
+impl From<diesel::ConnectionError> for Error {
+    fn from(err: diesel::ConnectionError) -> Error {
+        Error::DbError(format!("DB error: {}", err))
     }
 }
 
@@ -110,20 +118,20 @@ impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error
     }
 }
 
-impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>>
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::app::output::Output>>>
     for Error
 {
     fn from(
-        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Output>>,
+        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::app::output::Output>>,
     ) -> Error {
         Error::SendError(format!("{}", err))
     }
 }
-impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>>
+impl From<std::sync::mpsc::SendError<HashMap<std::string::String, crate::app::input::Input>>>
     for Error
 {
     fn from(
-        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::config::Input>>,
+        err: std::sync::mpsc::SendError<HashMap<std::string::String, crate::app::input::Input>>,
     ) -> Error {
         Error::SendError(format!("{}", err))
     }
@@ -147,8 +155,22 @@ impl From<std::sync::mpsc::SendError<crate::rpi::RpiMessage>> for Error {
     }
 }
 
+impl From<diesel::result::Error> for Error {
+    fn from(err: diesel::result::Error) -> Error {
+        Error::DbError(format!("db error: {}", err))
+    }
+}
+
 impl From<i2c::Error> for Error {
     fn from(err: i2c::Error) -> Error {
         Error::I2cError(format!("{}", err))
     }
 }
+
+
+impl From<r2d2::Error> for Error {
+    fn from(err: r2d2::Error) -> Error {
+        Error::DbError(format!("r2d2: {}", err))
+    }
+}
+

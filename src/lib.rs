@@ -1,5 +1,6 @@
 extern crate tracing;
-
+#[macro_use]
+extern crate diesel;
 extern crate bit_array;
 extern crate regex;
 extern crate serde;
@@ -21,3 +22,4 @@ pub mod graphql;
 pub mod rpi;
 pub mod session;
 pub mod webapp;
+pub mod schema;

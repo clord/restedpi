@@ -1,13 +1,18 @@
-use crate::app::state;
+use crate::app::{state, AppID};
 use crate::config;
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use crate::config::Unit;
+use crate::app::device::Device;
+use crate::app::output::Output;
+use crate::app::input::Input;
 use std::time::Duration;
 use std::time::Instant;
 use std::vec::Vec;
+use super::db;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{debug, error, info, instrument, warn};
@@ -21,21 +26,21 @@ pub enum AppMessage {
      * run any device-specific reset procedures
      */
     ResetDevice {
-        device_id: String,
+        device_id: AppID,
         response: oneshot::Sender<Result<()>>,
     },
 
     /**
-     * Return all devices configs
+     * Return all devices
      */
     AllDevices {
         response: oneshot::Sender<
             HashMap<
-                String,
+                AppID,
                 (
-                    config::Device,
-                    HashMap<String, config::Input>,
-                    HashMap<String, config::Output>,
+                    Device,
+                    HashMap<AppID, Input>,
+                    HashMap<AppID, Output>,
                 ),
             >,
         >,
@@ -45,14 +50,14 @@ pub enum AppMessage {
      * Return all outputs
      */
     AllOutputs {
-        response: oneshot::Sender<HashMap<String, config::Output>>,
+        response: oneshot::Sender<HashMap<AppID, Output>>,
     },
 
     /**
      * Return all inputs
      */
     AllInputs {
-        response: oneshot::Sender<HashMap<String, config::Input>>,
+        response: oneshot::Sender<HashMap<AppID, Input>>,
     },
 
     /**
@@ -60,7 +65,7 @@ pub enum AppMessage {
      * result is a vec in same order as input_ids with result of reading each one.
      */
     ReadBooleans {
-        input_ids: Vec<String>,
+        input_ids: Vec<AppID>,
         response: oneshot::Sender<Vec<Result<bool>>>,
     },
 
@@ -69,12 +74,12 @@ pub enum AppMessage {
      * result is the value read, or an error
      */
     ReadValue {
-        input_id: String,
-        response: oneshot::Sender<Result<(f64, config::Unit)>>,
+        input_id: AppID,
+        response: oneshot::Sender<Result<(f64, Unit)>>,
     },
 
     CurrentOutputValue {
-        output_id: String,
+        output_id: AppID,
         response: oneshot::Sender<Result<bool>>,
     },
 
@@ -83,7 +88,7 @@ pub enum AppMessage {
      * result is the value read, or an error
      */
     ReadBoolean {
-        input_id: String,
+        input_id: AppID,
         response: oneshot::Sender<Result<bool>>,
     },
 
@@ -91,7 +96,7 @@ pub enum AppMessage {
      * write a boolean to a given output.
      */
     WriteBoolean {
-        output_id: String,
+        output_id: AppID,
         value: bool,
         response: oneshot::Sender<Result<()>>,
     },
@@ -100,8 +105,8 @@ pub enum AppMessage {
      * add or replace device at a given id
      */
     AddOrReplaceDevice {
-        device_id: String,
-        config: config::Device,
+        device_id: AppID,
+        config: Device,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -111,11 +116,11 @@ pub enum AppMessage {
      * any affected inputs or outputs will alsso be removed.
      */
     RemoveDevice {
-        device_id: String,
+        device_id: AppID,
         response: oneshot::Sender<
             Result<(
-                HashMap<String, config::Input>,
-                HashMap<String, config::Output>,
+                HashMap<AppID, Input>,
+                HashMap<AppID, Output>,
             )>,
         >,
     },
@@ -124,7 +129,7 @@ pub enum AppMessage {
      * remove an input.
      */
     RemoveInput {
-        input_id: String,
+        input_id: AppID,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -132,7 +137,7 @@ pub enum AppMessage {
      * remove an output.
      */
     RemoveOutput {
-        output_id: String,
+        output_id: AppID,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -140,12 +145,12 @@ pub enum AppMessage {
      * Read config of a given device, and also all associated inputs and outputs
      */
     GetDeviceConfig {
-        device_id: String,
+        device_id: AppID,
         response: oneshot::Sender<
             Result<(
-                config::Device,
-                HashMap<String, config::Input>,
-                HashMap<String, config::Output>,
+                Device,
+                HashMap<AppID, Input>,
+                HashMap<AppID, Output>,
             )>,
         >,
     },
@@ -154,8 +159,8 @@ pub enum AppMessage {
      * Add or replace an output.
      */
     AddOrReplaceOutput {
-        output_id: String,
-        output: config::Output,
+        output_id: AppID,
+        output: Output,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -163,8 +168,8 @@ pub enum AppMessage {
      * Add or replace output.
      */
     AddOrReplaceInput {
-        input_id: String,
-        input: config::Input,
+        input_id: AppID,
+        input: Input,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -225,7 +230,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn reset_device(&self, device_id: String) -> Result<()> {
+    pub async fn reset_device(&self, device_id: AppID) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -237,7 +242,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn all_outputs(&self) -> Result<HashMap<String, config::Output>> {
+    pub async fn all_outputs(&self) -> Result<HashMap<AppID, Output>> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -246,7 +251,7 @@ impl AppChannel {
         Ok(receiver.await?)
     }
 
-    pub async fn all_inputs(&self) -> Result<HashMap<String, config::Input>> {
+    pub async fn all_inputs(&self) -> Result<HashMap<AppID, Input>> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -259,11 +264,11 @@ impl AppChannel {
         &self,
     ) -> Result<
         HashMap<
-            String,
+            AppID,
             (
-                config::Device,
-                HashMap<String, config::Input>,
-                HashMap<String, config::Output>,
+                Device,
+                HashMap<AppID, Input>,
+                HashMap<AppID, Output>,
             ),
         >,
     > {
@@ -275,7 +280,7 @@ impl AppChannel {
         Ok(receiver.await?)
     }
 
-    pub async fn read_booleans(&self, input_ids: Vec<String>) -> Result<Vec<Result<bool>>> {
+    pub async fn read_booleans(&self, input_ids: Vec<AppID>) -> Result<Vec<Result<bool>>> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -287,19 +292,19 @@ impl AppChannel {
         Ok(receiver.await?)
     }
 
-    pub async fn read_boolean(&self, input_id: &str) -> Result<bool> {
+    pub async fn read_boolean(&self, input_id: AppID) -> Result<bool> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
             .send(AppMessage::ReadBoolean {
                 response,
-                input_id: input_id.to_string(),
+                input_id,
             })
             .await?;
         receiver.await?
     }
 
-    pub async fn write_boolean(&self, output_id: String, value: bool) -> Result<()> {
+    pub async fn write_boolean(&self, output_id: AppID, value: bool) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -312,25 +317,25 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn current_output_value(&self, output_id: &str) -> Result<bool> {
+    pub async fn current_output_value(&self, output_id: AppID) -> Result<bool> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
             .send(AppMessage::CurrentOutputValue {
                 response,
-                output_id: output_id.to_string(),
+                output_id,
             })
             .await?;
         receiver.await?
     }
 
-    pub async fn read_value(&self, input_id: &str) -> Result<(f64, config::Unit)> {
+    pub async fn read_value(&self, input_id: AppID) -> Result<(f64, Unit)> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
             .send(AppMessage::ReadValue {
                 response,
-                input_id: input_id.to_string(),
+                input_id,
             })
             .await?;
         receiver.await?
@@ -338,8 +343,8 @@ impl AppChannel {
 
     pub async fn add_or_replace_device(
         &self,
-        device_id: String,
-        config: config::Device,
+        device_id: AppID,
+        config: Device,
     ) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -355,10 +360,10 @@ impl AppChannel {
 
     pub async fn remove_device(
         &self,
-        device_id: String,
+        device_id: AppID,
     ) -> Result<(
-        HashMap<String, config::Input>,
-        HashMap<String, config::Output>,
+        HashMap<AppID, Input>,
+        HashMap<AppID, Output>,
     )> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -371,7 +376,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn remove_input(&self, input_id: String) -> Result<()> {
+    pub async fn remove_input(&self, input_id: AppID) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -380,7 +385,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn remove_output(&self, output_id: String) -> Result<()> {
+    pub async fn remove_output(&self, output_id: AppID) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -394,24 +399,24 @@ impl AppChannel {
 
     pub async fn get_device_config(
         &self,
-        device_id: &str,
+        device_id: AppID,
     ) -> Result<(
-        config::Device,
-        HashMap<String, config::Input>,
-        HashMap<String, config::Output>,
+        Device,
+        HashMap<AppID, Input>,
+        HashMap<AppID, Output>,
     )> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
             .send(AppMessage::GetDeviceConfig {
                 response,
-                device_id: device_id.to_string(),
+                device_id,
             })
             .await?;
         receiver.await?
     }
 
-    pub async fn add_or_replace_input(&self, input_id: String, input: config::Input) -> Result<()> {
+    pub async fn add_or_replace_input(&self, input_id: AppID, input: Input) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -426,8 +431,8 @@ impl AppChannel {
 
     pub async fn add_or_replace_output(
         &self,
-        output_id: String,
-        output: config::Output,
+        output_id: AppID,
+        output: Output,
     ) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -447,7 +452,7 @@ impl AppChannel {
  *
  * @returns true if channel should terminate
  */
-#[instrument]
+#[instrument(skip(state))]
 async fn process_message(message: AppMessage, state: &mut state::State) -> bool {
     let mut should_terminate = false;
     match message {
@@ -457,7 +462,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         } => {
             let mut result = Vec::new();
             for input_id in input_ids {
-                let r = state.read_input_bool(&input_id).await;
+                let r = state.read_input_bool(input_id).await;
                 result.push(r);
             }
             match response.send(result) {
@@ -467,7 +472,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::ReadBoolean { input_id, response } => {
-            let result = state.read_input_bool(&input_id).await;
+            let result = state.read_input_bool(input_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -479,7 +484,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             value,
             response,
         } => {
-            let result = state.write_output_bool(&output_id, value).await;
+            let result = state.write_output_bool(output_id, value).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -491,7 +496,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             config,
             response,
         } => {
-            let result = state.add_device(&device_id, config).await;
+            let result = state.add_device(device_id, config).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -502,7 +507,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             device_id,
             response,
         } => {
-            let result = state.remove_device(&device_id).await;
+            let result = state.remove_device(device_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -672,23 +677,11 @@ pub async fn start_app(
 ) -> Result<AppChannel> {
     let (sender, mut receiver) = mpsc::channel::<AppMessage>(10);
 
-    let (devices, devices_change) = read_item(path.join("devices.toml"))?;
-    debug!("Devices: {:?}", devices);
-
-    let (inputs, inputs_change) = read_item(path.join("inputs.toml"))?;
-    debug!("Inputs: {:?}", inputs);
-
-    let (outputs, outputs_change) = read_item(path.join("outputs.toml"))?;
-    debug!("Outputs: {:?}", outputs);
+    let db = db::Db::start_db(path)?;
 
     let mut state = state::new_state(
         here,
-        devices,
-        devices_change,
-        inputs,
-        inputs_change,
-        outputs,
-        outputs_change,
+        db
     )
     .await?;
 

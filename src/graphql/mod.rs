@@ -1,5 +1,6 @@
-use crate::config::{Input, Output};
 use crate::error::Error;
+use crate::app::input::Input;
+use crate::app::output::Output;
 use crate::session::{authenticate, AppContext};
 use juniper::{graphql_object, EmptySubscription, FieldError, FieldResult, RootNode};
 use rppal::system::DeviceInfo;
@@ -37,7 +38,6 @@ impl Query {
         match inputs.get(&id) {
             Some(input) => {
                 let mut cloned = input.clone();
-                cloned.input_id = Some(id);
                 Ok(cloned)
             }
             None => Err(FieldError::from(Error::InputNotFound(id))),
@@ -49,7 +49,6 @@ impl Query {
         match outputs.get(&id) {
             Some(output) => {
                 let mut cloned = output.clone();
-                cloned.output_id = Some(id);
                 Ok(cloned)
             }
             None => Err(FieldError::from(Error::OutputNotFound(id))),
