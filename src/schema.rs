@@ -1,8 +1,7 @@
 table! {
     devices (device_id) {
         device_id -> Integer,
-        model_type -> Text,
-        model_config -> Text,
+        model -> Text,
         name -> Text,
         notes -> Text,
         disabled -> Bool,
@@ -37,8 +36,4 @@ table! {
 joinable!(inputs -> devices (device_id));
 joinable!(outputs -> devices (device_id));
 
-allow_tables_to_appear_in_same_query!(
-    devices,
-    inputs,
-    outputs,
-);
+allow_tables_to_appear_in_same_query!(devices, inputs, outputs,);

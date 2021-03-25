@@ -1,169 +1,101 @@
 extern crate chrono;
 
-use crate::config;
-use crate::app::AppID;
+use crate::app::db;
 use crate::app::device;
-use crate::app::input::Input;
-use crate::app::output::Output;
+use crate::app::AppID;
+use crate::config;
+use crate::config::parse::{bool_expr, BoolExpr};
 use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;
-use crate::app::db;
 use chrono::prelude::*;
+use db::models;
 
 use std::collections::HashMap;
-use tracing::{ instrument, error, info, warn};
+use tracing::{error, info, instrument, warn};
 
-
-// Keep current app state in memory, together with device state
+/// Keep current app state in memory, together with device state
 pub struct State {
     dt: DateTime<Local>,
     db: db::Db,
-    devices: HashMap<AppID, device::Device>,
+    devices: HashMap<AppID, rpi::device::Device>,
+
+    /// Cached output automation compilations with a flag for mark/sweep
+    output_automation_cache: HashMap<String, (bool, BoolExpr)>,
+
     i2c: rpi::RpiApi,
     here: (f64, f64),
 }
 
 // Internal State machine for the application. this is core logic.
 impl State {
-    pub async fn add_device(&mut self, id: AppID, config: db::Device) -> Result<()> {
-        let mut device = Device::new(config.clone(), self.i2c.clone());
-        info!("Adding or replacing device with id: {}", id);
-        device.reset().await?;
-        self.devices.insert(id, device);
-        // TODO: add-or-replace device in database
-        Ok(())
-    }
-
     pub fn lat(&self) -> f64 {
         self.here.0
     }
+
     pub fn long(&self) -> f64 {
         self.here.1
     }
 
-    pub async fn add_input(&mut self, id: AppID, config: &db::Input) -> Result<()> {
-        self.inputs.insert(id, config.clone());
-        // TODO: add-or-replace in database
-        Ok(())
+    pub async fn add_device(
+        &mut self,
+        model: crate::app::device::Type,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+    ) -> Result<AppID> {
+        let new_device = models::NewDevice::new(model, name, description, disabled);
+        let db_device = self.db.add_device(&new_device)?;
+        let model = serde_json::from_str(db_device.model.as_str())?;
+        let id = db_device.device_id;
+        let device = Device::new(model, self.i2c.clone());
+        info!("Adding device id: {}", id);
+        self.devices.insert(id, device);
+        Ok(id)
     }
 
-    pub async fn add_output(&mut self, id: AppID, config: &db::Output) -> Result<()> {
-        self.outputs.insert(id, config.clone());
-        // TODO: add-or-replace in database
-        Ok(())
+    pub async fn add_input(&mut self, config: &models::NewInput) -> Result<()> {
+        let mdev = self.devices.get_mut(&config.device_id);
+        if let Some(dev) = mdev {
+            let unit = serde_json::from_str(&config.unit)?;
+            dev.valid_input(config.device_input_id, unit)?;
+            let db_input = self.db.add_input(config)?;
+            Ok(())
+        } else {
+            Err(Error::NonExistant(format!(
+                "Could not add input to missing device {}",
+                config.device_id
+            )))
+        }
+    }
+
+    pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<()> {
+        let mdev = self.devices.get_mut(&config.device_id);
+        if let Some(dev) = mdev {
+            let unit = serde_json::from_str(&config.unit)?;
+            dev.valid_output(config.device_output_id, unit)?;
+            let db_output = self.db.add_output(&config)?;
+            Ok(())
+        } else {
+            Err(Error::NonExistant(format!(
+                "Could not add output to missing device {}",
+                config.device_id
+            )))
+        }
     }
 
     pub async fn reset_device(&mut self, id: AppID) -> Result<()> {
-        let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
+        let device = self.devices.get_mut(&id).ok_or(Error::NonExistant(
             format!("reset_device: {}", id).to_string(),
         ))?;
         device.reset().await?;
         Ok(())
     }
 
-    pub fn device_config(
-        &self,
-        name: AppID,
-    ) -> Result<(
-        Device,
-        HashMap<AppID, Input>,
-        HashMap<AppID, Output>,
-    )> {
-        match self.device_configs.get(name) {
-            Some(config) => {
-                let inputs = self.inputs_using_device(name);
-                let outputs = self.outputs_using_device(name);
-                Ok((config.clone(), inputs, outputs))
-            }
-            None => Err(Error::NonExistant(
-                format!("device config for {}", name).to_string(),
-            )),
-        }
-    }
-
-    pub fn inputs_using_device(&self, id: AppID) -> HashMap<AppID, Input> {
-        let mut affected = HashMap::new();
-        for (iid, input) in &self.inputs {
-            if input.device_id == id {
-                affected.insert(iid.clone(), input.clone());
-            }
-        }
-        affected
-    }
-
-    pub fn outputs_using_device(&self, id: AppID) -> HashMap<AppID, Output> {
-        let mut affected = HashMap::new();
-        for (oid, output) in &self.outputs {
-            if output.device_id == id {
-                affected.insert(oid.clone(), output.clone());
-            }
-        }
-        affected
-    }
-
-    pub async fn remove_device(
-        &mut self,
-        name: AppID,
-    ) -> Result<(
-        HashMap<AppID, Input>,
-        HashMap<AppID, Output>,
-    )> {
+    pub async fn remove_device(&mut self, name: AppID) -> Result<()> {
         info!("Remove device: '{}'", name);
-
-        // compute the list of inputs and outputs that need to be removed, and do that too.
-        let afflicted_inputs = self.inputs_using_device(name);
-        let afflicted_outputs = self.outputs_using_device(name);
-
-        self.devices.remove(name);
-
-        for o in afflicted_outputs {
-            // TODO: should start them all, tben await them all
-            self.remove_output(o.0).await?;
-        }
-
-        for i in afflicted_inputs {
-            self.remove_input(i.0).await?;
-        }
-
-        Ok((afflicted_inputs, afflicted_outputs))
-    }
-
-    pub async fn remove_input(&mut self, id: AppID) -> Result<()> {
-        self.inputs().remove(id);
+        self.devices.remove(&name);
         Ok(())
-    }
-
-    pub async fn remove_output(&mut self, id: AppID) -> Result<()> {
-        self.outputs().remove(id);
-        Ok(())
-    }
-
-    pub fn outputs(&self) -> &HashMap<AppID, Output> {
-        &self.outputs
-    }
-
-    pub fn inputs(&self) -> &HashMap<AppID, Input> {
-        &self.inputs
-    }
-
-    pub fn devices(
-        &self,
-    ) -> HashMap<
-        AppID,
-        (
-            Device,
-            HashMap<AppID, Input>,
-            HashMap<AppID, Output>,
-        ),
-    > {
-        let mut result = HashMap::new();
-        for (k, config) in &self.device_configs {
-            let inputs = self.inputs_using_device(k);
-            let outputs = self.outputs_using_device(k);
-            result.insert(k.clone(), (config.clone(), inputs, outputs));
-        }
-        return result;
     }
 
     /**
@@ -183,179 +115,171 @@ impl State {
     /**
      * read what is currently being outputed
      */
-    pub async fn read_output_bool(&self, output_id: &str) -> Result<bool> {
-        let m_output = self.outputs.get(output_id);
+    pub async fn read_output_bool(&self, output_id: AppID) -> Result<bool> {
+        let output = self.db.output(output_id)?;
+        let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
-        let Output {
-            device_id,
-            unit,
-            device_output_id,
-            ..
-        } = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
-
-        let device = self
-            .devices
-            .get(device_id)
-            .ok_or(Error::NonExistant(format!(
-                "read_output_bool: {}",
-                device_id
-            )))?;
-
-        if *unit != device::Unit::Boolean {
-            warn!("Can't read {:?}  from output {}", unit, output_id);
+        if unit != device::Unit::Boolean {
+            warn!("Can't read {:?} from boolean output {}", unit, output_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
-        let value = device.read_boolean(*device_output_id).await?;
-        Ok(value)
+
+        if let Some(device) = self.devices.get(&output.device_id) {
+            Ok(device.read_boolean(output.device_output_id).await?)
+        } else {
+            Err(Error::NonExistant("can't find device".to_string()))
+        }
     }
 
     /**
      * read a named input
      */
     pub async fn read_input_bool(&self, input_id: AppID) -> Result<bool> {
-        let m_input = self.inputs.get(input_id);
+        let input = self.db.input(input_id)?;
+        let unit: device::Unit = serde_json::from_str(&input.unit)?;
 
-        let Input {
-            device_id,
-            device_input_id,
-            unit,
-            ..
-        } = m_input.ok_or(Error::InputNotFound(input_id.to_owned()))?;
-        let device = self
-            .devices
-            .get(device_id)
-            .ok_or(Error::NonExistant(format!(
-                "read_input_bool: {}",
-                device_id
-            )))?;
-        if *unit != device::Unit::Boolean {
-            warn!("Can't read {:?}  from input {}", unit, input_id);
+        if unit != device::Unit::Boolean {
+            warn!("Can't read {:?} from boolean input {}", unit, input_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
-        let value = device.read_boolean(*device_input_id).await?;
-        Ok(value)
+
+        if let Some(device) = self.devices.get(&input.device_id) {
+            Ok(device.read_boolean(input.device_input_id).await?)
+        } else {
+            Err(Error::NonExistant("can't find device".to_string()))
+        }
     }
 
     /**
      * Write a particular value to an output
      */
     pub async fn write_output_bool(&mut self, output_id: AppID, value: bool) -> Result<()> {
-        let m_output = self.outputs.get(output_id);
-        let output = m_output.ok_or(Error::OutputNotFound(output_id.to_owned()))?;
-        let Output {
-            device_id,
-            active_low,
-            unit,
-            device_output_id,
-            ..
-        } = output;
+        let output = self.db.output(output_id)?;
+        let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
-        let device = self
-            .devices
-            .get_mut(device_id)
-            .ok_or(Error::NonExistant(format!(
-                "write_output_bool: {}",
-                device_id
-            )))?;
-
-        if *unit != device::Unit::Boolean {
-            warn!("Can't write {:?} to output {}", unit, output_id);
+        if unit != device::Unit::Boolean {
+            warn!("Can't write {:?} from boolean output {}", unit, output_id);
             return Err(Error::UnitError("can't write".to_string()));
         }
 
-        device
-            .write_boolean(*device_output_id, active_low.unwrap_or(false) ^ value)
-            .await
+        if let Some(device) = self.devices.get_mut(&output.device_id) {
+            device
+                .write_boolean(output.device_output_id, output.active_low ^ value)
+                .await
+        } else {
+            Err(Error::NonExistant("can't find device".to_string()))
+        }
     }
 
+    /// recompile all automation scripts with a fresh cache
     #[instrument(skip(self))]
-    pub async fn emit_automation(&mut self, output_id: &str) {
-        let output = { self.outputs.get(output_id).cloned() };
-        if let Some(Output { on_when, .. }) = output {
-            if let Some(expr) = on_when {
-                match crate::config::parse::bool_expr(&expr) {
-                    Ok(parsed) => match config::boolean::evaluate(self, &parsed).await {
-                        Ok(result) => {
-                            if let Err(e) = self.write_output_bool(&output_id, result).await {
-                                error!("failed to write: {}", e);
-                            }
-                        }
-                        Err(e) => error!("{:?} has an error: {}", expr, e),
-                    },
-                    Err(_) => error!("error parsing"),
+    pub async fn compile_automations(&mut self) -> Result<()> {
+        self.output_automation_cache = HashMap::new();
+
+        let outputs = self.db.outputs()?;
+        for output in outputs {
+            if let Some(str_expr) = &output.automation_script {
+                match crate::config::parse::bool_expr(str_expr) {
+                    Ok(expr) => {
+                        self.output_automation_cache
+                            .insert(str_expr.clone(), (false, expr));
+                    }
+                    Err(e) => {
+                        error!("error parsing: {}", e)
+                    }
                 }
             }
         }
+
+        Ok(())
     }
 
-    pub async fn emit_automations(&mut self) {
-        let keys: Vec<String> = { self.outputs().keys().cloned().collect() };
-        for output_id in keys {
-            self.emit_automation(&output_id).await;
+    /// update automation script cache and emit automations
+    #[instrument(skip(self))]
+    pub async fn emit_automations(&mut self) -> Result<()> {
+        // Clear mark on all entries
+        for (_, (mark, _)) in &mut self.output_automation_cache {
+            *mark = false
         }
-    }
 
-    pub async fn read_input_value(&self, input_id: &str) -> Result<(f64, device::Unit)> {
-        let m_input = self.inputs().get(input_id);
-        let Input {
-            device_id,
-            device_input_id,
-            unit,
-            ..
-        } = m_input.ok_or(Error::InputNotFound(input_id.to_owned()))?;
-        let device_handle = self.devices.get(device_id);
-        let device = device_handle.ok_or(Error::NonExistant(
-            format!("read_input_value: {}", device_id).to_string(),
-        ))?;
-        match unit {
-            device::Unit::Boolean => {
-                let value = device.read_boolean(*device_input_id).await?;
-                Ok(if value {
-                    (1.0, device::Unit::Boolean)
-                } else {
-                    (0.0, device::Unit::Boolean)
-                })
+        let outputs = self.db.outputs()?;
+        for output in outputs {
+            if let Some(str_expr) = &output.automation_script {
+                // get or update the cached boolean expression
+                let expr: BoolExpr = {
+                    let (mark, expr) = self
+                        .output_automation_cache
+                        .entry(str_expr.clone())
+                        .or_insert_with(move || match crate::config::parse::bool_expr(str_expr) {
+                            Ok(expr) => (false, expr),
+                            Err(e) => panic!("error parsing: {}", e),
+                        });
+                    *mark = true;
+                    expr.clone()
+                };
+
+                // evaluate the expression and write it to the right output
+                match config::boolean::evaluate(self, &expr).await {
+                    Ok(result) => {
+                        if let Err(e) = self.write_output_bool(output.output_id, result).await {
+                            error!("failed to write: {}", e);
+                        }
+                    }
+                    Err(e) => error!("{:?} has an error: {}", expr, e),
+                }
             }
-            _ => device.read_sensor(*device_input_id).await,
         }
+
+        let mut to_kill: Vec<String> = vec![];
+
+        for (k, (mark, _)) in &self.output_automation_cache {
+            if !mark {
+                to_kill.push(k.clone());
+            }
+        }
+
+        for k in to_kill {
+            self.output_automation_cache.remove(&k);
+        }
+
+        Ok(())
     }
 
-    pub async fn read_sensor(&self, device_id: AppID, sensor_id: u32) -> Result<(f64, device::Unit)> {
-        match self.devices.get(&device_id) {
-            Some(m) => m.read_sensor(sensor_id).await,
-            None => Err(Error::NonExistant(
-                format!("read_sensor: {}", device_id).to_string(),
-            )),
+    pub async fn read_input_value(&self, input_id: AppID) -> Result<(f64, device::Unit)> {
+        let input = self.db.input(input_id)?;
+
+        if let Some(device) = self.devices.get(&input.device_id) {
+            Ok(device.read_sensor(input.device_input_id).await?)
+        } else {
+            Err(Error::NonExistant("can't find device".to_string()))
         }
     }
 }
 
-pub async fn new_state(
-    here: (f64, f64),
-    db: crate::app::db::Db
-) -> Result<State> {
+pub async fn new_state(here: (f64, f64), db: crate::app::db::Db) -> Result<State> {
     let dt = Local::now();
     let i2c = rpi::start();
 
     let mut device_instances: HashMap<AppID, Device> = HashMap::new();
 
-    // TODO: Bring up our runtime environment, which bootstraps from db, then updates db as things
-    // change. we only operate out of runtime environment normally, which has compiled expressions,
-    // etc. runtime environment is also where we pull queries from.
-
     let devices = db.devices()?;
-    for dbDevice in &devices {
-        info!("adding device: {}", dbDevice.name);
-        device_instances.insert(dbDevice.device_id, Device::new(dbDevice.clone(), i2c.clone()));
+    for db_device in &devices {
+        let model = serde_json::from_str(&db_device.model)?;
+        info!("Adding device {:?} named '{}'", model, db_device.name);
+        let new_device = Device::new(model, i2c.clone());
+        device_instances.insert(db_device.device_id, new_device);
     }
 
-    let state = State {
+    let mut state = State {
         i2c,
         dt,
         db,
+        output_automation_cache: HashMap::new(),
         devices: device_instances,
         here,
     };
+
+    state.compile_automations().await?;
 
     Ok(state)
 }

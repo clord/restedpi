@@ -1,10 +1,9 @@
 pub mod channel;
-pub mod state;
 pub mod db;
+pub mod state;
 
 pub mod device;
 pub mod input;
 pub mod output;
 
-type AppID = i32;
-
+pub type AppID = i32;

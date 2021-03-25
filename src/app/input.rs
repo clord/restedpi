@@ -1,8 +1,8 @@
-use crate::session::AppContext;
-use crate::app::db;
-use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
-pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use crate::app::db::models;
 use crate::app::device::Device;
+pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use crate::session::AppContext;
+use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ pub struct InputValue {
 
 #[derive(Debug, Clone)]
 pub struct Input {
-    pub db: db::Input
+    db: models::Input,
 }
 
 #[graphql_object(context = AppContext)]
@@ -28,35 +28,24 @@ impl Input {
         self.db.input_id
     }
 
-    pub fn unit(&self) -> Unit {
-        Unit::from_str(self.db.unit)
+    pub fn unit(&self) -> crate::config::Unit {
+        serde_json::from_str(&self.db.unit).unwrap()
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
-        context
-            .channel()
-            .get_device_config(&self.db.device_id)
-            .await
-            .ok()
-            .map(|(cfg, _, _)| cfg)
+        context.channel().get_device(self.db.device_id).await.ok()
     }
 
     pub async fn bool_value(&self, context: &AppContext) -> Option<bool> {
-        match self.input_id.as_ref() {
-            Some(id) => context.channel().read_boolean(id).await.ok(),
-            None => None,
-        }
+        context.channel().read_boolean(self.db.input_id).await.ok()
     }
+
     pub async fn value(&self, context: &AppContext) -> Option<InputValue> {
-        match self.input_id.as_ref() {
-            Some(id) => context
-                .channel()
-                .read_value(id)
-                .await
-                .ok()
-                .map(|(value, unit)| InputValue { value, unit }),
-            None => None,
-        }
+        context
+            .channel()
+            .read_value(self.db.input_id)
+            .await
+            .ok()
+            .map(|(value, unit)| InputValue { value, unit })
     }
 }
-

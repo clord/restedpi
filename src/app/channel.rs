@@ -1,18 +1,18 @@
-use crate::app::{state, AppID};
-use crate::config;
+use super::db;
+use crate::app::db::models;
+use crate::app::device::Device;
+use crate::app::input::Input;
+use crate::app::output::Output;
+use crate::app::{device, state, AppID};
+use crate::config::Unit;
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use crate::config::Unit;
-use crate::app::device::Device;
-use crate::app::output::Output;
-use crate::app::input::Input;
 use std::time::Duration;
 use std::time::Instant;
 use std::vec::Vec;
-use super::db;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{debug, error, info, instrument, warn};
@@ -34,16 +34,7 @@ pub enum AppMessage {
      * Return all devices
      */
     AllDevices {
-        response: oneshot::Sender<
-            HashMap<
-                AppID,
-                (
-                    Device,
-                    HashMap<AppID, Input>,
-                    HashMap<AppID, Output>,
-                ),
-            >,
-        >,
+        response: oneshot::Sender<HashMap<AppID, Device>>,
     },
 
     /**
@@ -102,12 +93,14 @@ pub enum AppMessage {
     },
 
     /**
-     * add or replace device at a given id
+     * add device, returning id
      */
-    AddOrReplaceDevice {
-        device_id: AppID,
-        config: Device,
-        response: oneshot::Sender<Result<()>>,
+    AddDevice {
+        model: device::Type,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+        response: oneshot::Sender<Result<AppID>>,
     },
 
     /**
@@ -117,12 +110,7 @@ pub enum AppMessage {
      */
     RemoveDevice {
         device_id: AppID,
-        response: oneshot::Sender<
-            Result<(
-                HashMap<AppID, Input>,
-                HashMap<AppID, Output>,
-            )>,
-        >,
+        response: oneshot::Sender<Result<()>>,
     },
 
     /**
@@ -144,32 +132,24 @@ pub enum AppMessage {
     /**
      * Read config of a given device, and also all associated inputs and outputs
      */
-    GetDeviceConfig {
+    GetDevice {
         device_id: AppID,
-        response: oneshot::Sender<
-            Result<(
-                Device,
-                HashMap<AppID, Input>,
-                HashMap<AppID, Output>,
-            )>,
-        >,
+        response: oneshot::Sender<Result<Device>>,
     },
 
     /**
      * Add or replace an output.
      */
-    AddOrReplaceOutput {
-        output_id: AppID,
-        output: Output,
+    AddOutput {
+        output: models::NewOutput,
         response: oneshot::Sender<Result<()>>,
     },
 
     /**
      * Add or replace output.
      */
-    AddOrReplaceInput {
-        input_id: AppID,
-        input: Input,
+    AddInput {
+        input: models::NewInput,
         response: oneshot::Sender<Result<()>>,
     },
 
@@ -260,18 +240,7 @@ impl AppChannel {
         Ok(receiver.await?)
     }
 
-    pub async fn all_devices(
-        &self,
-    ) -> Result<
-        HashMap<
-            AppID,
-            (
-                Device,
-                HashMap<AppID, Input>,
-                HashMap<AppID, Output>,
-            ),
-        >,
-    > {
+    pub async fn all_devices(&self) -> Result<HashMap<AppID, Device>> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -296,10 +265,7 @@ impl AppChannel {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::ReadBoolean {
-                response,
-                input_id,
-            })
+            .send(AppMessage::ReadBoolean { response, input_id })
             .await?;
         receiver.await?
     }
@@ -333,38 +299,50 @@ impl AppChannel {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::ReadValue {
-                response,
-                input_id,
-            })
+            .send(AppMessage::ReadValue { response, input_id })
             .await?;
         receiver.await?
     }
 
-    pub async fn add_or_replace_device(
+    pub async fn add_device(
         &self,
-        device_id: AppID,
-        config: Device,
-    ) -> Result<()> {
+        model: crate::app::device::Type,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+    ) -> Result<AppID> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::AddOrReplaceDevice {
+            .send(AppMessage::AddDevice {
                 response,
-                device_id,
-                config,
+                model,
+                name,
+                description,
+                disabled,
             })
             .await?;
         receiver.await?
     }
 
-    pub async fn remove_device(
-        &self,
-        device_id: AppID,
-    ) -> Result<(
-        HashMap<AppID, Input>,
-        HashMap<AppID, Output>,
-    )> {
+    // pub async fn add_or_replace_device(
+    //     &self,
+    //     device_id: AppID,
+    //     config: Device,
+    // ) -> Result<()> {
+    //     let (response, receiver) = oneshot::channel();
+    //     self.sender
+    //         .clone()
+    //         .send(AppMessage::AddOrReplaceDevice {
+    //             response,
+    //             device_id,
+    //             config,
+    //         })
+    //         .await?;
+    //     receiver.await?
+    // }
+
+    pub async fn remove_device(&self, device_id: AppID) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -397,18 +375,11 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn get_device_config(
-        &self,
-        device_id: AppID,
-    ) -> Result<(
-        Device,
-        HashMap<AppID, Input>,
-        HashMap<AppID, Output>,
-    )> {
+    pub async fn get_device(&self, device_id: AppID) -> Result<Device> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::GetDeviceConfig {
+            .send(AppMessage::GetDevice {
                 response,
                 device_id,
             })
@@ -416,32 +387,20 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn add_or_replace_input(&self, input_id: AppID, input: Input) -> Result<()> {
+    pub async fn add_input(&self, input_id: AppID, input: models::NewInput) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::AddOrReplaceInput {
-                response,
-                input,
-                input_id,
-            })
+            .send(AppMessage::AddInput { response, input })
             .await?;
         receiver.await?
     }
 
-    pub async fn add_or_replace_output(
-        &self,
-        output_id: AppID,
-        output: Output,
-    ) -> Result<()> {
+    pub async fn add_output(&self, output_id: AppID, output: models::NewOutput) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::AddOrReplaceOutput {
-                response,
-                output,
-                output_id,
-            })
+            .send(AppMessage::AddOutput { response, output })
             .await?;
         receiver.await?
     }
@@ -491,14 +450,16 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::AddOrReplaceDevice {
-            device_id,
-            config,
+        AppMessage::AddDevice {
+            model,
+            name,
+            description,
+            disabled,
             response,
         } => {
-            let result = state.add_device(device_id, config).await;
+            let result = state.add_device(model, name, description, disabled).await;
             match response.send(result) {
-                Ok(..) => (),
+                Ok(id) => id,
                 Err(e) => error!("send failed: {:?}", e),
             };
         }
@@ -515,7 +476,13 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::AllDevices { response } => {
-            let result = state.devices();
+            let result = state
+                .db
+                .devices()
+                .unwrap_or(vec![])
+                .iter()
+                .map(|d| crate::app::device::Device::new(d))
+                .collect();
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -523,6 +490,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::AllOutputs { response } => {
+            // Just query from db?
             let result = state.outputs();
             match response.send(result.clone()) {
                 Ok(..) => (),
@@ -557,11 +525,11 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::GetDeviceConfig {
+        AppMessage::GetDevice {
             device_id,
             response,
         } => {
-            let result = state.device_config(&device_id);
+            let result = state.device(&device_id);
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -583,24 +551,16 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::AddOrReplaceOutput {
-            output_id,
-            output,
-            response,
-        } => {
-            let result = state.add_output(&output_id, &output).await;
+        AppMessage::AddOutput { output, response } => {
+            let result = state.add_output(&output).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
             };
         }
 
-        AppMessage::AddOrReplaceInput {
-            input_id,
-            input,
-            response,
-        } => {
-            let result = state.add_input(&input_id, &input).await;
+        AppMessage::AddInput { input, response } => {
+            let result = state.add_input(&input).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -679,11 +639,7 @@ pub async fn start_app(
 
     let db = db::Db::start_db(path)?;
 
-    let mut state = state::new_state(
-        here,
-        db
-    )
-    .await?;
+    let mut state = state::new_state(here, db).await?;
 
     let mut sender_clone = sender.clone();
 

@@ -1,6 +1,7 @@
-use crate::session::AppContext;
-use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
+use crate::app::db::models;
 pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use crate::rpi::device;
+use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -35,6 +36,7 @@ pub struct Directions {
     pub p6: Dir,
     pub p7: Dir,
 }
+
 impl Directions {
     pub fn new() -> Self {
         Directions {
@@ -104,27 +106,23 @@ pub enum Dir {
 /**
  * Data for devices
  */
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct Device {
-    pub model: Type,
-    pub name: String,
-    pub description: String,
-    pub disabled: Option<bool>,
+    db_device: models::Device,
 }
 
 #[graphql_object]
 impl Device {
     pub fn model(&self) -> Type {
-        self.model
+        serde_json::from_str(&self.db_device.model).unwrap()
     }
     pub fn name(&self) -> &str {
-        self.name.as_str()
+        self.db_device.name.as_str()
     }
-    pub fn disabled(&self) -> Option<bool> {
-        self.disabled
+    pub fn disabled(&self) -> bool {
+        self.db_device.disabled
     }
-    pub fn description(&self) -> &str {
-        self.description.as_str()
+    pub fn notes(&self) -> &str {
+        self.db_device.notes.as_str()
     }
 }
-

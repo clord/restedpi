@@ -20,6 +20,6 @@ pub mod config;
 pub mod error;
 pub mod graphql;
 pub mod rpi;
+pub mod schema;
 pub mod session;
 pub mod webapp;
-pub mod schema;

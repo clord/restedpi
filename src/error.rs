@@ -167,10 +167,8 @@ impl From<i2c::Error> for Error {
     }
 }
 
-
 impl From<r2d2::Error> for Error {
     fn from(err: r2d2::Error) -> Error {
         Error::DbError(format!("r2d2: {}", err))
     }
 }
-

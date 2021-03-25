@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::error::Result;
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
-use tracing::{span,warn,Level, trace, instrument};
+use tracing::{instrument, span, trace, warn, Level};
 
 lrlex_mod!("config/config.l");
 lrpar_mod!("config/config.y");

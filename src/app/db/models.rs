@@ -1,20 +1,31 @@
+use crate::schema::{devices, inputs, outputs};
 use chrono::prelude::*;
-use crate::error::{Result, Error};
 use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
-use diesel::sqlite::SqliteConnection;
+use juniper::GraphQLObject;
 
-pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
-
-fn get_pool(db_url: &str) -> DbPool {
-    let manager = ConnectionManager::<SqliteConnection>::new(db_url);
-
-    Pool::new(manager).expect("Failed to create DB Pool")
+#[derive(Insertable, Clone, Debug, GraphQLObject)]
+#[table_name = "devices"]
+pub struct NewDevice {
+    model: String,
+    name: String,
+    notes: String,
+    disabled: bool,
 }
 
-pub struct Db {
-    uri: String,
-    db: DbPool,
+impl NewDevice {
+    pub fn new(
+        model: crate::app::device::Type,
+        name: String,
+        notes: String,
+        disabled: Option<bool>,
+    ) -> Self {
+        Self {
+            model: serde_json::to_string(model),
+            name,
+            notes,
+            disabled,
+        }
+    }
 }
 
 /**
@@ -25,10 +36,7 @@ pub struct Device {
     pub device_id: i32,
 
     /// What model of device is this? must be a supported type.
-    pub model_type: String,
-
-    /// configuraiton as json kept in the database. model-specific structure.
-    pub model_config: String,
+    pub model: String,
 
     /// What do we name this particular device?
     pub name: String,
@@ -40,9 +48,28 @@ pub struct Device {
     pub disabled: bool,
 
     /// When was this created
-    pub created_at: NaiveDateTime
+    pub created_at: NaiveDateTime,
 }
 
+#[derive(Insertable, Clone, Debug, GraphQLObject)]
+#[table_name = "inputs"]
+pub struct NewInput {
+    pub name: String,
+    pub device_id: i32,
+    pub device_input_id: i32,
+    pub unit: String,
+}
+
+impl NewInput {
+    pub fn new(name: String, device_id: i32, device_input_id: i32, unit: String) -> Self {
+        Self {
+            name,
+            device_id,
+            device_input_id,
+            unit,
+        }
+    }
+}
 
 /// Represent a particular input, meaning a source of information from a device.
 #[derive(Queryable, Clone, Debug)]
@@ -63,7 +90,38 @@ pub struct Input {
     pub unit: String,
 
     /// When was this created
-    pub created_at: NaiveDateTime
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Insertable, Clone, Debug, GraphQLObject)]
+#[table_name = "outputs"]
+pub struct NewOutput {
+    pub name: String,
+    pub device_id: i32,
+    pub device_output_id: i32,
+    pub unit: String,
+    pub active_low: bool,
+    pub automation_script: Option<String>,
+}
+
+impl NewOutput {
+    pub fn new(
+        name: String,
+        device_id: i32,
+        device_output_id: i32,
+        unit: String,
+        active_low: bool,
+        automation_script: Option<String>,
+    ) -> Self {
+        Self {
+            name,
+            device_id,
+            device_output_id,
+            unit,
+            active_low,
+            automation_script,
+        }
+    }
 }
 
 /// Represent a particular output, meaning where we send data to a device
@@ -91,35 +149,5 @@ pub struct Output {
     pub automation_script: Option<String>,
 
     /// When was this created
-    pub created_at: NaiveDateTime
+    pub created_at: NaiveDateTime,
 }
-
-impl Db {
-    pub fn start_db(path: &std::path::Path) -> Result<Self> {
-        let joined = path.join("rpi.sql3");
-        let uri = joined.to_str().ok_or(Error::IoError("path not set".to_string()))?;
-        Ok(Db {
-            uri: uri.to_string(),
-            db: get_pool(uri)
-        })
-    }
-
-    pub fn devices(&self) -> Result<Vec<Device>> {
-        use crate::schema::devices::dsl::*;
-        let db = self.db.get()?;
-        Ok(devices.load(&db)?)
-    }
-
-    pub fn inputs(&self) -> Result<Vec<Input>> {
-        use crate::schema::inputs::dsl::*;
-        let db = self.db.get()?;
-        Ok(inputs.load(&db)?)
-    }
-
-    pub fn outputs(&self) -> Result<Vec<Output>> {
-        use crate::schema::outputs::dsl::*;
-        let db = self.db.get()?;
-        Ok(outputs.load(&db)?)
-    }
-}
-
