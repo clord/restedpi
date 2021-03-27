@@ -3,7 +3,6 @@ pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Val
 use crate::session::AppContext;
 use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /**
@@ -11,17 +10,13 @@ use std::path::PathBuf;
  */
 #[derive(Debug, Clone)]
 pub struct Output {
-    data: models::Output,
+    pub data: models::Output,
 }
 
 #[graphql_object(context = AppContext)]
 impl Output {
     pub fn name(&self) -> &str {
         self.data.name.as_str()
-    }
-
-    pub fn output_id(&self) -> i32 {
-        self.data.output_id
     }
 
     pub fn unit(&self) -> Unit {
@@ -33,8 +28,12 @@ impl Output {
         }
     }
 
-    pub async fn device(&self, context: &AppContext) -> Option<crate::rpi::device::Device> {
-        context.channel().get_device(self.data.device_id).await.ok()
+    pub async fn device(&self, context: &AppContext) -> Option<crate::app::device::Device> {
+        context
+            .channel()
+            .get_device(self.data.name.clone())
+            .await
+            .ok()
     }
 
     pub fn active_low(&self) -> bool {
@@ -48,7 +47,7 @@ impl Output {
     pub async fn value(&self, context: &AppContext) -> FieldResult<bool> {
         Ok(context
             .channel()
-            .current_output_value(self.data.output_id)
+            .current_output_value(self.data.name.clone())
             .await?)
     }
 }

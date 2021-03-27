@@ -15,7 +15,7 @@ pub struct InputValue {
 
 #[derive(Debug, Clone)]
 pub struct Input {
-    db: models::Input,
+    pub db: models::Input,
 }
 
 #[graphql_object(context = AppContext)]
@@ -24,26 +24,30 @@ impl Input {
         self.db.name.as_str()
     }
 
-    pub fn input_id(&self) -> i32 {
-        self.db.input_id
-    }
-
     pub fn unit(&self) -> crate::config::Unit {
         serde_json::from_str(&self.db.unit).unwrap()
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
-        context.channel().get_device(self.db.device_id).await.ok()
+        context
+            .channel()
+            .get_device(self.db.name.clone())
+            .await
+            .ok()
     }
 
     pub async fn bool_value(&self, context: &AppContext) -> Option<bool> {
-        context.channel().read_boolean(self.db.input_id).await.ok()
+        context
+            .channel()
+            .read_boolean(self.db.name.clone())
+            .await
+            .ok()
     }
 
     pub async fn value(&self, context: &AppContext) -> Option<InputValue> {
         context
             .channel()
-            .read_value(self.db.input_id)
+            .read_value(self.db.name.clone())
             .await
             .ok()
             .map(|(value, unit)| InputValue { value, unit })

@@ -6,4 +6,4 @@ pub mod device;
 pub mod input;
 pub mod output;
 
-pub type AppID = i32;
+pub type AppID = String;

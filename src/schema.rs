@@ -1,8 +1,8 @@
 table! {
-    devices (device_id) {
-        device_id -> Integer,
-        model -> Text,
+    devices (name) {
         name -> Text,
+        name_as_entered -> Text,
+        model -> Text,
         notes -> Text,
         disabled -> Bool,
         created_at -> Timestamp,
@@ -10,10 +10,10 @@ table! {
 }
 
 table! {
-    inputs (input_id) {
-        input_id -> Integer,
+    inputs (name) {
         name -> Text,
-        device_id -> Integer,
+        name_as_entered -> Text,
+        device_id -> Text,
         device_input_id -> Integer,
         unit -> Text,
         created_at -> Timestamp,
@@ -21,10 +21,10 @@ table! {
 }
 
 table! {
-    outputs (output_id) {
-        output_id -> Integer,
+    outputs (name) {
         name -> Text,
-        device_id -> Integer,
+        name_as_entered -> Text,
+        device_id -> Text,
         device_output_id -> Integer,
         unit -> Text,
         active_low -> Bool,
@@ -32,8 +32,5 @@ table! {
         created_at -> Timestamp,
     }
 }
-
-joinable!(inputs -> devices (device_id));
-joinable!(outputs -> devices (device_id));
 
 allow_tables_to_appear_in_same_query!(devices, inputs, outputs,);

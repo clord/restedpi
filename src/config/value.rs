@@ -81,8 +81,8 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
     let res = match expr {
         Value::Const(a) => Ok(*a),
 
-        Value::ReadInput(input_id, unit) => {
-            let value = app.read_input_value(input_id).await?;
+        Value::ReadInput(input_name, unit) => {
+            let value = app.read_input_value(input_name).await?;
             if *unit == value.1 {
                 Ok(value.0)
             } else {

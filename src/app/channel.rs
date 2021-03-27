@@ -34,21 +34,7 @@ pub enum AppMessage {
      * Return all devices
      */
     AllDevices {
-        response: oneshot::Sender<HashMap<AppID, Device>>,
-    },
-
-    /**
-     * Return all outputs
-     */
-    AllOutputs {
-        response: oneshot::Sender<HashMap<AppID, Output>>,
-    },
-
-    /**
-     * Return all inputs
-     */
-    AllInputs {
-        response: oneshot::Sender<HashMap<AppID, Input>>,
+        response: oneshot::Sender<Result<Vec<Device>>>,
     },
 
     /**
@@ -138,6 +124,22 @@ pub enum AppMessage {
     },
 
     /**
+     * Read inputs for a device
+     */
+    GetInputsForDevice {
+        device_id: AppID,
+        response: oneshot::Sender<Result<Vec<Input>>>,
+    },
+
+    /**
+     * Read outputs for a device
+     */
+    GetOutputsForDevice {
+        device_id: AppID,
+        response: oneshot::Sender<Result<Vec<Output>>>,
+    },
+
+    /**
      * Add or replace an output.
      */
     AddOutput {
@@ -222,31 +224,14 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn all_outputs(&self) -> Result<HashMap<AppID, Output>> {
-        let (response, receiver) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(AppMessage::AllOutputs { response })
-            .await?;
-        Ok(receiver.await?)
-    }
-
-    pub async fn all_inputs(&self) -> Result<HashMap<AppID, Input>> {
-        let (response, receiver) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(AppMessage::AllInputs { response })
-            .await?;
-        Ok(receiver.await?)
-    }
-
-    pub async fn all_devices(&self) -> Result<HashMap<AppID, Device>> {
+    pub async fn all_devices(&self) -> Result<Vec<Device>> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
             .send(AppMessage::AllDevices { response })
             .await?;
-        Ok(receiver.await?)
+        let result = receiver.await?;
+        Ok(result?)
     }
 
     pub async fn read_booleans(&self, input_ids: Vec<AppID>) -> Result<Vec<Result<bool>>> {
@@ -387,7 +372,31 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn add_input(&self, input_id: AppID, input: models::NewInput) -> Result<()> {
+    pub async fn get_outputs_for_device(&self, device_id: AppID) -> Result<Vec<Output>> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::GetOutputsForDevice {
+                response,
+                device_id,
+            })
+            .await?;
+        receiver.await?
+    }
+
+    pub async fn get_inputs_for_device(&self, device_id: AppID) -> Result<Vec<Input>> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::GetInputsForDevice {
+                response,
+                device_id,
+            })
+            .await?;
+        receiver.await?
+    }
+
+    pub async fn add_input(&self, input: models::NewInput) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -396,7 +405,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn add_output(&self, output_id: AppID, output: models::NewOutput) -> Result<()> {
+    pub async fn add_output(&self, output: models::NewOutput) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -420,7 +429,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             response,
         } => {
             let mut result = Vec::new();
-            for input_id in input_ids {
+            for input_id in &input_ids {
                 let r = state.read_input_bool(input_id).await;
                 result.push(r);
             }
@@ -431,7 +440,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::ReadBoolean { input_id, response } => {
-            let result = state.read_input_bool(input_id).await;
+            let result = state.read_input_bool(&input_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -443,7 +452,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             value,
             response,
         } => {
-            let result = state.write_output_bool(output_id, value).await;
+            let result = state.write_output_bool(&output_id, value).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -468,7 +477,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             device_id,
             response,
         } => {
-            let result = state.remove_device(device_id).await;
+            let result = state.remove_device(&device_id).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -476,31 +485,8 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         }
 
         AppMessage::AllDevices { response } => {
-            let result = state
-                .db
-                .devices()
-                .unwrap_or(vec![])
-                .iter()
-                .map(|d| crate::app::device::Device::new(d))
-                .collect();
+            let result = state.devices();
             match response.send(result) {
-                Ok(..) => (),
-                Err(e) => error!("send failed: {:?}", e),
-            };
-        }
-
-        AppMessage::AllOutputs { response } => {
-            // Just query from db?
-            let result = state.outputs();
-            match response.send(result.clone()) {
-                Ok(..) => (),
-                Err(e) => error!("send failed: {:?}", e),
-            };
-        }
-
-        AppMessage::AllInputs { response } => {
-            let result = state.inputs();
-            match response.send(result.clone()) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
             };
@@ -530,6 +516,28 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             response,
         } => {
             let result = state.device(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::GetInputsForDevice {
+            device_id,
+            response,
+        } => {
+            let result = state.device_inputs(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::GetOutputsForDevice {
+            device_id,
+            response,
+        } => {
+            let result = state.device_outputs(&device_id);
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -670,9 +678,12 @@ pub async fn start_app(
                         info!("terminating channel");
                         break;
                     } else if last_emit.elapsed().as_millis() > 700 {
-                        debug!("running automation...");
-                        state.emit_automations().await;
                         last_emit = Instant::now();
+                        debug!("running automation...");
+                        state
+                            .emit_automations()
+                            .await
+                            .expect("emit automations errors");
                     }
 
                     // TODO: Support sending real time change notification by allowing clients to send a sender to us,

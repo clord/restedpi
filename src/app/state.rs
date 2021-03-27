@@ -1,8 +1,6 @@
 extern crate chrono;
 
-use crate::app::db;
-use crate::app::device;
-use crate::app::AppID;
+use crate::app::{db, device, input, output, AppID};
 use crate::config;
 use crate::config::parse::{bool_expr, BoolExpr};
 use crate::error::{Error, Result};
@@ -37,6 +35,39 @@ impl State {
         self.here.1
     }
 
+    pub fn devices(&self) -> Result<Vec<device::Device>> {
+        let models = self.db.devices()?;
+        Ok(models
+            .iter()
+            .map(|d| device::Device {
+                db_device: d.clone(),
+            })
+            .collect())
+    }
+
+    pub fn device_inputs(&self, device_id: &AppID) -> Result<Vec<input::Input>> {
+        let models = self.db.inputs_for_device(device_id)?;
+        Ok(models
+            .iter()
+            .map(|d| input::Input { db: d.clone() })
+            .collect())
+    }
+
+    pub fn device_outputs(&self, device_id: &AppID) -> Result<Vec<output::Output>> {
+        let models = self.db.outputs_for_device(device_id)?;
+        Ok(models
+            .iter()
+            .map(|d| output::Output { data: d.clone() })
+            .collect())
+    }
+
+    pub fn device(&self, name: &AppID) -> Result<device::Device> {
+        let device = self.db.device(name)?;
+        Ok(device::Device {
+            db_device: device.clone(),
+        })
+    }
+
     pub async fn add_device(
         &mut self,
         model: crate::app::device::Type,
@@ -47,11 +78,11 @@ impl State {
         let new_device = models::NewDevice::new(model, name, description, disabled);
         let db_device = self.db.add_device(&new_device)?;
         let model = serde_json::from_str(db_device.model.as_str())?;
-        let id = db_device.device_id;
+        let id = db_device.name;
         let device = Device::new(model, self.i2c.clone());
         info!("Adding device id: {}", id);
-        self.devices.insert(id, device);
-        Ok(id)
+        self.devices.insert(id.clone(), device);
+        Ok(id.clone())
     }
 
     pub async fn add_input(&mut self, config: &models::NewInput) -> Result<()> {
@@ -69,6 +100,14 @@ impl State {
         }
     }
 
+    pub async fn remove_input(&mut self, input_id: &AppID) -> Result<()> {
+        self.db.remove_input(input_id)
+    }
+
+    pub async fn remove_output(&mut self, output_id: &AppID) -> Result<()> {
+        self.db.remove_output(output_id)
+    }
+
     pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<()> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
@@ -84,17 +123,18 @@ impl State {
         }
     }
 
-    pub async fn reset_device(&mut self, id: AppID) -> Result<()> {
-        let device = self.devices.get_mut(&id).ok_or(Error::NonExistant(
+    pub async fn reset_device(&mut self, id: &AppID) -> Result<()> {
+        let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
             format!("reset_device: {}", id).to_string(),
         ))?;
         device.reset().await?;
         Ok(())
     }
 
-    pub async fn remove_device(&mut self, name: AppID) -> Result<()> {
+    pub async fn remove_device(&mut self, name: &AppID) -> Result<()> {
         info!("Remove device: '{}'", name);
-        self.devices.remove(&name);
+        self.db.remove_device(name)?;
+        self.devices.remove(name);
         Ok(())
     }
 
@@ -115,7 +155,7 @@ impl State {
     /**
      * read what is currently being outputed
      */
-    pub async fn read_output_bool(&self, output_id: AppID) -> Result<bool> {
+    pub async fn read_output_bool(&self, output_id: &AppID) -> Result<bool> {
         let output = self.db.output(output_id)?;
         let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
@@ -134,7 +174,7 @@ impl State {
     /**
      * read a named input
      */
-    pub async fn read_input_bool(&self, input_id: AppID) -> Result<bool> {
+    pub async fn read_input_bool(&self, input_id: &AppID) -> Result<bool> {
         let input = self.db.input(input_id)?;
         let unit: device::Unit = serde_json::from_str(&input.unit)?;
 
@@ -153,7 +193,7 @@ impl State {
     /**
      * Write a particular value to an output
      */
-    pub async fn write_output_bool(&mut self, output_id: AppID, value: bool) -> Result<()> {
+    pub async fn write_output_bool(&mut self, output_id: &AppID, value: bool) -> Result<()> {
         let output = self.db.output(output_id)?;
         let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
@@ -221,7 +261,7 @@ impl State {
                 // evaluate the expression and write it to the right output
                 match config::boolean::evaluate(self, &expr).await {
                     Ok(result) => {
-                        if let Err(e) = self.write_output_bool(output.output_id, result).await {
+                        if let Err(e) = self.write_output_bool(&output.name, result).await {
                             error!("failed to write: {}", e);
                         }
                     }
@@ -245,7 +285,7 @@ impl State {
         Ok(())
     }
 
-    pub async fn read_input_value(&self, input_id: AppID) -> Result<(f64, device::Unit)> {
+    pub async fn read_input_value(&self, input_id: &AppID) -> Result<(f64, device::Unit)> {
         let input = self.db.input(input_id)?;
 
         if let Some(device) = self.devices.get(&input.device_id) {
@@ -267,7 +307,7 @@ pub async fn new_state(here: (f64, f64), db: crate::app::db::Db) -> Result<State
         let model = serde_json::from_str(&db_device.model)?;
         info!("Adding device {:?} named '{}'", model, db_device.name);
         let new_device = Device::new(model, i2c.clone());
-        device_instances.insert(db_device.device_id, new_device);
+        device_instances.insert(db_device.name.clone(), new_device);
     }
 
     let mut state = State {

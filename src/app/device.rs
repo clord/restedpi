@@ -1,10 +1,8 @@
-use crate::app::db::models;
+use crate::app::{db::models, input, output};
 pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
-use crate::rpi::device;
-use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
+use crate::session::AppContext;
+use juniper::{graphql_object, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct MCP9808Config {
@@ -108,10 +106,10 @@ pub enum Dir {
  */
 #[derive(Clone, Debug)]
 pub struct Device {
-    db_device: models::Device,
+    pub db_device: models::Device,
 }
 
-#[graphql_object]
+#[graphql_object(Context = AppContext)]
 impl Device {
     pub fn model(&self) -> Type {
         serde_json::from_str(&self.db_device.model).unwrap()
@@ -119,10 +117,25 @@ impl Device {
     pub fn name(&self) -> &str {
         self.db_device.name.as_str()
     }
+    pub fn name_as_entered(&self) -> &str {
+        self.db_device.name_as_entered.as_str()
+    }
     pub fn disabled(&self) -> bool {
         self.db_device.disabled
     }
     pub fn notes(&self) -> &str {
         self.db_device.notes.as_str()
+    }
+    pub async fn inputs(&self, context: &AppContext) -> FieldResult<Vec<input::Input>> {
+        Ok(context
+            .channel()
+            .get_inputs_for_device(self.db_device.name.clone())
+            .await?)
+    }
+    pub async fn outputs(&self, context: &AppContext) -> FieldResult<Vec<output::Output>> {
+        Ok(context
+            .channel()
+            .get_outputs_for_device(self.db_device.name.clone())
+            .await?)
     }
 }

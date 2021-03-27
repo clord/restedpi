@@ -6,10 +6,11 @@ use juniper::GraphQLObject;
 #[derive(Insertable, Clone, Debug, GraphQLObject)]
 #[table_name = "devices"]
 pub struct NewDevice {
-    model: String,
     name: String,
+    name_as_entered: String,
+    model: String,
     notes: String,
-    disabled: bool,
+    disabled: Option<bool>,
 }
 
 impl NewDevice {
@@ -19,8 +20,10 @@ impl NewDevice {
         notes: String,
         disabled: Option<bool>,
     ) -> Self {
+        // TODO: Transform name to a key that is a valid identifier.
         Self {
-            model: serde_json::to_string(model),
+            model: serde_json::to_string(&model).unwrap(),
+            name_as_entered: name.clone(),
             name,
             notes,
             disabled,
@@ -33,13 +36,14 @@ impl NewDevice {
  */
 #[derive(Queryable, Clone, Debug)]
 pub struct Device {
-    pub device_id: i32,
+    /// What do we name this particular device for identification?
+    pub name: String,
+
+    /// What did the user enter for the name? (for display)
+    pub name_as_entered: String,
 
     /// What model of device is this? must be a supported type.
     pub model: String,
-
-    /// What do we name this particular device?
-    pub name: String,
 
     /// information about the device that we might need
     pub notes: String,
@@ -55,14 +59,17 @@ pub struct Device {
 #[table_name = "inputs"]
 pub struct NewInput {
     pub name: String,
-    pub device_id: i32,
+    pub name_as_entered: String,
+    pub device_id: String,
     pub device_input_id: i32,
     pub unit: String,
 }
 
 impl NewInput {
-    pub fn new(name: String, device_id: i32, device_input_id: i32, unit: String) -> Self {
+    pub fn new(name: String, device_id: String, device_input_id: i32, unit: String) -> Self {
+        // TODO: Generate a valid identifier
         Self {
+            name_as_entered: name.clone(),
             name,
             device_id,
             device_input_id,
@@ -74,13 +81,12 @@ impl NewInput {
 /// Represent a particular input, meaning a source of information from a device.
 #[derive(Queryable, Clone, Debug)]
 pub struct Input {
-    pub input_id: i32,
-
     /// What do we want to call this input
     pub name: String,
+    pub name_as_entered: String,
 
     /// The device this input is associated with
-    pub device_id: i32,
+    pub device_id: String,
 
     /// Each device can have multiple inputs and outputs, this is a device-specific index. (pin
     /// number, channel, etc)
@@ -97,7 +103,8 @@ pub struct Input {
 #[table_name = "outputs"]
 pub struct NewOutput {
     pub name: String,
-    pub device_id: i32,
+    pub name_as_entered: String,
+    pub device_id: String,
     pub device_output_id: i32,
     pub unit: String,
     pub active_low: bool,
@@ -107,13 +114,15 @@ pub struct NewOutput {
 impl NewOutput {
     pub fn new(
         name: String,
-        device_id: i32,
+        device_id: String,
         device_output_id: i32,
         unit: String,
         active_low: bool,
         automation_script: Option<String>,
     ) -> Self {
+        // TODO: identifer
         Self {
+            name_as_entered: name.clone(),
             name,
             device_id,
             device_output_id,
@@ -127,13 +136,12 @@ impl NewOutput {
 /// Represent a particular output, meaning where we send data to a device
 #[derive(Queryable, Clone, Debug)]
 pub struct Output {
-    pub output_id: i32,
-
     /// What do we call this device
     pub name: String,
+    pub name_as_entered: String,
 
     /// The device this input is associated with
-    pub device_id: i32,
+    pub device_id: String,
 
     /// Each device can have multiple inputs and outputs, this is a device-specific index. (pin
     /// number, channel, etc)

@@ -29,9 +29,9 @@ impl Query {
         Ok(device)
     }
 
-    pub async fn devices(context: &AppContext) -> FieldResult<HashMap<AppID, device::Device>> {
+    pub async fn devices(context: &AppContext) -> FieldResult<Vec<device::Device>> {
         let devices = context.channel().all_devices().await?;
-        Ok(devices);
+        Ok(devices)
     }
 }
 

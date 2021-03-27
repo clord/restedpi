@@ -1,6 +1,6 @@
 %start BoolExpr
-%avoid_insert "number" 
-%avoid_insert "true" 
+%avoid_insert "number"
+%avoid_insert "true"
 %avoid_insert "false"
 %avoid_insert "identifier"
 %%
@@ -36,8 +36,8 @@ RootFactor -> Result<BoolExpr, ()>:
     | Value '>' Value { Ok(BoolExpr::MoreThan($span, $1?, $3?)) }
     | Value '<' Value { Ok(BoolExpr::LessThan($span, $1?, $3?)) }
     | Value 'between' Value 'and' Value { Ok(BoolExpr::Between($span, $3?, $1?, $5?)) }
-    | 'plus/minus' Value ',' Value '==' Value   { 
-        Ok(BoolExpr::EqualPlusOrMinus($span, $2?, $4?, $6?)) 
+    | 'plus/minus' Value ',' Value '==' Value   {
+        Ok(BoolExpr::EqualPlusOrMinus($span, $2?, $4?, $6?))
       }
     ;
 
@@ -48,7 +48,7 @@ Value -> Result<Value, ()>:
   | Value '-' Term {
     Ok(Value::Sub(Box::new($1?), Box::new($3?)))
     }
-  | Term { $1 } 
+  | Term { $1 }
   ;
 
 Term -> Result<Value, ()>:
@@ -58,14 +58,14 @@ Term -> Result<Value, ()>:
   | Term '/' Factor {
       Ok(Value::Div(Box::new($1?), Box::new($3?)))
     }
-  | Factor { $1 } 
+  | Factor { $1 }
   ;
 
 Factor -> Result<Value, ()>:
-      'number' { 
+      'number' {
         Ok(Value::Const($lexer.span_str($span).parse().map_err(|_x| {
           ()
-        })?)) 
+        })?))
       }
     | '(' Value ')' { $2 }
     | 'sun_declination' '(' DT ')' {
@@ -130,13 +130,13 @@ DegNS -> Result<f64, ()>:
       let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
       let num: f64 = num_str.parse().map_err(|_x| ())?;
-      Ok(num) 
+      Ok(num)
       }
   | 'number' 'degS' {
       let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
       let num: f64 = num_str.parse().map_err(|_x| ())?;
-      Ok(-num) 
+      Ok(-num)
     }
   ;
 
@@ -145,43 +145,43 @@ DegEW -> Result<f64, ()>:
       let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
       let num: f64 = num_str.parse().map_err(|_x| ())?;
-      Ok(num) 
+      Ok(num)
     }
 
   | 'number' 'degW' {
       let num_span = $1.map_err(|_x| ())?.span();
       let num_str = $lexer.span_str(num_span);
       let num: f64 = num_str.parse().map_err(|_x| ())?;
-      Ok(-num) 
+      Ok(-num)
     }
   ;
 
-LOC -> Result<LocationValue, ()>: 
+LOC -> Result<LocationValue, ()>:
     'here' { Ok(LocationValue::Here)  }
-  | DegNS DegEW { 
-      Ok(LocationValue::LatLong($1?, $2?)) 
+  | DegNS DegEW {
+      Ok(LocationValue::LatLong($1?, $2?))
   }
-  ; 
+  ;
 
-DT -> Result<DateTimeValue, ()>: 
+DT -> Result<DateTimeValue, ()>:
     'now' { Ok(DateTimeValue::Now) }
-  | 'date' { 
+  | 'date' {
         Ok(DateTimeValue::SpecificDate(
           $lexer.span_str($span).parse().map_err(|_x| ())?
-          )) 
+          ))
         }
-  | 'date_time_z' { 
+  | 'date_time_z' {
         Ok(DateTimeValue::SpecificDTZ(
           $lexer.span_str($span).parse().map_err(|_x| ())?
-          )) 
+          ))
         }
-  | 'date_time' { 
+  | 'date_time' {
         Ok(DateTimeValue::SpecificDT(
           $lexer.span_str($span).parse().map_err(|_x| ())?
-          )) 
+          ))
         }
   ;
-  
+
 
 Unmatched -> ():
       "UNMATCHED" { }

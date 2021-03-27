@@ -41,6 +41,19 @@ impl Db {
         Ok(r)
     }
 
+    pub fn remove_device(&self, device_id: &AppID) -> Result<()> {
+        use crate::schema::devices::dsl::*;
+        let db = self.db.get()?;
+        diesel::delete(devices.filter(name.eq(device_id))).execute(&db)?;
+        Ok(())
+    }
+
+    pub fn device(&self, did: &AppID) -> Result<models::Device> {
+        use crate::schema::devices::dsl::*;
+        let db = self.db.get()?;
+        Ok(devices.filter(name.eq(did)).first(&db)?)
+    }
+
     pub fn devices(&self) -> Result<Vec<models::Device>> {
         use crate::schema::devices::dsl::*;
         let db = self.db.get()?;
@@ -49,34 +62,51 @@ impl Db {
 
     pub fn app_devices(&self) -> Result<Vec<crate::app::device::Device>> {
         let devs = self.devices()?;
-        devs.iter()
-            .map(|d| crate::app::device::Device::new(d))
-            .collect()
+        Ok(devs
+            .iter()
+            .map(|d| crate::app::device::Device {
+                db_device: d.clone(),
+            })
+            .collect())
     }
 
     pub fn outputs(&self) -> Result<Vec<models::Output>> {
         use crate::schema::outputs;
         let db = self.db.get()?;
-        let out = outputs::dsl::outputs.fetch(&db)?;
+        let out = outputs::dsl::outputs.load(&db)?;
         Ok(out)
     }
 
-    pub fn output(&self, oid: AppID) -> Result<models::Output> {
+    pub fn remove_output(&self, id: &AppID) -> Result<()> {
+        use crate::schema::outputs::dsl::*;
+        let db = self.db.get()?;
+        diesel::delete(outputs.filter(name.eq(id))).execute(&db)?;
+        Ok(())
+    }
+
+    pub fn output(&self, oid: &AppID) -> Result<models::Output> {
         use crate::schema::outputs;
         let db = self.db.get()?;
         let out = outputs::dsl::outputs
-            .filter(outputs::output_id.eq(oid))
+            .filter(outputs::name.eq(oid))
             .first(&db)?;
         Ok(out)
     }
 
-    pub fn input(&self, iid: AppID) -> Result<models::Input> {
+    pub fn input(&self, iid: &AppID) -> Result<models::Input> {
         use crate::schema::inputs;
         let db = self.db.get()?;
         let inp = inputs::dsl::inputs
-            .filter(inputs::input_id.eq(iid))
+            .filter(inputs::name.eq(iid))
             .first(&db)?;
         Ok(inp)
+    }
+
+    pub fn remove_input(&self, id: &AppID) -> Result<()> {
+        use crate::schema::inputs::dsl::*;
+        let db = self.db.get()?;
+        diesel::delete(inputs.filter(name.eq(id))).execute(&db)?;
+        Ok(())
     }
 
     pub fn add_input(&self, new_input: &models::NewInput) -> Result<models::Input> {
@@ -101,15 +131,15 @@ impl Db {
         Ok(r)
     }
 
-    pub fn inputs_for_device(&self, device_id: AppID) -> Result<Vec<models::Input>> {
+    pub fn inputs_for_device(&self, d_id: &AppID) -> Result<Vec<models::Input>> {
         use crate::schema::inputs::dsl::*;
         let db = self.db.get()?;
-        Ok(inputs.filter(device_id.eq(device_id)).load(&db)?)
+        Ok(inputs.filter(device_id.eq(d_id)).load(&db)?)
     }
 
-    pub fn outputs_for_device(&self, device_id: AppID) -> Result<Vec<models::Output>> {
+    pub fn outputs_for_device(&self, d_id: &AppID) -> Result<Vec<models::Output>> {
         use crate::schema::outputs::dsl::*;
         let db = self.db.get()?;
-        Ok(outputs.filter(device_id.eq(device_id)).load(&db)?)
+        Ok(outputs.filter(device_id.eq(d_id)).load(&db)?)
     }
 }
