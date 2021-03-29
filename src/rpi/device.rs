@@ -49,7 +49,7 @@ impl Device {
     pub async fn reset(&mut self) -> Result<()> {
         match self.model {
             device::Type::MCP9808(_) => Ok(()),
-            device::Type::MCP23017(device::MCP23017Config {
+            device::Type::MCP23017(device::MCP23017 {
                 address,
                 bank_a,
                 bank_b,
@@ -94,7 +94,7 @@ impl Device {
                     .await?;
                 Ok(())
             }
-            device::Type::BMP085(device::BMP085Config { address, .. }) => {
+            device::Type::BMP085(device::BMP085 { address, .. }) => {
                 self.bmp085_state
                     .reset(address.try_into().unwrap(), &self.rapi)
                     .await
@@ -122,7 +122,7 @@ impl Device {
         match self.model {
             device::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
             device::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
-            device::Type::MCP23017(device::MCP23017Config { address, .. }) => {
+            device::Type::MCP23017(device::MCP23017 { address, .. }) => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let pin = self
                     .mcp23017_state
@@ -135,7 +135,7 @@ impl Device {
 
     pub async fn read_sensor(&self, index: i32) -> Result<(f64, device::Unit)> {
         match self.model {
-            device::Type::BMP085(device::BMP085Config { address, mode }) => match index {
+            device::Type::BMP085(device::BMP085 { address, mode }) => match index {
                 0 => {
                     let v = self
                         .bmp085_state
@@ -152,7 +152,7 @@ impl Device {
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            device::Type::MCP9808(device::MCP9808Config { address }) => match index {
+            device::Type::MCP9808(device::MCP9808 { address }) => match index {
                 0 => {
                     let temp = mcp9808::read_temp(&self.rapi, address.try_into().unwrap()).await?;
                     Ok((temp as f64, device::Unit::DegC))
@@ -167,7 +167,7 @@ impl Device {
         match self.model {
             device::Type::BMP085(_) => Err(Error::OutOfBounds(index as usize)),
             device::Type::MCP9808(_) => Err(Error::OutOfBounds(index as usize)),
-            device::Type::MCP23017(device::MCP23017Config {
+            device::Type::MCP23017(device::MCP23017 {
                 address,
                 bank_a,
                 bank_b,

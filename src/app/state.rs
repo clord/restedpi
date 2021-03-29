@@ -85,13 +85,13 @@ impl State {
         Ok(id.clone())
     }
 
-    pub async fn add_input(&mut self, config: &models::NewInput) -> Result<()> {
+    pub async fn add_input(&mut self, config: &models::NewInput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
             let unit = serde_json::from_str(&config.unit)?;
             dev.valid_input(config.device_input_id, unit)?;
             let db_input = self.db.add_input(config)?;
-            Ok(())
+            Ok(db_input.name)
         } else {
             Err(Error::NonExistant(format!(
                 "Could not add input to missing device {}",
@@ -108,13 +108,13 @@ impl State {
         self.db.remove_output(output_id)
     }
 
-    pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<()> {
+    pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
             let unit = serde_json::from_str(&config.unit)?;
             dev.valid_output(config.device_output_id, unit)?;
             let db_output = self.db.add_output(&config)?;
-            Ok(())
+            Ok(db_output.name)
         } else {
             Err(Error::NonExistant(format!(
                 "Could not add output to missing device {}",

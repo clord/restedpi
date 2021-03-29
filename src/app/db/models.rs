@@ -1,12 +1,12 @@
 use crate::schema::{devices, inputs, outputs};
 use chrono::prelude::*;
 use diesel::prelude::*;
-use juniper::GraphQLObject;
+use juniper::{GraphQLInputObject, GraphQLObject};
 
 #[derive(Insertable, Clone, Debug, GraphQLObject)]
 #[table_name = "devices"]
 pub struct NewDevice {
-    name: String,
+    pub name: String,
     name_as_entered: String,
     model: String,
     notes: String,
@@ -55,7 +55,7 @@ pub struct Device {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Insertable, Clone, Debug, GraphQLObject)]
+#[derive(Insertable, Clone, Debug, GraphQLInputObject)]
 #[table_name = "inputs"]
 pub struct NewInput {
     pub name: String,
@@ -99,7 +99,7 @@ pub struct Input {
     pub created_at: NaiveDateTime,
 }
 
-#[derive(Insertable, Clone, Debug, GraphQLObject)]
+#[derive(Insertable, Clone, Debug, GraphQLInputObject)]
 #[table_name = "outputs"]
 pub struct NewOutput {
     pub name: String,

@@ -5,7 +5,7 @@ use juniper::{graphql_object, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUn
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
-pub struct MCP9808Config {
+pub struct MCP9808 {
     pub address: i32,
 }
 
@@ -18,7 +18,7 @@ pub enum SamplingMode {
 }
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
-pub struct BMP085Config {
+pub struct BMP085 {
     pub address: i32,
     pub mode: SamplingMode,
 }
@@ -77,7 +77,7 @@ impl Directions {
 }
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
-pub struct MCP23017Config {
+pub struct MCP23017 {
     pub address: i32,
     pub bank_a: Directions,
     pub bank_b: Directions,
@@ -86,9 +86,9 @@ pub struct MCP23017Config {
 #[derive(Copy, Serialize, Deserialize, GraphQLUnion, PartialEq, Clone, Debug)]
 #[serde(tag = "name")]
 pub enum Type {
-    MCP9808(MCP9808Config),
-    BMP085(BMP085Config),
-    MCP23017(MCP23017Config),
+    MCP9808(MCP9808),
+    BMP085(BMP085),
+    MCP23017(MCP23017),
 }
 
 #[derive(Serialize, Deserialize, GraphQLEnum, PartialEq, PartialOrd, Copy, Clone, Debug)]

@@ -109,7 +109,6 @@ async fn main() {
     } = Opt::from_args();
     env::set_var("RUST_LOG", log_level);
     tracing_subscriber::fmt::init();
-    // pretty_env_logger::init_custom_env("LOG");
     let config_file = get_config_path(config_file);
 
     match command {

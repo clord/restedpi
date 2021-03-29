@@ -86,8 +86,4 @@ pub enum ConfigError {
 }
 
 #[cfg(test)]
-mod tests {
-    // use crate::config::boolean;
-    // use crate::config::{Config, Device, Input, Output, Type};
-    // use std::path::PathBuf;
-}
+mod tests {}

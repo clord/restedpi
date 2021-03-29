@@ -144,7 +144,7 @@ pub enum AppMessage {
      */
     AddOutput {
         output: models::NewOutput,
-        response: oneshot::Sender<Result<()>>,
+        response: oneshot::Sender<Result<AppID>>,
     },
 
     /**
@@ -152,7 +152,7 @@ pub enum AppMessage {
      */
     AddInput {
         input: models::NewInput,
-        response: oneshot::Sender<Result<()>>,
+        response: oneshot::Sender<Result<AppID>>,
     },
 
     /**
@@ -396,7 +396,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn add_input(&self, input: models::NewInput) -> Result<()> {
+    pub async fn add_input(&self, input: models::NewInput) -> Result<AppID> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
@@ -405,7 +405,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn add_output(&self, output: models::NewOutput) -> Result<()> {
+    pub async fn add_output(&self, output: models::NewOutput) -> Result<AppID> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()

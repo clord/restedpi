@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::sqlite::SqliteConnection;
+use tracing::info;
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
@@ -35,9 +36,8 @@ impl Db {
         use crate::schema::devices::table;
         let db = self.db.get()?;
         let res = diesel::insert_into(table).values(new_device).execute(&db)?;
-        let r = devices
-            .find(diesel::dsl::sql("last_insert_rowid()"))
-            .get_result(&db)?;
+        info!("Added {} rows to device table", res);
+        let r: models::Device = devices.find(&new_device.name).first(&db)?;
         Ok(r)
     }
 
@@ -114,9 +114,8 @@ impl Db {
         use crate::schema::inputs::table;
         let db = self.db.get()?;
         let res = diesel::insert_into(table).values(new_input).execute(&db)?;
-        let r = inputs
-            .find(diesel::dsl::sql("last_insert_rowid()"))
-            .get_result(&db)?;
+        info!("Added {} rows to input table", res);
+        let r: models::Input = inputs.find(&new_input.name).first(&db)?;
         Ok(r)
     }
 
@@ -125,9 +124,8 @@ impl Db {
         use crate::schema::outputs::table;
         let db = self.db.get()?;
         let res = diesel::insert_into(table).values(new_output).execute(&db)?;
-        let r = outputs
-            .find(diesel::dsl::sql("last_insert_rowid()"))
-            .get_result(&db)?;
+        info!("Added {} rows to output table", res);
+        let r: models::Output = outputs.find(&new_output.name).first(&db)?;
         Ok(r)
     }
 
