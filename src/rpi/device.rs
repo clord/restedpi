@@ -38,12 +38,12 @@ impl Device {
     }
 
     /// Does the device support this input and unit?
-    pub fn valid_input(&self, input_id: i32, unit: Unit) -> Result<()> {
+    pub fn valid_input(&self, _input_id: i32, _unit: Unit) -> Result<()> {
         Ok(())
     }
 
     /// Does the device support this output and unit?
-    pub fn valid_output(&self, input_id: i32, unit: Unit) -> Result<()> {
+    pub fn valid_output(&self,_input_id: i32, _unit: Unit) -> Result<()> {
         Ok(())
     }
 

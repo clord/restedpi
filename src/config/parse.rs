@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::error::Result;
-use crate::config::types::{Unit, BoolExpr, DateTimeValue, LocationValue, Value};
+use crate::config::types::BoolExpr;
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
 use tracing::{instrument, span, trace, warn, Level};

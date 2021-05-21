@@ -15,7 +15,6 @@ fn get_pool(db_url: &str) -> DbPool {
 }
 
 pub struct Db {
-    uri: String,
     db: DbPool,
 }
 
@@ -26,7 +25,6 @@ impl Db {
             .to_str()
             .ok_or(Error::IoError("path not set".to_string()))?;
         Ok(Db {
-            uri: uri.to_string(),
             db: get_pool(uri),
         })
     }

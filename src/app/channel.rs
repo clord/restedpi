@@ -8,8 +8,6 @@ use crate::config::types::Unit;
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
 use std::time::Duration;
 use std::time::Instant;
 use std::vec::Vec;
@@ -603,39 +601,6 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
         AppMessage::Terminate => should_terminate = true,
     }
     return should_terminate;
-}
-
-fn read_item<T: 'static + Send + serde::de::DeserializeOwned + serde::Serialize>(
-    path: PathBuf,
-) -> Result<(HashMap<String, T>, mpsc::Sender<HashMap<String, T>>)> {
-    let cloned_path = path.clone();
-    let contents = fs::read_to_string(path).unwrap_or("{}".to_string());
-    let config = toml::from_str(&contents).unwrap_or_else(|e| {
-        error!("error parsing item: {}", e);
-        HashMap::new()
-    });
-
-    let (sender, mut receiver) = mpsc::channel::<HashMap<String, T>>(3);
-
-    tokio::spawn(async move {
-        loop {
-            match receiver.recv().await {
-                Some(config) => match toml::to_string(&config) {
-                    Ok(config_as_string) => {
-                        fs::write(&cloned_path, config_as_string).expect("failed to write change");
-                    }
-                    Err(e) => {
-                        error!("Failed to encode: {}", e);
-                    }
-                },
-                None => {
-                    error!("Failed to write");
-                }
-            }
-        }
-    });
-
-    Ok((config, sender))
 }
 
 pub async fn start_app(

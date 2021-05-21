@@ -187,8 +187,5 @@ Unmatched -> ():
       "UNMATCHED" { }
     ;
 %%
-use lrpar::Span;
-use serde_derive::{Deserialize, Serialize};
-use chrono::{NaiveDate, Local, NaiveDateTime, DateTime};
 use crate::config::types::{Unit, LocationValue, DateTimeValue, Value, BoolExpr};
 
