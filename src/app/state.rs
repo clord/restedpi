@@ -88,12 +88,7 @@ impl State {
     pub async fn add_input(&mut self, config: &models::NewInput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
-            let unit = match config.unit.as_str() {
-                "Boolean" => Unit::Boolean,
-                "DegC" => Unit::DegC,
-                "KPa" => Unit::KPa,
-                _ => Unit::Boolean,
-            };
+            let unit = config.unit;
             dev.valid_input(config.device_input_id, unit)?;
             let db_input = self.db.add_input(config)?;
             Ok(db_input.name)
@@ -116,12 +111,7 @@ impl State {
     pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
-            let unit = match config.unit.as_str() {
-                "Boolean" => Unit::Boolean,
-                "DegC" => Unit::DegC,
-                "KPa" => Unit::KPa,
-                _ => Unit::Boolean,
-            };
+            let unit = config.unit;
             dev.valid_output(config.device_output_id, unit)?;
             let db_output = self.db.add_output(&config)?;
             Ok(db_output.name)
@@ -167,13 +157,7 @@ impl State {
      */
     pub async fn read_output_bool(&self, output_id: &AppID) -> Result<bool> {
         let output = self.db.output(output_id)?;
-
-            let unit = match output.unit.as_str() {
-                "Boolean" => Unit::Boolean,
-                "DegC" => Unit::DegC,
-                "KPa" => Unit::KPa,
-                _ => Unit::Boolean,
-            };
+        let unit = output.unit;
 
         if unit != Unit::Boolean {
             warn!("Can't read {:?} from boolean output {}", unit, output_id);
@@ -192,14 +176,7 @@ impl State {
      */
     pub async fn read_input_bool(&self, input_id: &AppID) -> Result<bool> {
         let input = self.db.input(input_id)?;
-
-            let unit = match input.unit.as_str() {
-                "Boolean" => Unit::Boolean,
-                "DegC" => Unit::DegC,
-                "KPa" => Unit::KPa,
-                _ => Unit::Boolean,
-            };
-
+        let unit = input.unit;
         if unit != Unit::Boolean {
             warn!("Can't read {:?} from boolean input {}", unit, input_id);
             return Err(Error::UnitError("can't read".to_string()));
@@ -217,14 +194,7 @@ impl State {
      */
     pub async fn write_output_bool(&mut self, output_id: &AppID, value: bool) -> Result<()> {
         let output = self.db.output(output_id)?;
-
-            let unit = match output.unit.as_str() {
-                "Boolean" => Unit::Boolean,
-                "DegC" => Unit::DegC,
-                "KPa" => Unit::KPa,
-                _ => Unit::Boolean,
-            };
-
+        let unit = output.unit;
         if unit != Unit::Boolean {
             warn!("Can't write {:?} from boolean output {}", unit, output_id);
             return Err(Error::UnitError("can't write".to_string()));
@@ -247,7 +217,7 @@ impl State {
         let outputs = self.db.outputs()?;
         for output in outputs {
             if let Some(str_expr) = &output.automation_script {
-                match crate::config::parse::bool_expr(str_expr) {
+                match config::parse::bool_expr(str_expr) {
                     Ok(expr) => {
                         self.output_automation_cache
                             .insert(str_expr.clone(), (false, expr));
@@ -278,7 +248,7 @@ impl State {
                     let (mark, expr) = self
                         .output_automation_cache
                         .entry(str_expr.clone())
-                        .or_insert_with(move || match crate::config::parse::bool_expr(str_expr) {
+                        .or_insert_with(move || match config::parse::bool_expr(str_expr) {
                             Ok(expr) => (false, expr),
                             Err(e) => panic!("error parsing: {}", e),
                         });

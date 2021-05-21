@@ -18,12 +18,7 @@ impl Output {
     }
 
     pub fn unit(&self) -> Unit {
-        match self.data.unit.as_str() {
-            "Boolean" => Unit::Boolean,
-            "DegC" => Unit::DegC,
-            "KPa" => Unit::KPa,
-            _ => Unit::Boolean,
-        }
+        self.data.unit
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<crate::app::device::Device> {

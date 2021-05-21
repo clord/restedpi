@@ -1,8 +1,9 @@
 use lrpar::Span;
+use diesel_derive_enum::DbEnum;
 use serde_derive::{Deserialize, Serialize};
 use chrono::{NaiveDate, Local, NaiveDateTime, DateTime};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Debug, juniper::GraphQLEnum)]
+#[derive(Copy, Clone, DbEnum, Serialize, Deserialize, PartialEq, Debug, juniper::GraphQLEnum)]
 pub enum Unit {
     Boolean,
     DegC,

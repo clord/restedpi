@@ -1,4 +1,5 @@
 use crate::schema::{devices, inputs, outputs};
+use crate::config::types::Unit;
 use chrono::prelude::*;
 // use diesel::prelude::*;
 use juniper::{GraphQLInputObject, GraphQLObject};
@@ -62,11 +63,11 @@ pub struct NewInput {
     pub name_as_entered: String,
     pub device_id: String,
     pub device_input_id: i32,
-    pub unit: String,
+    pub unit: Unit,
 }
 
 impl NewInput {
-    pub fn new(name: String, device_id: String, device_input_id: i32, unit: String) -> Self {
+    pub fn new(name: String, device_id: String, device_input_id: i32, unit: Unit) -> Self {
         // TODO: Generate a valid identifier
         Self {
             name_as_entered: name.clone(),
@@ -93,7 +94,7 @@ pub struct Input {
     pub device_input_id: i32,
 
     /// what is the type of data that this input will produce ("Boolean", "DegC", etc)
-    pub unit: String,
+    pub unit: Unit,
 
     /// When was this created
     pub created_at: NaiveDateTime,
@@ -106,7 +107,7 @@ pub struct NewOutput {
     pub name_as_entered: String,
     pub device_id: String,
     pub device_output_id: i32,
-    pub unit: String,
+    pub unit: Unit,
     pub active_low: bool,
     pub automation_script: Option<String>,
 }
@@ -116,7 +117,7 @@ impl NewOutput {
         name: String,
         device_id: String,
         device_output_id: i32,
-        unit: String,
+        unit: Unit,
         active_low: bool,
         automation_script: Option<String>,
     ) -> Self {
@@ -148,7 +149,7 @@ pub struct Output {
     pub device_output_id: i32,
 
     /// what is the type of data that this input will produce ("Boolean", "DegC", etc)
-    pub unit: String,
+    pub unit: Unit,
 
     /// is the circuit active_low, and hence needing flips
     pub active_low: bool,

@@ -23,7 +23,7 @@ impl Input {
     }
 
     pub fn unit(&self) -> crate::config::types::Unit {
-        serde_json::from_str(&self.db.unit).unwrap()
+        self.db.unit
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<Device> {

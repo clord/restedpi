@@ -40,6 +40,7 @@ typenum = "1.12"
 serde_derive = "1.0.101"
 async-recursion = "0.2"
 diesel = { version = "1.4.6", features = ["chrono", "sqlite", "r2d2"] }
+diesel-derive-enum = { version = "1.1", features = ["sqlite"] } 
 tracing = "0.1"
 tracing-subscriber = "0.2"
 tracing-futures = "0.2.5"
