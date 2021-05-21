@@ -1,11 +1,9 @@
 use crate::app::db::models;
 use crate::app::device::Device;
-pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use crate::config::types::Unit;
 use crate::session::AppContext;
-use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
+use juniper::{graphql_object, GraphQLObject};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, GraphQLObject, Debug, PartialEq, Clone)]
 pub struct InputValue {
@@ -24,7 +22,7 @@ impl Input {
         self.db.name.as_str()
     }
 
-    pub fn unit(&self) -> crate::config::Unit {
+    pub fn unit(&self) -> crate::config::types::Unit {
         serde_json::from_str(&self.db.unit).unwrap()
     }
 

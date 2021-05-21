@@ -72,31 +72,31 @@ impl From<toml::ser::Error> for Error {
 
 impl From<FromHexError> for Error {
     fn from(err: FromHexError) -> Error {
-        Error::EncodingError(format!("hex: {}", err))
+        Error::EncodingError(format!("hex encoding error: {}", err))
     }
 }
 
 impl From<toml::de::Error> for Error {
     fn from(err: toml::de::Error) -> Error {
-        Error::EncodingError(format!("de: {}", err))
+        Error::EncodingError(format!("toml encoding error: {}", err))
     }
 }
 
 impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Error {
-        Error::EncodingError(format!("{}", err))
+        Error::EncodingError(format!("json encoding error: {}", err))
     }
 }
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
-        Error::IoError(format!("{}", err))
+        Error::IoError(format!("io error: {}", err))
     }
 }
 
 impl From<std::sync::mpsc::RecvError> for Error {
     fn from(err: mpsc::RecvError) -> Error {
-        Error::RecvError(format!("{}", err))
+        Error::RecvError(format!("mpsc recv: {}", err))
     }
 }
 
@@ -114,7 +114,7 @@ impl From<tokio::sync::oneshot::error::RecvError> for Error {
 
 impl From<std::sync::mpsc::SendError<crate::app::channel::AppMessage>> for Error {
     fn from(err: std::sync::mpsc::SendError<crate::app::channel::AppMessage>) -> Error {
-        Error::SendError(format!("{}", err))
+        Error::SendError(format!("mpsc send error: {}", err))
     }
 }
 
@@ -163,7 +163,7 @@ impl From<diesel::result::Error> for Error {
 
 impl From<i2c::Error> for Error {
     fn from(err: i2c::Error) -> Error {
-        Error::I2cError(format!("{}", err))
+        Error::I2cError(format!("i2c error: {}", err))
     }
 }
 

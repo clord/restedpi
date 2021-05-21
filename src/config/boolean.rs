@@ -1,6 +1,6 @@
 use crate::app::state::State;
 use crate::config::value::evaluate as evaluate_value;
-use crate::config::BoolExpr;
+use crate::config::types::BoolExpr;
 use crate::error::Result;
 use async_recursion::async_recursion;
 

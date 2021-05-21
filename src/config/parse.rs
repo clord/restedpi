@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::error::Result;
+use crate::config::types::{Unit, BoolExpr, DateTimeValue, LocationValue, Value};
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
 use tracing::{instrument, span, trace, warn, Level};
@@ -7,7 +8,6 @@ use tracing::{instrument, span, trace, warn, Level};
 lrlex_mod!("config/config.l");
 lrpar_mod!("config/config.y");
 
-pub use config_y::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 
 #[instrument(skip(as_str))]
 pub fn bool_expr(as_str: &str) -> Result<BoolExpr> {

@@ -1,5 +1,6 @@
 use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
+use crate::config::types::Unit;
 use crate::app::device;
 use crate::error::{Error, Result};
 use std::convert::TryInto;
@@ -37,12 +38,12 @@ impl Device {
     }
 
     /// Does the device support this input and unit?
-    pub fn valid_input(&self, input_id: i32, unit: device::Unit) -> Result<()> {
+    pub fn valid_input(&self, input_id: i32, unit: Unit) -> Result<()> {
         Ok(())
     }
 
     /// Does the device support this output and unit?
-    pub fn valid_output(&self, input_id: i32, unit: device::Unit) -> Result<()> {
+    pub fn valid_output(&self, input_id: i32, unit: Unit) -> Result<()> {
         Ok(())
     }
 
@@ -133,7 +134,7 @@ impl Device {
         }
     }
 
-    pub async fn read_sensor(&self, index: i32) -> Result<(f64, device::Unit)> {
+    pub async fn read_sensor(&self, index: i32) -> Result<(f64, Unit)> {
         match self.model {
             device::Type::BMP085(device::BMP085 { address, mode }) => match index {
                 0 => {
@@ -141,21 +142,21 @@ impl Device {
                         .bmp085_state
                         .temperature_in_c(address.try_into().unwrap(), &self.rapi)
                         .await?;
-                    Ok((v as f64, device::Unit::DegC))
+                    Ok((v as f64, Unit::DegC))
                 }
                 1 => {
                     let v = self
                         .bmp085_state
                         .pressure_kpa(address.try_into().unwrap(), mode, &self.rapi)
                         .await?;
-                    Ok((v as f64, device::Unit::KPa))
+                    Ok((v as f64, Unit::KPa))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
             device::Type::MCP9808(device::MCP9808 { address }) => match index {
                 0 => {
                     let temp = mcp9808::read_temp(&self.rapi, address.try_into().unwrap()).await?;
-                    Ok((temp as f64, device::Unit::DegC))
+                    Ok((temp as f64, Unit::DegC))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },

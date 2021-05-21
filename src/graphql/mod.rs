@@ -4,6 +4,7 @@ use crate::app::AppID;
 use crate::session::{authenticate, AppContext};
 use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
 use rppal::system::DeviceInfo;
+use tracing::info;
 
 pub struct Query;
 
@@ -86,6 +87,7 @@ impl Mutation {
         context: &AppContext,
         new_output: models::NewOutput,
     ) -> FieldResult<AppID> {
+        info!("Adding output {:?}", new_output);
         Ok(context.channel().add_output(new_output).await?)
     }
 }

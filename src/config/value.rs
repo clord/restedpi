@@ -1,6 +1,6 @@
 use crate::app::state::State;
 use crate::config::sched;
-use crate::config::{DateTimeValue, LocationValue, Unit, Value};
+use crate::config::types::{DateTimeValue, Unit, LocationValue, Value};
 use crate::error::Result;
 use async_recursion::async_recursion;
 use chrono::offset::LocalResult;

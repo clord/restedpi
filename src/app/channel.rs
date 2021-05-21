@@ -4,7 +4,7 @@ use crate::app::device::Device;
 use crate::app::input::Input;
 use crate::app::output::Output;
 use crate::app::{device, state, AppID};
-use crate::config::Unit;
+use crate::config::types::Unit;
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;

@@ -2,8 +2,9 @@ pub mod boolean;
 pub mod parse;
 pub mod sched;
 pub mod value;
+pub mod types;
 
-pub use parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+use types::LocationValue;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;

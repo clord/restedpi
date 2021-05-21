@@ -2,7 +2,7 @@ extern crate chrono;
 
 use crate::app::{db, device, input, output, AppID};
 use crate::config;
-use crate::config::parse::{bool_expr, BoolExpr};
+use crate::config::types::{Unit, BoolExpr};
 use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;
@@ -88,7 +88,12 @@ impl State {
     pub async fn add_input(&mut self, config: &models::NewInput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
-            let unit = serde_json::from_str(&config.unit)?;
+            let unit = match config.unit.as_str() {
+                "Boolean" => Unit::Boolean,
+                "DegC" => Unit::DegC,
+                "KPa" => Unit::KPa,
+                _ => Unit::Boolean,
+            };
             dev.valid_input(config.device_input_id, unit)?;
             let db_input = self.db.add_input(config)?;
             Ok(db_input.name)
@@ -111,7 +116,12 @@ impl State {
     pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(dev) = mdev {
-            let unit = serde_json::from_str(&config.unit)?;
+            let unit = match config.unit.as_str() {
+                "Boolean" => Unit::Boolean,
+                "DegC" => Unit::DegC,
+                "KPa" => Unit::KPa,
+                _ => Unit::Boolean,
+            };
             dev.valid_output(config.device_output_id, unit)?;
             let db_output = self.db.add_output(&config)?;
             Ok(db_output.name)
@@ -157,9 +167,15 @@ impl State {
      */
     pub async fn read_output_bool(&self, output_id: &AppID) -> Result<bool> {
         let output = self.db.output(output_id)?;
-        let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
-        if unit != device::Unit::Boolean {
+            let unit = match output.unit.as_str() {
+                "Boolean" => Unit::Boolean,
+                "DegC" => Unit::DegC,
+                "KPa" => Unit::KPa,
+                _ => Unit::Boolean,
+            };
+
+        if unit != Unit::Boolean {
             warn!("Can't read {:?} from boolean output {}", unit, output_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
@@ -176,9 +192,15 @@ impl State {
      */
     pub async fn read_input_bool(&self, input_id: &AppID) -> Result<bool> {
         let input = self.db.input(input_id)?;
-        let unit: device::Unit = serde_json::from_str(&input.unit)?;
 
-        if unit != device::Unit::Boolean {
+            let unit = match input.unit.as_str() {
+                "Boolean" => Unit::Boolean,
+                "DegC" => Unit::DegC,
+                "KPa" => Unit::KPa,
+                _ => Unit::Boolean,
+            };
+
+        if unit != Unit::Boolean {
             warn!("Can't read {:?} from boolean input {}", unit, input_id);
             return Err(Error::UnitError("can't read".to_string()));
         }
@@ -195,9 +217,15 @@ impl State {
      */
     pub async fn write_output_bool(&mut self, output_id: &AppID, value: bool) -> Result<()> {
         let output = self.db.output(output_id)?;
-        let unit: device::Unit = serde_json::from_str(&output.unit)?;
 
-        if unit != device::Unit::Boolean {
+            let unit = match output.unit.as_str() {
+                "Boolean" => Unit::Boolean,
+                "DegC" => Unit::DegC,
+                "KPa" => Unit::KPa,
+                _ => Unit::Boolean,
+            };
+
+        if unit != Unit::Boolean {
             warn!("Can't write {:?} from boolean output {}", unit, output_id);
             return Err(Error::UnitError("can't write".to_string()));
         }
@@ -285,7 +313,7 @@ impl State {
         Ok(())
     }
 
-    pub async fn read_input_value(&self, input_id: &AppID) -> Result<(f64, device::Unit)> {
+    pub async fn read_input_value(&self, input_id: &AppID) -> Result<(f64, Unit)> {
         let input = self.db.input(input_id)?;
 
         if let Some(device) = self.devices.get(&input.device_id) {

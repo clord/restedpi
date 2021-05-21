@@ -1,9 +1,7 @@
 use crate::app::db::models;
-pub use crate::config::parse::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
+pub use crate::config::types::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 use crate::session::AppContext;
-use juniper::{graphql_object, FieldError, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
-use serde_derive::{Deserialize, Serialize};
-use std::path::PathBuf;
+use juniper::{graphql_object, FieldResult};
 
 /**
  * we can write a boolean value to a given device via name
