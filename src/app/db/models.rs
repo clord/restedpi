@@ -1,7 +1,6 @@
 use crate::schema::{devices, inputs, outputs};
 use crate::config::types::Unit;
 use chrono::prelude::*;
-// use diesel::prelude::*;
 use juniper::{GraphQLInputObject, GraphQLObject};
 
 #[derive(Insertable, Clone, Debug, GraphQLObject)]

@@ -122,11 +122,25 @@ pub enum AppMessage {
     },
 
     /**
+     * Read inputs 
+     */
+    GetInputs {
+        response: oneshot::Sender<Result<Vec<Input>>>,
+    },
+
+    /**
      * Read inputs for a device
      */
     GetInputsForDevice {
         device_id: AppID,
         response: oneshot::Sender<Result<Vec<Input>>>,
+    },
+
+    /**
+     * Get outputs
+     */
+    GetOutputs {
+        response: oneshot::Sender<Result<Vec<Output>>>,
     },
 
     /**
@@ -308,23 +322,6 @@ impl AppChannel {
         receiver.await?
     }
 
-    // pub async fn add_or_replace_device(
-    //     &self,
-    //     device_id: AppID,
-    //     config: Device,
-    // ) -> Result<()> {
-    //     let (response, receiver) = oneshot::channel();
-    //     self.sender
-    //         .clone()
-    //         .send(AppMessage::AddOrReplaceDevice {
-    //             response,
-    //             device_id,
-    //             config,
-    //         })
-    //         .await?;
-    //     receiver.await?
-    // }
-
     pub async fn remove_device(&self, device_id: AppID) -> Result<()> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -370,6 +367,17 @@ impl AppChannel {
         receiver.await?
     }
 
+    pub async fn all_outputs(&self) -> Result<Vec<Output>> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::GetOutputs {
+                response,
+            })
+            .await?;
+        receiver.await?
+    }
+
     pub async fn get_outputs_for_device(&self, device_id: AppID) -> Result<Vec<Output>> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -377,6 +385,17 @@ impl AppChannel {
             .send(AppMessage::GetOutputsForDevice {
                 response,
                 device_id,
+            })
+            .await?;
+        receiver.await?
+    }
+
+    pub async fn all_inputs(&self) -> Result<Vec<Input>> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::GetInputs {
+                response,
             })
             .await?;
         receiver.await?
@@ -520,11 +539,31 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
+        AppMessage::GetInputs {
+            response,
+        } => {
+            let result = state.inputs();
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
         AppMessage::GetInputsForDevice {
             device_id,
             response,
         } => {
             let result = state.device_inputs(&device_id);
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::GetOutputs {
+            response,
+        } => {
+            let result = state.outputs();
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),

@@ -53,8 +53,24 @@ impl State {
             .collect())
     }
 
+    pub fn inputs(&self) -> Result<Vec<input::Input>> {
+        let models = self.db.inputs()?;
+        Ok(models
+            .iter()
+            .map(|d| input::Input { db: d.clone() })
+            .collect())
+    }
+
     pub fn device_outputs(&self, device_id: &AppID) -> Result<Vec<output::Output>> {
         let models = self.db.outputs_for_device(device_id)?;
+        Ok(models
+            .iter()
+            .map(|d| output::Output { data: d.clone() })
+            .collect())
+    }
+
+    pub fn outputs(&self) -> Result<Vec<output::Output>> {
+        let models = self.db.outputs()?;
         Ok(models
             .iter()
             .map(|d| output::Output { data: d.clone() })

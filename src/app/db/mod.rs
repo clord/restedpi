@@ -68,6 +68,13 @@ impl Db {
             .collect())
     }
 
+    pub fn inputs(&self) -> Result<Vec<models::Input>> {
+        use crate::schema::inputs;
+        let db = self.db.get()?;
+        let out = inputs::dsl::inputs.load(&db)?;
+        Ok(out)
+    }
+
     pub fn outputs(&self) -> Result<Vec<models::Output>> {
         use crate::schema::outputs;
         let db = self.db.get()?;

@@ -33,6 +33,18 @@ impl Query {
         Ok(device)
     }
 
+    /// Retrieve all inputs 
+    pub async fn inputs(context: &AppContext) -> FieldResult<Vec<crate::app::input::Input>> {
+        let devices = context.channel().all_inputs().await?;
+        Ok(devices)
+    }
+
+    /// Retrieve all outputs
+    pub async fn outputs(context: &AppContext) -> FieldResult<Vec<crate::app::output::Output>> {
+        let devices = context.channel().all_outputs().await?;
+        Ok(devices)
+    }
+
     /// Retrieve all devices
     pub async fn devices(context: &AppContext) -> FieldResult<Vec<device::Device>> {
         let devices = context.channel().all_devices().await?;
