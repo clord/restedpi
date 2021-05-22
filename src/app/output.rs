@@ -24,9 +24,17 @@ impl Output {
     pub async fn device(&self, context: &AppContext) -> Option<crate::app::device::Device> {
         context
             .channel()
-            .get_device(self.data.name.clone())
+            .get_device(self.data.device_id.clone())
             .await
             .ok()
+    }
+
+    pub fn device_id(&self) -> &str {
+        &self.data.device_id
+    }
+
+    pub fn device_output_id(&self) -> i32 {
+        self.data.device_output_id
     }
 
     pub fn active_low(&self) -> bool {

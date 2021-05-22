@@ -29,7 +29,7 @@ impl Input {
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
         context
             .channel()
-            .get_device(self.db.name.clone())
+            .get_device(self.db.device_id.clone())
             .await
             .ok()
     }
