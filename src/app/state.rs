@@ -2,7 +2,7 @@ extern crate chrono;
 
 use crate::app::{db, device, input, output, AppID};
 use crate::config;
-use crate::config::types::{Unit, BoolExpr};
+use crate::config::types::{BoolExpr, Unit};
 use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;

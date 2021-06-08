@@ -1,5 +1,5 @@
-use crate::schema::{devices, inputs, outputs};
 use crate::config::types::Unit;
+use crate::schema::{devices, inputs, outputs};
 use chrono::prelude::*;
 use juniper::{GraphQLInputObject, GraphQLObject};
 

@@ -1,7 +1,7 @@
 use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
-use crate::config::types::Unit;
 use crate::app::device;
+use crate::config::types::Unit;
 use crate::error::{Error, Result};
 use std::convert::TryInto;
 
@@ -43,7 +43,7 @@ impl Device {
     }
 
     /// Does the device support this output and unit?
-    pub fn valid_output(&self,_input_id: i32, _unit: Unit) -> Result<()> {
+    pub fn valid_output(&self, _input_id: i32, _unit: Unit) -> Result<()> {
         Ok(())
     }
 

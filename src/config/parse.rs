@@ -1,13 +1,12 @@
+use crate::config::types::BoolExpr;
 use crate::error::Error;
 use crate::error::Result;
-use crate::config::types::BoolExpr;
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
 use tracing::{instrument, span, trace, warn, Level};
 
 lrlex_mod!("config/config.l");
 lrpar_mod!("config/config.y");
-
 
 #[instrument(skip(as_str))]
 pub fn bool_expr(as_str: &str) -> Result<BoolExpr> {

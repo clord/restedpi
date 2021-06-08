@@ -33,7 +33,7 @@ impl Query {
         Ok(device)
     }
 
-    /// Retrieve all inputs 
+    /// Retrieve all inputs
     pub async fn inputs(context: &AppContext) -> FieldResult<Vec<crate::app::input::Input>> {
         let devices = context.channel().all_inputs().await?;
         Ok(devices)
@@ -69,6 +69,55 @@ impl Mutation {
     pub fn sign_out(_context: &AppContext) -> FieldResult<bool> {
         // expire all existing sessions by bumping session count
         Ok(false)
+    }
+
+    /// Add a new mcp9808 at a given address
+    pub async fn add_mcp9808(
+        context: &AppContext,
+        address: i32,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+    ) -> FieldResult<AppID> {
+        let model = device::Type::MCP9808(device::MCP9808 { address });
+        Ok(context
+            .channel()
+            .add_device(model, name, description, disabled)
+            .await?)
+    }
+
+    /// Add a new bmp085 at a given address
+    pub async fn add_bmp085(
+        context: &AppContext,
+        address: i32,
+        mode: device::SamplingMode,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+    ) -> FieldResult<AppID> {
+        let model = device::Type::BMP085(device::BMP085 { address, mode });
+        Ok(context
+            .channel()
+            .add_device(model, name, description, disabled)
+            .await?)
+    }
+
+    pub async fn add_mcp23017(
+        context: &AppContext,
+        address: i32,
+        name: String,
+        description: String,
+        disabled: Option<bool>,
+    ) -> FieldResult<AppID> {
+        let model = device::Type::MCP23017(device::MCP23017 {
+            address,
+            bank_a: device::Directions::new(),
+            bank_b: device::Directions::new(),
+        });
+        Ok(context
+            .channel()
+            .add_device(model, name, description, disabled)
+            .await?)
     }
 
     /// Add a new device to the system, which can have inputs and outputs

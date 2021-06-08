@@ -122,7 +122,7 @@ pub enum AppMessage {
     },
 
     /**
-     * Read inputs 
+     * Read inputs
      */
     GetInputs {
         response: oneshot::Sender<Result<Vec<Input>>>,
@@ -371,9 +371,7 @@ impl AppChannel {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::GetOutputs {
-                response,
-            })
+            .send(AppMessage::GetOutputs { response })
             .await?;
         receiver.await?
     }
@@ -394,9 +392,7 @@ impl AppChannel {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()
-            .send(AppMessage::GetInputs {
-                response,
-            })
+            .send(AppMessage::GetInputs { response })
             .await?;
         receiver.await?
     }
@@ -539,9 +535,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::GetInputs {
-            response,
-        } => {
+        AppMessage::GetInputs { response } => {
             let result = state.inputs();
             match response.send(result) {
                 Ok(..) => (),
@@ -560,9 +554,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             };
         }
 
-        AppMessage::GetOutputs {
-            response,
-        } => {
+        AppMessage::GetOutputs { response } => {
             let result = state.outputs();
             match response.send(result) {
                 Ok(..) => (),

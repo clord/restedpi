@@ -1,13 +1,13 @@
 pub mod boolean;
 pub mod parse;
 pub mod sched;
-pub mod value;
 pub mod types;
+pub mod value;
 
-use types::LocationValue;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use types::LocationValue;
 
 /**
  * Top level configuration of the system

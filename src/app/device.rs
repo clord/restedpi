@@ -1,6 +1,6 @@
 use crate::app::{db::models, input, output};
 use crate::session::AppContext;
-use juniper::{graphql_object, FieldResult, GraphQLEnum, GraphQLObject, GraphQLUnion};
+use juniper::{graphql_object, FieldResult, GraphQLEnum,  GraphQLInputObject,  GraphQLObject, GraphQLUnion};
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]

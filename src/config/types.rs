@@ -1,7 +1,7 @@
-use lrpar::Span;
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
 use diesel_derive_enum::DbEnum;
+use lrpar::Span;
 use serde_derive::{Deserialize, Serialize};
-use chrono::{NaiveDate, Local, NaiveDateTime, DateTime};
 
 #[derive(Copy, Clone, DbEnum, Serialize, Deserialize, PartialEq, Debug, juniper::GraphQLEnum)]
 pub enum Unit {
@@ -12,16 +12,16 @@ pub enum Unit {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum LocationValue {
-  Here,
-  LatLong(f64, f64)
+    Here,
+    LatLong(f64, f64),
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum DateTimeValue {
-  Now,
-  SpecificDate(NaiveDate), // use local timezone of server
-  SpecificDT(NaiveDateTime), // use local timezone of server
-  SpecificDTZ(DateTime<Local>),
+    Now,
+    SpecificDate(NaiveDate),   // use local timezone of server
+    SpecificDT(NaiveDateTime), // use local timezone of server
+    SpecificDTZ(DateTime<Local>),
 }
 
 /// A source of f64 values, usable in expressions

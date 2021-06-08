@@ -24,9 +24,7 @@ impl Db {
         let uri = joined
             .to_str()
             .ok_or(Error::IoError("path not set".to_string()))?;
-        Ok(Db {
-            db: get_pool(uri),
-        })
+        Ok(Db { db: get_pool(uri) })
     }
 
     pub fn add_device(&self, new_device: &models::NewDevice) -> Result<models::Device> {
