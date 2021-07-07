@@ -102,17 +102,26 @@ impl Mutation {
             .await?)
     }
 
+    /// Add an MCP23017 device at the given address. 
     pub async fn add_mcp23017(
         context: &AppContext,
+        /// The i2c address that this device is wired to respond to
         address: i32,
+        /// Identifier used to look this device up later
         name: String,
+        /// A Description of what this device will be doing on the system.
         description: String,
+        /// configuration of GPIO bank A
+        bank_a: Option<device::InputDirections>,
+        /// configuration of GPIO bank B
+        bank_b: Option<device::InputDirections>,
+        /// Start the device as disabled
         disabled: Option<bool>,
     ) -> FieldResult<AppID> {
         let model = device::Type::MCP23017(device::MCP23017 {
             address,
-            bank_a: device::Directions::new(),
-            bank_b: device::Directions::new(),
+            bank_a: bank_a.map_or(device::Directions::new(), |x| x.into()),
+            bank_b: bank_b.map_or(device::Directions::new(), |x| x.into()),
         });
         Ok(context
             .channel()
@@ -120,20 +129,33 @@ impl Mutation {
             .await?)
     }
 
-    /// Add a new device to the system, which can have inputs and outputs
-    pub async fn add_device(
+    /// Remove the specified device and any inputs or outputs that use it
+    pub async fn remove_device(
         context: &AppContext,
-        model: String,
-        name: String,
-        description: String,
-        disabled: Option<bool>,
-    ) -> FieldResult<AppID> {
-        let model: crate::app::device::Type = serde_json::from_str(&model)?;
-        Ok(context
-            .channel()
-            .add_device(model, name, description, disabled)
-            .await?)
+        device_id: AppID,
+    ) -> FieldResult<bool> {
+        context.channel().remove_device(device_id).await?;
+        Ok(true)
     }
+
+    /// Remove the specified input
+    pub async fn remove_input(
+        context: &AppContext,
+        input_id: AppID,
+    ) -> FieldResult<bool> {
+        context.channel().remove_input(input_id).await?;
+        Ok(true)
+    }
+
+    /// Remove the specified output
+    pub async fn remove_output(
+        context: &AppContext,
+        output_id: AppID,
+    ) -> FieldResult<bool> {
+        context.channel().remove_output(output_id).await?;
+        Ok(true)
+    }
+
 
     /// Add an input to a device. This input is a way to read data from a device
     pub async fn add_input(

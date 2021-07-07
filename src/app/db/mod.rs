@@ -38,10 +38,14 @@ impl Db {
     }
 
     pub fn remove_device(&self, device_id: &AppID) -> Result<()> {
-        use crate::schema::devices::dsl::*;
+        use crate::schema::{devices, inputs, outputs};
         let db = self.db.get()?;
-        diesel::delete(devices.filter(name.eq(device_id))).execute(&db)?;
-        Ok(())
+        db.transaction(|| {
+            diesel::delete(inputs::dsl::inputs.filter(inputs::dsl::device_id.eq(device_id))).execute(&db)?;
+            diesel::delete(outputs::dsl::outputs.filter(outputs::dsl::device_id.eq(device_id))).execute(&db)?;
+            diesel::delete(devices::dsl::devices.filter(devices::dsl::name.eq(device_id))).execute(&db)?;
+            Ok(())
+        })
     }
 
     pub fn device(&self, did: &AppID) -> Result<models::Device> {

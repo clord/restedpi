@@ -265,6 +265,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::ParseError => 0x1002,
             Error::I2cError(_) => 0x1003,
             Error::NonExistant(_) => 0x0010,
+            Error::NotUnique(_) => 0x1210,
             Error::OutOfBounds(_) => 0x0011,
             Error::RecvError(_) => 0x0100,
             Error::SendError(_) => 0x0101,

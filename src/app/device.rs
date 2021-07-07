@@ -22,6 +22,20 @@ pub struct BMP085 {
     pub mode: SamplingMode,
 }
 
+/// Direction and features that all GPIO ports in a bank can be set
+#[derive(Copy, Clone, GraphQLInputObject, Serialize, Deserialize, PartialEq, Debug)]
+pub struct InputDirections {
+    pub p0: Dir,
+    pub p1: Dir,
+    pub p2: Dir,
+    pub p3: Dir,
+    pub p4: Dir,
+    pub p5: Dir,
+    pub p6: Dir,
+    pub p7: Dir,
+}
+
+
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Directions {
     pub p0: Dir,
@@ -32,6 +46,13 @@ pub struct Directions {
     pub p5: Dir,
     pub p6: Dir,
     pub p7: Dir,
+}
+
+impl From<InputDirections> for Directions {
+    fn from(input: InputDirections) -> Self {
+        let InputDirections {p0, p1, p2, p3, p4, p5, p6, p7} = input;
+        Directions {p0, p1, p2, p3, p4, p5, p6, p7}
+    }
 }
 
 impl Directions {
@@ -47,6 +68,7 @@ impl Directions {
             p7: Dir::OutH,
         }
     }
+
     pub fn get(&self, pin: usize) -> &Dir {
         match pin % 8 {
             0 => &self.p0,
@@ -90,13 +112,19 @@ pub enum Type {
     MCP23017(MCP23017),
 }
 
+/// Direction and modification that a GPIO port can be configured to take.
 #[derive(Serialize, Deserialize, GraphQLEnum, PartialEq, PartialOrd, Copy, Clone, Debug)]
 pub enum Dir {
-    // Active High output
+    /// Active High output
     OutH,
-    // Active Low output
+
+    /// Active Low output
     OutL,
+
+    /// Input without pulldown
     In,
+
+    /// Input with pulldown
     InWithPD,
 }
 

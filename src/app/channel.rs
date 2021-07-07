@@ -89,8 +89,7 @@ pub enum AppMessage {
 
     /**
      * Remove device at a given id.
-     * result is all affected inputs and outputs.
-     * any affected inputs or outputs will alsso be removed.
+     * result is unit if succesfull
      */
     RemoveDevice {
         device_id: AppID,
