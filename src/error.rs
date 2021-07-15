@@ -1,9 +1,9 @@
 use hex::FromHexError;
+use juniper::graphql_value;
+use juniper::{FieldError, IntoFieldError};
 use rppal::i2c;
 use serde_derive::Serialize;
 use std::collections::HashMap;
-use juniper::{IntoFieldError, FieldError};
-use juniper::graphql_value;
 use std::error;
 use std::fmt;
 use std::io;
@@ -11,7 +11,6 @@ use std::sync::mpsc;
 
 /// Represent all common results of i2c
 pub type Result<T> = std::result::Result<T, Error>;
-
 
 #[derive(Debug, PartialEq, Serialize)]
 pub enum Error {
@@ -24,6 +23,7 @@ pub enum Error {
     UserNotFound,
     TokenIssue,
     PasswordIssue,
+    NotLoggedIn,
     NonExistant(String),
     NotUnique(String),
     OutOfBounds(usize),
@@ -37,26 +37,49 @@ pub enum Error {
 
 impl IntoFieldError for Error {
     fn into_field_error(self) -> FieldError {
-       match self {
+        match self {
             Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
             Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
-            Error::NonExistant(ref name) => FieldError::new( name, graphql_value!({"slug": "Existance"})),
-            Error::NotUnique(ref msg) => FieldError::new( msg, graphql_value!({"slug": "Uniqueness"})),
-            Error::OutOfBounds(ref index) => FieldError::new( index, graphql_value!({"slug": "Bounds"})),
-            Error::I2cError(ref err) => FieldError::new( err, graphql_value!({"slug": "I2C"})),
-            Error::UnitError(ref err) => FieldError::new( err, graphql_value!({"slug": "Units"})),
-            Error::RecvError(ref err) => FieldError::new( err, graphql_value!({"slug": "Recv"})),
-            Error::SendError(ref err) => FieldError::new( err, graphql_value!({"slug": "Send"})),
-            Error::StorageError(ref err) => FieldError::new( err, graphql_value!({"slug": "Storage"})),
-            Error::EncodingError(ref err) => FieldError::new( err, graphql_value!({"slug": "Encoding"})),
-            Error::InputNotFound(n) => FieldError::new( n, graphql_value!({"slug": "Input"})),
-            Error::OutputNotFound(n) => FieldError::new( n, graphql_value!({"slug": "Output"})),
-            Error::InvalidPinDirection => FieldError::new("Direction incorrect", graphql_value!({"slug": "InvalidPinDirection"})),
-            Error::ParseError => FieldError::new("Failed to parse", graphql_value!({"slug": "Parser"})),
-            Error::UserNotFound => FieldError::new( String::new(), graphql_value!({"slug": "User"})), 
-            Error::TokenIssue => FieldError::new("Failed to work with token", graphql_value!({"slug": "Token"})),
-            Error::PasswordIssue => FieldError::new("Password issue", graphql_value!({"slug": "Password"})),
-       } 
+            Error::NonExistant(ref name) => {
+                FieldError::new(name, graphql_value!({"slug": "Existance"}))
+            }
+            Error::NotUnique(ref msg) => {
+                FieldError::new(msg, graphql_value!({"slug": "Uniqueness"}))
+            }
+            Error::OutOfBounds(ref index) => {
+                FieldError::new(index, graphql_value!({"slug": "Bounds"}))
+            }
+            Error::I2cError(ref err) => FieldError::new(err, graphql_value!({"slug": "I2C"})),
+            Error::UnitError(ref err) => FieldError::new(err, graphql_value!({"slug": "Units"})),
+            Error::RecvError(ref err) => FieldError::new(err, graphql_value!({"slug": "Recv"})),
+            Error::SendError(ref err) => FieldError::new(err, graphql_value!({"slug": "Send"})),
+            Error::StorageError(ref err) => {
+                FieldError::new(err, graphql_value!({"slug": "Storage"}))
+            }
+            Error::EncodingError(ref err) => {
+                FieldError::new(err, graphql_value!({"slug": "Encoding"}))
+            }
+            Error::InputNotFound(n) => FieldError::new(n, graphql_value!({"slug": "Input"})),
+            Error::OutputNotFound(n) => FieldError::new(n, graphql_value!({"slug": "Output"})),
+            Error::InvalidPinDirection => FieldError::new(
+                "Direction incorrect",
+                graphql_value!({"slug": "InvalidPinDirection"}),
+            ),
+            Error::ParseError => {
+                FieldError::new("Failed to parse", graphql_value!({"slug": "Parser"}))
+            }
+            Error::UserNotFound => FieldError::new(String::new(), graphql_value!({"slug": "User"})),
+            Error::TokenIssue => FieldError::new(
+                "Failed to work with token",
+                graphql_value!({"slug": "Token"}),
+            ),
+            Error::PasswordIssue => {
+                FieldError::new("Password issue", graphql_value!({"slug": "Password"}))
+            }
+            Error::NotLoggedIn => {
+                FieldError::new("Not Logged In", graphql_value!({"slug": "Login"}))
+            }
+        }
     }
 }
 
@@ -83,6 +106,7 @@ impl fmt::Display for Error {
             Error::UserNotFound => write!(f, "User not found"),
             Error::TokenIssue => write!(f, "Issue with token"),
             Error::PasswordIssue => write!(f, "Password issue"),
+            Error::NotLoggedIn => write!(f, "Not Logged In"),
         }
     }
 }
@@ -188,12 +212,15 @@ impl From<std::sync::mpsc::SendError<crate::rpi::RpiMessage>> for Error {
 impl From<diesel::result::Error> for Error {
     fn from(err: diesel::result::Error) -> Error {
         match err {
-            diesel::result::Error::NotFound => Error::NonExistant(format!("Database Entry Not Found")),
-            diesel::result::Error::DatabaseError(x, e) => 
-                match x {
-                    diesel::result::DatabaseErrorKind::UniqueViolation =>  Error::NotUnique(format!("{:?}", e)),
-                _ => Error::DbError(format!("Database Error {:?}: {:?}", x, e)),
+            diesel::result::Error::NotFound => {
+                Error::NonExistant(format!("Database Entry Not Found"))
+            }
+            diesel::result::Error::DatabaseError(x, e) => match x {
+                diesel::result::DatabaseErrorKind::UniqueViolation => {
+                    Error::NotUnique(format!("{:?}", e))
                 }
+                _ => Error::DbError(format!("Database Error {:?}: {:?}", x, e)),
+            },
             _ => Error::DbError(format!("db error: {}", err)),
         }
     }

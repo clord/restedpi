@@ -1,6 +1,7 @@
 use crate::app::db::models;
 use crate::app::device;
 use crate::app::AppID;
+use crate::error::Error;
 use crate::session::{authenticate, AppContext};
 use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
 use rppal::system::DeviceInfo;
@@ -66,8 +67,9 @@ impl Mutation {
     }
 
     /// Sign out from the system, invalidating all tokens for the active user
-    pub fn sign_out(_context: &AppContext) -> FieldResult<bool> {
-        // expire all existing sessions by bumping session count
+    pub fn sign_out(context: &AppContext) -> FieldResult<bool> {
+        check_session(context)?;
+        // TODO: expire all existing sessions for user by bumping session count
         Ok(false)
     }
 
@@ -79,6 +81,7 @@ impl Mutation {
         description: String,
         disabled: Option<bool>,
     ) -> FieldResult<AppID> {
+        check_session(context)?;
         let model = device::Type::MCP9808(device::MCP9808 { address });
         Ok(context
             .channel()
@@ -95,6 +98,7 @@ impl Mutation {
         description: String,
         disabled: Option<bool>,
     ) -> FieldResult<AppID> {
+        check_session(context)?;
         let model = device::Type::BMP085(device::BMP085 { address, mode });
         Ok(context
             .channel()
@@ -102,22 +106,17 @@ impl Mutation {
             .await?)
     }
 
-    /// Add an MCP23017 device at the given address. 
+    /// Add an MCP23017 device at the given address.
     pub async fn add_mcp23017(
         context: &AppContext,
-        /// The i2c address that this device is wired to respond to
         address: i32,
-        /// Identifier used to look this device up later
         name: String,
-        /// A Description of what this device will be doing on the system.
         description: String,
-        /// configuration of GPIO bank A
         bank_a: Option<device::InputDirections>,
-        /// configuration of GPIO bank B
         bank_b: Option<device::InputDirections>,
-        /// Start the device as disabled
         disabled: Option<bool>,
     ) -> FieldResult<AppID> {
+        check_session(context)?;
         let model = device::Type::MCP23017(device::MCP23017 {
             address,
             bank_a: bank_a.map_or(device::Directions::new(), |x| x.into()),
@@ -129,39 +128,34 @@ impl Mutation {
             .await?)
     }
 
+
     /// Remove the specified device and any inputs or outputs that use it
-    pub async fn remove_device(
-        context: &AppContext,
-        device_id: AppID,
-    ) -> FieldResult<bool> {
+    pub async fn remove_device(context: &AppContext, device_id: AppID) -> FieldResult<bool> {
+        check_session(context)?;
         context.channel().remove_device(device_id).await?;
         Ok(true)
     }
 
     /// Remove the specified input
-    pub async fn remove_input(
-        context: &AppContext,
-        input_id: AppID,
-    ) -> FieldResult<bool> {
+    pub async fn remove_input(context: &AppContext, input_id: AppID) -> FieldResult<bool> {
+        check_session(context)?;
         context.channel().remove_input(input_id).await?;
         Ok(true)
     }
 
     /// Remove the specified output
-    pub async fn remove_output(
-        context: &AppContext,
-        output_id: AppID,
-    ) -> FieldResult<bool> {
+    pub async fn remove_output(context: &AppContext, output_id: AppID) -> FieldResult<bool> {
+        check_session(context)?;
         context.channel().remove_output(output_id).await?;
         Ok(true)
     }
-
 
     /// Add an input to a device. This input is a way to read data from a device
     pub async fn add_input(
         context: &AppContext,
         new_input: models::NewInput,
     ) -> FieldResult<AppID> {
+        check_session(context)?;
         Ok(context.channel().add_input(new_input).await?)
     }
 
@@ -170,12 +164,22 @@ impl Mutation {
         context: &AppContext,
         new_output: models::NewOutput,
     ) -> FieldResult<AppID> {
+        check_session(context)?;
         info!("Adding output {:?}", new_output);
         Ok(context.channel().add_output(new_output).await?)
     }
 }
 
 pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<AppContext>>;
+
+fn check_session(context: &AppContext) -> FieldResult<()> {
+    match &context.session {
+        None => Err(Error::NotLoggedIn)?,
+        Some(_u) => {
+            Ok(())
+        }
+    }
+}
 
 pub fn create_schema() -> Schema {
     Schema::new(Query, Mutation, EmptySubscription::new())

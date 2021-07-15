@@ -277,6 +277,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::UserNotFound => 0x0005,
             Error::TokenIssue => 0x0006,
             Error::PasswordIssue => 0x0007,
+            Error::NotLoggedIn => 0x0000,
         };
 
         let message = err.to_string();

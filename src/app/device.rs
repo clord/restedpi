@@ -1,6 +1,8 @@
 use crate::app::{db::models, input, output};
 use crate::session::AppContext;
-use juniper::{graphql_object, FieldResult, GraphQLEnum,  GraphQLInputObject,  GraphQLObject, GraphQLUnion};
+use juniper::{
+    graphql_object, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject, GraphQLUnion,
+};
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
@@ -35,7 +37,6 @@ pub struct InputDirections {
     pub p7: Dir,
 }
 
-
 #[derive(Copy, Clone, GraphQLObject, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Directions {
     pub p0: Dir,
@@ -50,8 +51,26 @@ pub struct Directions {
 
 impl From<InputDirections> for Directions {
     fn from(input: InputDirections) -> Self {
-        let InputDirections {p0, p1, p2, p3, p4, p5, p6, p7} = input;
-        Directions {p0, p1, p2, p3, p4, p5, p6, p7}
+        let InputDirections {
+            p0,
+            p1,
+            p2,
+            p3,
+            p4,
+            p5,
+            p6,
+            p7,
+        } = input;
+        Directions {
+            p0,
+            p1,
+            p2,
+            p3,
+            p4,
+            p5,
+            p6,
+            p7,
+        }
     }
 }
 

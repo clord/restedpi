@@ -41,9 +41,12 @@ impl Db {
         use crate::schema::{devices, inputs, outputs};
         let db = self.db.get()?;
         db.transaction(|| {
-            diesel::delete(inputs::dsl::inputs.filter(inputs::dsl::device_id.eq(device_id))).execute(&db)?;
-            diesel::delete(outputs::dsl::outputs.filter(outputs::dsl::device_id.eq(device_id))).execute(&db)?;
-            diesel::delete(devices::dsl::devices.filter(devices::dsl::name.eq(device_id))).execute(&db)?;
+            diesel::delete(inputs::dsl::inputs.filter(inputs::dsl::device_id.eq(device_id)))
+                .execute(&db)?;
+            diesel::delete(outputs::dsl::outputs.filter(outputs::dsl::device_id.eq(device_id)))
+                .execute(&db)?;
+            diesel::delete(devices::dsl::devices.filter(devices::dsl::name.eq(device_id)))
+                .execute(&db)?;
             Ok(())
         })
     }
