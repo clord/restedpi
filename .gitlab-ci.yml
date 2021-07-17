@@ -15,7 +15,7 @@ build:
       - target/arm-unknown-linux-gnueabihf/release/restedpi
 
   script: 
-    - RUST_FLAGS='-L /root/tools/arm-bcm2708/arm-linux-gnueabihf/lib' cargo build --target=arm-unknown-linux-gnueabihf --release
+    - RUSTFLAGS='-L /root/tools/arm-bcm2708/arm-linux-gnueabihf/lib' cargo build --target=arm-unknown-linux-gnueabihf --release
 
 test:
   stage: build
