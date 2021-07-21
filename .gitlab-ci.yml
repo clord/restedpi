@@ -19,7 +19,9 @@ build:
 
 test:
   stage: build
-  script: cargo build
+  script: 
+    - apt-get install libsqlite3-dev
+    - cargo build
   script: 
     - sleep 5
     - cargo test
