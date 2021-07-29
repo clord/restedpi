@@ -648,7 +648,7 @@ pub async fn start_app(
 
     tokio::spawn(async move {
         loop {
-            tokio::time::delay_for(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(1)).await;
             match sender_clone
                 .send(AppMessage::SetTime { time: Local::now() })
                 .await

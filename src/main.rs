@@ -8,6 +8,7 @@ use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use color_eyre::Report;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -107,6 +108,15 @@ async fn main() {
         config_file,
         command,
     } = Opt::from_args();
+    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
+        std::env::set_var("RUST_LIB_BACKTRACE", "1");
+    }
+
+    match color_eyre::install() {
+        Ok(x) => (),
+        Err(e) => panic!(e),
+    };
+
     env::set_var("RUST_LOG", log_level);
     tracing_subscriber::fmt::init();
     let config_file = get_config_path(config_file);
