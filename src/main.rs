@@ -8,7 +8,7 @@ use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use color_eyre::Report;
+use color_eyre::eyre;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -102,20 +102,18 @@ fn get_config(config_file: &Path) -> Config {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), eyre::Error> {
+    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
+        std::env::set_var("RUST_LIB_BACKTRACE", "1");
+    }
+
+    color_eyre::install().unwrap();
+
     let Opt {
         log_level,
         config_file,
         command,
     } = Opt::from_args();
-    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-        std::env::set_var("RUST_LIB_BACKTRACE", "1");
-    }
-
-    match color_eyre::install() {
-        Ok(x) => (),
-        Err(e) => panic!(e),
-    };
 
     env::set_var("RUST_LOG", log_level);
     tracing_subscriber::fmt::init();
@@ -131,7 +129,7 @@ async fn main() {
             });
             if password.trim().len() < 8 {
                 error!("password too short");
-                return;
+                return Ok(());
             }
 
             info!(
@@ -147,15 +145,18 @@ async fn main() {
                     match toml::to_string(&config) {
                         Ok(as_str) => {
                             fs::write(&config_file, as_str).expect("failed to write change");
-                            info!("Success",);
+                            info!("Success");
+                            Ok(())
                         }
                         Err(e) => {
-                            error!("failed to save config: {}", e)
+                            error!("failed to save config: {}", e);
+                            Err(librpi::error::Error::Config(format!("failed to save config: {}", e)).into())
                         }
                     }
                 }
                 Err(e) => {
-                    error!("failed to hash password: {}", e)
+                    error!("failed to hash password: {}", e);
+                    Err(librpi::error::Error::PasswordIssue.into())
                 }
             }
         }
@@ -203,6 +204,7 @@ async fn main() {
                 }
             }
             rl.save_history(&history_path).unwrap();
+            Ok(())
         }
 
         Command::Server { app_secret } => {
@@ -236,8 +238,8 @@ async fn main() {
                 error!(
                     "Missing keys in configuration; can't start in TLS mode. set key_and_cert_path"
                 );
-                return ();
             }
+            Ok(())
         }
     }
 }

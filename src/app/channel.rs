@@ -644,7 +644,7 @@ pub async fn start_app(
 
     let mut state = state::new_state(here, db).await?;
 
-    let mut sender_clone = sender.clone();
+    let sender_clone = sender.clone();
 
     tokio::spawn(async move {
         loop {

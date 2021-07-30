@@ -13,15 +13,8 @@ build:
   artifacts:
     paths: 
       - target/arm-unknown-linux-gnueabihf/release/restedpi
-
   script: 
     - RUSTFLAGS='-L /root/tools/arm-bcm2708/arm-linux-gnueabihf/lib' cargo build --target=arm-unknown-linux-gnueabihf --release
-
-test:
-  stage: build
-  script: 
-    - apt-get install libsqlite3-dev
-    - cargo test
 
 deploy:
   stage: deploy

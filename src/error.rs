@@ -14,6 +14,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq, Serialize)]
 pub enum Error {
+    Config(String),
     IoError(String),
     InputNotFound(String),
     OutputNotFound(String),
@@ -38,6 +39,7 @@ pub enum Error {
 impl IntoFieldError for Error {
     fn into_field_error(self) -> FieldError {
         match self {
+            Error::Config(ref err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
             Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
             Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
             Error::NonExistant(ref name) => {
@@ -88,6 +90,7 @@ impl warp::reject::Reject for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Error::Config(ref err) => write!(f, "Configuration error: {}", err),
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::DbError(ref err) => write!(f, "DB error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
@@ -151,12 +154,6 @@ impl From<io::Error> for Error {
 impl From<std::sync::mpsc::RecvError> for Error {
     fn from(err: mpsc::RecvError) -> Error {
         Error::RecvError(format!("mpsc recv: {}", err))
-    }
-}
-
-impl From<tokio::sync::mpsc::error::RecvError> for Error {
-    fn from(err: tokio::sync::mpsc::error::RecvError) -> Error {
-        Error::RecvError(format!("tokio recv error: {}", err))
     }
 }
 
