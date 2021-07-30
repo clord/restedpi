@@ -128,7 +128,6 @@ impl Mutation {
             .await?)
     }
 
-
     /// Remove the specified device and any inputs or outputs that use it
     pub async fn remove_device(context: &AppContext, device_id: AppID) -> FieldResult<bool> {
         check_session(context)?;
@@ -175,9 +174,7 @@ pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<AppContex
 fn check_session(context: &AppContext) -> FieldResult<()> {
     match &context.session {
         None => Err(Error::NotLoggedIn)?,
-        Some(_u) => {
-            Ok(())
-        }
+        Some(_u) => Ok(()),
     }
 }
 

@@ -4,7 +4,6 @@
 // use std::convert::Infallible;
 // use warp::{reject, reply, Rejection, Reply};
 
-
 // pub async fn get_available_devices(_ctx: AppContext) -> Result<impl Reply, Infallible> {
 //     let reply = json!([
 //         { "name": "BMP085"
