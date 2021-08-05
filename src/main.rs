@@ -106,8 +106,8 @@ async fn main() -> Result<(), eyre::Error> {
     let (command, config_file) = setup();
 
     match command {
-        Command::AddUser { username, password } => add_user(&config_file, password, username),
-        Command::BooleanRepl => bool_repl(&config_file),
+        Command::AddUser { username, password } => add_user(config_file, password, username),
+        Command::BooleanRepl => bool_repl(config_file),
         Command::Server { app_secret } => server(config_file, app_secret).await,
     }
 }
@@ -121,10 +121,14 @@ async fn server(config_file: PathBuf, app_secret: String) -> Result<(), color_ey
     let key_and_cert = config.key_and_cert_path.clone();
     config_file.pop();
     let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
-    let app = app::channel::start_app((config.lat, config.long), &config_file, users)
+    let here = (config.lat, config.long);
+
+    let app = app::channel::start_app(here, &config_file, users)
         .await
         .expect("app failed to start");
+
     let api = webapp::filters::graphql_api(app);
+
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
     let serve = warp::serve(api.with(warp::log("web")).recover(webapp::handle_rejection));
     if let Some((key_path, cert_path)) = key_and_cert {
@@ -141,7 +145,7 @@ async fn server(config_file: PathBuf, app_secret: String) -> Result<(), color_ey
     Ok(())
 }
 
-fn bool_repl(config_file: &PathBuf) -> Result<(), color_eyre::Report> {
+fn bool_repl(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut history_path = config_file.clone();
     history_path.set_file_name("repl.history");
     println!("restedpi boolean expression evaluator");
@@ -185,11 +189,11 @@ fn bool_repl(config_file: &PathBuf) -> Result<(), color_eyre::Report> {
 }
 
 fn add_user(
-    config_file: &PathBuf,
+    config_file: PathBuf,
     password: Option<String>,
     username: String,
 ) -> Result<(), color_eyre::Report> {
-    let mut config = get_config(config_file);
+    let mut config = get_config(&config_file);
     let password = password
         .unwrap_or_else(|| rpassword::read_password_from_tty(Some("User's Password: ")).unwrap());
     if password.trim().len() < 8 {
