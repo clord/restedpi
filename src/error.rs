@@ -43,7 +43,9 @@ impl IntoFieldError for Error {
             Error::Config(ref err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
             Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
             Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
-            Error::DeviceReadError(ref err) => FieldError::new(err, graphql_value!({"slug": "device-read"})),
+            Error::DeviceReadError(ref err) => {
+                FieldError::new(err, graphql_value!({"slug": "device-read"}))
+            }
             Error::NonExistant(ref name) => {
                 FieldError::new(name, graphql_value!({"slug": "Existance"}))
             }

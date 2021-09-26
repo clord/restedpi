@@ -1,15 +1,8 @@
 use crate::app::db::models;
 use crate::app::device::Device;
-use crate::config::types::Unit;
+use crate::app::dimensioned::Dimensioned;
 use crate::session::AppContext;
-use juniper::{graphql_object, GraphQLObject};
-use serde_derive::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, GraphQLObject, Debug, PartialEq, Clone)]
-pub struct InputValue {
-    pub value: f64,
-    pub unit: Unit,
-}
+use juniper::graphql_object;
 
 #[derive(Debug, Clone)]
 pub struct Input {
@@ -42,12 +35,10 @@ impl Input {
             .ok()
     }
 
-    pub async fn value(&self, context: &AppContext) -> Option<InputValue> {
-        context
-            .channel()
-            .read_value(self.db.name.clone())
-            .await
-            .ok()
-            .map(|(value, unit)| InputValue { value, unit })
+    pub async fn value(&self, context: &AppContext) -> Dimensioned {
+        match context.channel().read_value(self.db.name.clone()).await {
+            Ok((value, unit)) => Dimensioned::new(unit, value),
+            Err(e) => Dimensioned::from_error(e.to_string()),
+        }
     }
 }

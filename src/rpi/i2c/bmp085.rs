@@ -171,7 +171,9 @@ impl Bmp085State {
         let _ac5 = ac5 as i64;
         let x1: i32 = ((ut - ac6) as i64 * _ac5 >> 15) as i32;
         if (x1 + md) == 0 {
-            return Err(crate::error::Error::DeviceReadError("BMP085 will divide by zero".to_string()))
+            return Err(crate::error::Error::DeviceReadError(
+                "BMP085 will divide by zero".to_string(),
+            ));
         }
         let x2: i32 = (mc << 11) / (x1 + md);
         let b5: i32 = x1 + x2;
