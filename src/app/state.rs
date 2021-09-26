@@ -95,7 +95,8 @@ impl State {
         let db_device = self.db.add_device(&new_device)?;
         let model = serde_json::from_str(db_device.model.as_str())?;
         let id = db_device.name;
-        let device = Device::new(model, self.i2c.clone());
+        let mut device = Device::new(model, self.i2c.clone());
+        device.reset().await?;
         info!("Adding device id: {}", id);
         self.devices.insert(id.clone(), device);
         Ok(id.clone())
@@ -320,7 +321,8 @@ pub async fn new_state(here: (f64, f64), db: crate::app::db::Db) -> Result<State
     for db_device in &devices {
         let model = serde_json::from_str(&db_device.model)?;
         info!("Adding device {:?} named '{}'", model, db_device.name);
-        let new_device = Device::new(model, i2c.clone());
+        let mut new_device = Device::new(model, i2c.clone());
+        new_device.reset().await?;
         device_instances.insert(db_device.name.clone(), new_device);
     }
 

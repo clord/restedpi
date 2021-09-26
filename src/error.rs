@@ -25,6 +25,7 @@ pub enum Error {
     TokenIssue,
     PasswordIssue,
     NotLoggedIn,
+    DeviceReadError(String),
     NonExistant(String),
     NotUnique(String),
     OutOfBounds(usize),
@@ -42,6 +43,7 @@ impl IntoFieldError for Error {
             Error::Config(ref err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
             Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
             Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
+            Error::DeviceReadError(ref err) => FieldError::new(err, graphql_value!({"slug": "device-read"})),
             Error::NonExistant(ref name) => {
                 FieldError::new(name, graphql_value!({"slug": "Existance"}))
             }
@@ -95,6 +97,7 @@ impl fmt::Display for Error {
             Error::DbError(ref err) => write!(f, "DB error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::ParseError => write!(f, "Parse error"),
+            Error::DeviceReadError(ref err) => write!(f, "Failed to read device: {}", err),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
             Error::NotUnique(ref msg) => write!(f, "non-unique: {}", msg),
             Error::OutOfBounds(ref index) => write!(f, "Index '{:#?}' out of bounds", index),
