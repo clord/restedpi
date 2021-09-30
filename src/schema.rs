@@ -28,4 +28,8 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(devices, inputs, outputs,);
+allow_tables_to_appear_in_same_query!(
+    devices,
+    inputs,
+    outputs,
+);
