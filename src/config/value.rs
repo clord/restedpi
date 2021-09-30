@@ -1,7 +1,8 @@
+use crate::app::dimensioned::{DimBool, DimDegC, DimKPa, DimMessage, Dimensioned};
 use crate::app::state::State;
 use crate::config::sched;
 use crate::config::types::{DateTimeValue, LocationValue, Unit, Value};
-use crate::error::Result;
+use crate::error::{Result, Error};
 use async_recursion::async_recursion;
 use chrono::offset::LocalResult;
 use chrono::prelude::*;
@@ -82,13 +83,14 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::Const(a) => Ok(*a),
 
         Value::ReadInput(input_name, unit) => {
-            let value = app.read_input_value(input_name).await?;
-            if *unit == value.1 {
-                Ok(value.0)
-            } else {
-                Err(crate::error::Error::UnitError(format!("{:?}", unit)))
+            match app.read_input_value(input_name).await? {
+                Dimensioned::KPa(DimKPa{value})  => if *unit == Unit::KPa { Ok(value ) }  else {Err(Error::UnitError("Expected kPa".to_string()))}
+                Dimensioned::DegC(DimDegC{value})  => if *unit == Unit::DegC { Ok(value ) }  else {Err(Error::UnitError("Expected DegC".to_string()))}
+                Dimensioned::Boolean(DimBool{value})  => if *unit == Unit::Boolean { Ok(if value { 1.0 } else{ 0.0} ) }  else {Err(Error::UnitError("Expected Boolean".to_string()))}
+                Dimensioned::Error(DimMessage{message}) => {Err(Error::UnitError(message))}
             }
         }
+
         Value::Sub(a, b) => Ok(evaluate(app, a).await? - evaluate(app, b).await?),
         Value::Add(a, b) => Ok(evaluate(app, a).await? + evaluate(app, b).await?),
         Value::Mul(a, b) => Ok(evaluate(app, a).await? * evaluate(app, b).await?),

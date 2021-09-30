@@ -1,7 +1,9 @@
 use crate::app::db::models;
 pub use crate::config::types::{BoolExpr, DateTimeValue, LocationValue, Unit, Value};
 use crate::session::AppContext;
-use juniper::{graphql_object, FieldResult};
+use juniper::graphql_object;
+
+use super::dimensioned::Dimensioned;
 
 /**
  * we can write a boolean value to a given device via name
@@ -15,10 +17,6 @@ pub struct Output {
 impl Output {
     pub fn name(&self) -> &str {
         self.data.name.as_str()
-    }
-
-    pub fn unit(&self) -> Unit {
-        self.data.unit
     }
 
     pub async fn device(&self, context: &AppContext) -> Option<crate::app::device::Device> {
@@ -45,10 +43,14 @@ impl Output {
         self.data.automation_script.clone()
     }
 
-    pub async fn value(&self, context: &AppContext) -> FieldResult<bool> {
-        Ok(context
+    pub async fn value(&self, context: &AppContext) -> Dimensioned {
+        match context
             .channel()
             .current_output_value(self.data.name.clone())
-            .await?)
+            .await
+        {
+            Ok(v) => Dimensioned::from_bool(v),
+            Err(e) => Dimensioned::from_error(e.to_string()),
+        }
     }
 }

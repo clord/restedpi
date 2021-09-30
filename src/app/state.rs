@@ -2,7 +2,7 @@ extern crate chrono;
 
 use crate::app::{db, device, input, output, AppID};
 use crate::config;
-use crate::config::types::{BoolExpr, Unit};
+use crate::config::types::BoolExpr;
 use crate::error::{Error, Result};
 use crate::rpi;
 use crate::rpi::device::Device;
@@ -10,7 +10,9 @@ use chrono::prelude::*;
 use db::models;
 
 use std::collections::HashMap;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, instrument};
+
+use super::dimensioned::Dimensioned;
 
 /// Keep current app state in memory, together with device state
 pub struct State {
@@ -104,9 +106,7 @@ impl State {
 
     pub async fn add_input(&mut self, config: &models::NewInput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
-        if let Some(dev) = mdev {
-            let unit = config.unit;
-            dev.valid_input(config.device_input_id, unit)?;
+        if let Some(_dev) = mdev {
             let db_input = self.db.add_input(config)?;
             Ok(db_input.name)
         } else {
@@ -127,9 +127,7 @@ impl State {
 
     pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
-        if let Some(dev) = mdev {
-            let unit = config.unit;
-            dev.valid_output(config.device_output_id, unit)?;
+        if let Some(_dev) = mdev {
             let db_output = self.db.add_output(&config)?;
             Ok(db_output.name)
         } else {
@@ -174,12 +172,6 @@ impl State {
      */
     pub async fn read_output_bool(&self, output_id: &AppID) -> Result<bool> {
         let output = self.db.output(output_id)?;
-        let unit = output.unit;
-
-        if unit != Unit::Boolean {
-            warn!("Can't read {:?} from boolean output {}", unit, output_id);
-            return Err(Error::UnitError("can't read".to_string()));
-        }
 
         if let Some(device) = self.devices.get(&output.device_id) {
             Ok(device.read_boolean(output.device_output_id).await?)
@@ -193,11 +185,6 @@ impl State {
      */
     pub async fn read_input_bool(&self, input_id: &AppID) -> Result<bool> {
         let input = self.db.input(input_id)?;
-        let unit = input.unit;
-        if unit != Unit::Boolean {
-            warn!("Can't read {:?} from boolean input {}", unit, input_id);
-            return Err(Error::UnitError("can't read".to_string()));
-        }
 
         if let Some(device) = self.devices.get(&input.device_id) {
             Ok(device.read_boolean(input.device_input_id).await?)
@@ -211,11 +198,6 @@ impl State {
      */
     pub async fn write_output_bool(&mut self, output_id: &AppID, value: bool) -> Result<()> {
         let output = self.db.output(output_id)?;
-        let unit = output.unit;
-        if unit != Unit::Boolean {
-            warn!("Can't write {:?} from boolean output {}", unit, output_id);
-            return Err(Error::UnitError("can't write".to_string()));
-        }
 
         if let Some(device) = self.devices.get_mut(&output.device_id) {
             device
@@ -300,7 +282,7 @@ impl State {
         Ok(())
     }
 
-    pub async fn read_input_value(&self, input_id: &AppID) -> Result<(f64, Unit)> {
+    pub async fn read_input_value(&self, input_id: &AppID) -> Result<Dimensioned> {
         let input = self.db.input(input_id)?;
 
         if let Some(device) = self.devices.get(&input.device_id) {

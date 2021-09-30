@@ -1,10 +1,10 @@
 use super::db;
+use super::dimensioned::Dimensioned;
 use crate::app::db::models;
 use crate::app::device::Device;
 use crate::app::input::Input;
 use crate::app::output::Output;
 use crate::app::{device, state, AppID};
-use crate::config::types::Unit;
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;
@@ -50,7 +50,7 @@ pub enum AppMessage {
      */
     ReadValue {
         input_id: AppID,
-        response: oneshot::Sender<Result<(f64, Unit)>>,
+        response: oneshot::Sender<Result<Dimensioned>>,
     },
 
     CurrentOutputValue {
@@ -291,7 +291,7 @@ impl AppChannel {
         receiver.await?
     }
 
-    pub async fn read_value(&self, input_id: AppID) -> Result<(f64, Unit)> {
+    pub async fn read_value(&self, input_id: AppID) -> Result<Dimensioned> {
         let (response, receiver) = oneshot::channel();
         self.sender
             .clone()

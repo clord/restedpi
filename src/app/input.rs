@@ -15,10 +15,6 @@ impl Input {
         self.db.name.as_str()
     }
 
-    pub fn unit(&self) -> crate::config::types::Unit {
-        self.db.unit
-    }
-
     pub async fn device(&self, context: &AppContext) -> Option<Device> {
         context
             .channel()
@@ -37,7 +33,7 @@ impl Input {
 
     pub async fn value(&self, context: &AppContext) -> Dimensioned {
         match context.channel().read_value(self.db.name.clone()).await {
-            Ok((value, unit)) => Dimensioned::new(unit, value),
+            Ok(d) => d,
             Err(e) => Dimensioned::from_error(e.to_string()),
         }
     }

@@ -1,7 +1,6 @@
 table! {
     devices (name) {
         name -> Text,
-        name_as_entered -> Text,
         model -> Text,
         notes -> Text,
         disabled -> Bool,
@@ -12,10 +11,8 @@ table! {
 table! {
     inputs (name) {
         name -> Text,
-        name_as_entered -> Text,
         device_id -> Text,
         device_input_id -> Integer,
-        unit -> crate::config::types::UnitMapping,
         created_at -> Timestamp,
     }
 }
@@ -23,10 +20,8 @@ table! {
 table! {
     outputs (name) {
         name -> Text,
-        name_as_entered -> Text,
         device_id -> Text,
         device_output_id -> Integer,
-        unit -> crate::config::types::UnitMapping,
         active_low -> Bool,
         automation_script -> Nullable<Text>,
         created_at -> Timestamp,

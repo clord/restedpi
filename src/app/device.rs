@@ -163,9 +163,6 @@ impl Device {
     pub fn name(&self) -> &str {
         self.db_device.name.as_str()
     }
-    pub fn name_as_entered(&self) -> &str {
-        self.db_device.name_as_entered.as_str()
-    }
     pub fn disabled(&self) -> bool {
         self.db_device.disabled
     }

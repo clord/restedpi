@@ -1,7 +1,7 @@
 use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
 use crate::app::device;
-use crate::config::types::Unit;
+use crate::app::dimensioned::Dimensioned;
 use crate::error::{Error, Result};
 use std::convert::TryInto;
 
@@ -15,36 +15,12 @@ pub struct Device {
 
 impl Device {
     pub fn new(model: device::Type, rapi: RpiApi) -> Self {
-        // use crate::config::parse::{bool_expr, BoolExpr};
-        // let output_scripts = HashMap::new();
-
-        // for (key, val) in outputs.iter() {
-        //     let maybe_expression = val.automation_script.map(|a| match bool_expr(a.as_ref()) {
-        //         Ok(parsed) => Some(parsed),
-        //         Err(e) => {
-        //             error!("error parsing automation for output_id {}: {}", key, e);
-        //             None
-        //         }
-        //     });
-        //     output_scripts.insert(*key, maybe_expression.flatten());
-        // }
-
         Self {
             model,
             rapi,
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),
         }
-    }
-
-    /// Does the device support this input and unit?
-    pub fn valid_input(&self, _input_id: i32, _unit: Unit) -> Result<()> {
-        Ok(())
-    }
-
-    /// Does the device support this output and unit?
-    pub fn valid_output(&self, _input_id: i32, _unit: Unit) -> Result<()> {
-        Ok(())
     }
 
     pub async fn reset(&mut self) -> Result<()> {
@@ -134,7 +110,7 @@ impl Device {
         }
     }
 
-    pub async fn read_sensor(&self, index: i32) -> Result<(f64, Unit)> {
+    pub async fn read_sensor(&self, index: i32) -> Result<Dimensioned> {
         match self.model {
             device::Type::BMP085(device::BMP085 { address, mode }) => match index {
                 0 => {
@@ -142,25 +118,32 @@ impl Device {
                         .bmp085_state
                         .temperature_in_c(address.try_into().unwrap(), &self.rapi)
                         .await?;
-                    Ok((v as f64, Unit::DegC))
+                    Ok(Dimensioned::from_degc(v.into()))
                 }
                 1 => {
                     let v = self
                         .bmp085_state
                         .pressure_kpa(address.try_into().unwrap(), mode, &self.rapi)
                         .await?;
-                    Ok((v as f64, Unit::KPa))
+                    Ok(Dimensioned::from_kpa(v.into()))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
             device::Type::MCP9808(device::MCP9808 { address }) => match index {
                 0 => {
                     let temp = mcp9808::read_temp(&self.rapi, address.try_into().unwrap()).await?;
-                    Ok((temp as f64, Unit::DegC))
+                    Ok(Dimensioned::from_degc(temp.into()))
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            device::Type::MCP23017(_) => Err(Error::OutOfBounds(index as usize)),
+            device::Type::MCP23017(device::MCP23017{address, ..}) => {
+                let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
+                let pin = self
+                    .mcp23017_state
+                    .get_pin(address.try_into().unwrap(), bank, pin, &self.rapi)
+                    .await?;
+                Ok(Dimensioned::from_bool(pin))
+            }
         }
     }
 
