@@ -128,9 +128,10 @@ async fn server(config_file: PathBuf, app_secret: String) -> Result<(), color_ey
         .expect("app failed to start");
 
     let api = webapp::filters::graphql_api(app);
+    let metrics = warp::path!("metrics").and_then(webapp::metrics::handler);
 
     let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
-    let serve = warp::serve(api.with(warp::log("web")).recover(webapp::handle_rejection));
+    let serve = warp::serve((api.or(metrics).with(warp::log("web"))).recover(webapp::handle_rejection));
     if let Some((key_path, cert_path)) = key_and_cert {
         info!("RestedPi listening: https://{}", addr);
         serve

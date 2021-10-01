@@ -10,6 +10,7 @@ use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
 pub mod filters;
 mod handlers;
 pub mod slugify;
+pub mod metrics;
 
 // We have to share the app state since warp uses a thread pool
 pub type SharedAppState = app::channel::AppChannel;
