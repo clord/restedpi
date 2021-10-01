@@ -2,6 +2,7 @@ use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
 use crate::app::device;
 use crate::app::dimensioned::Dimensioned;
+use crate::config::types::Unit;
 use crate::error::{Error, Result};
 use std::convert::TryInto;
 
@@ -20,6 +21,34 @@ impl Device {
             rapi,
             mcp23017_state: mcp23017::Mcp23017State::new(),
             bmp085_state: bmp085::Bmp085State::new(),
+        }
+    }
+
+    pub fn slots(&self) -> Vec<device::Slot> {
+        match self.model {
+            device::Type::MCP9808(_) => vec![device::Slot{can_input: true, can_output: false, unit: Unit::DegC}],
+            device::Type::BMP085(_) => vec![
+                device::Slot{can_input: true, can_output: false, unit: Unit::DegC},
+                device::Slot{can_input: true, can_output: false, unit: Unit::KPa}
+            ],
+            device::Type::MCP23017(
+                device::MCP23017{
+                bank_a,
+                bank_b, ..}
+                ) => {
+                let mut result : Vec<device::Slot> = Vec::new();
+                for bank in [bank_a, bank_b].iter() {
+                    result.push(device::Slot::from_dir(bank.p0));
+                    result.push(device::Slot::from_dir(bank.p1));
+                    result.push(device::Slot::from_dir(bank.p2));
+                    result.push(device::Slot::from_dir(bank.p3));
+                    result.push(device::Slot::from_dir(bank.p4));
+                    result.push(device::Slot::from_dir(bank.p5));
+                    result.push(device::Slot::from_dir(bank.p6));
+                    result.push(device::Slot::from_dir(bank.p7));
+                }
+                result
+            }
         }
     }
 

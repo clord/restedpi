@@ -1,5 +1,6 @@
 use crate::app::{db::models, input, output};
 use crate::session::AppContext;
+use crate::config::types::Unit;
 use juniper::{
     graphql_object, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject, GraphQLUnion,
 };
@@ -147,6 +148,26 @@ pub enum Dir {
     InWithPD,
 }
 
+/// Represents a slot on a device that can maybe be bound to an input
+#[derive(Serialize, Deserialize, GraphQLObject, PartialEq, Copy, Clone, Debug)]
+pub struct Slot {
+    pub can_input: bool,
+    pub can_output: bool,
+    pub unit: Unit,
+}
+
+impl Slot {
+    pub fn from_dir(dir: Dir) -> Slot {
+        match dir {
+            Dir::OutH => Slot { can_input: true, can_output: true, unit: Unit::Boolean },
+            Dir::OutL => Slot { can_input: true, can_output: true, unit: Unit::Boolean },
+            Dir::In => Slot { can_input: true, can_output: false, unit: Unit::Boolean },
+            Dir::InWithPD => Slot { can_input: true, can_output: false, unit: Unit::Boolean }
+        }
+    }
+}
+
+
 /**
  * Data for devices
  */
@@ -168,6 +189,12 @@ impl Device {
     }
     pub fn notes(&self) -> &str {
         self.db_device.notes.as_str()
+    }
+    pub async fn slots(&self, context: &AppContext) -> FieldResult<Vec<Slot>> {
+        Ok(context
+            .channel()
+            .get_slots_for_device(self.db_device.name.clone())
+            .await?)
     }
     pub async fn inputs(&self, context: &AppContext) -> FieldResult<Vec<input::Input>> {
         Ok(context

@@ -86,6 +86,11 @@ impl State {
         })
     }
 
+    pub fn device_slots(&self, name: &AppID) -> Result<Vec<device::Slot>> {
+        let mdev = self.devices.get(name).ok_or(Error::NonExistant("can't find device".to_string()))?;
+        Ok(mdev.slots())
+    }
+
     pub async fn add_device(
         &mut self,
         model: crate::app::device::Type,

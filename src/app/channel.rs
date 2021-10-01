@@ -127,6 +127,10 @@ pub enum AppMessage {
         response: oneshot::Sender<Result<Vec<Input>>>,
     },
 
+GetSlotsForDevice {
+        device_id: AppID,
+    response: oneshot::Sender<Result<Vec<device::Slot>>>},
+
     /**
      * Read inputs for a device
      */
@@ -396,6 +400,12 @@ impl AppChannel {
         receiver.await?
     }
 
+    pub async fn get_slots_for_device(&self, device_id: AppID) -> Result<Vec<device::Slot>> {
+        let (response, receiver) = oneshot::channel();
+        self.sender.clone().send(AppMessage::GetSlotsForDevice {device_id, response}).await?;
+        receiver.await?
+    }
+
     pub async fn get_inputs_for_device(&self, device_id: AppID) -> Result<Vec<Input>> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -536,6 +546,16 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
 
         AppMessage::GetInputs { response } => {
             let result = state.inputs();
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::GetSlotsForDevice { 
+            device_id,
+            response } => {
+            let result = state.device_slots(&device_id);
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
