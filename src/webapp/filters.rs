@@ -17,7 +17,7 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
     let mut response: Response<String> = Response::default();
     let b = response.body_mut();
     b.push_str("# HELP input_value The current value of inputs\n");
-    b.push_str("# TYPE gauge\n");
+    b.push_str("# TYPE input_value gauge\n");
     for inp in app.channel().all_inputs().await? {
         let v = inp.value(&app).await;
         let name = inp.name();
@@ -28,7 +28,7 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
 
     b.push_str("\n");
     b.push_str("# HELP output_value The current value of outputs\n");
-    b.push_str("# TYPE gauge\n");
+    b.push_str("# TYPE output_value gauge\n");
     for op in app.channel().all_outputs().await? {
         let v = op.value(&app).await;
         let name = op.name();
