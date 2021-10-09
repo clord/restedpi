@@ -46,5 +46,4 @@ impl Input {
             .await
             .ok()
     }
-
 }

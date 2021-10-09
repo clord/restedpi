@@ -48,9 +48,11 @@ impl Dimensioned {
     pub fn value(&self) -> crate::error::Result<f64> {
         match self {
             Self::DegC(DimDegC { value }) => Ok(*value),
-            Self::Boolean(DimBool { value }) => Ok(if *value {1.0} else {0.0}),
+            Self::Boolean(DimBool { value }) => Ok(if *value { 1.0 } else { 0.0 }),
             Self::KPa(DimKPa { value }) => Ok(*value),
-            Self::Error(DimMessage { message }) => Err(crate::error::Error::UnitError(message.clone()))
+            Self::Error(DimMessage { message }) => {
+                Err(crate::error::Error::UnitError(message.clone()))
+            }
         }
     }
 
@@ -59,7 +61,9 @@ impl Dimensioned {
             Self::DegC(_) => Ok(Unit::DegC),
             Self::Boolean(_) => Ok(Unit::Boolean),
             Self::KPa(_) => Ok(Unit::KPa),
-            Self::Error(DimMessage { message }) => Err(crate::error::Error::UnitError(message.clone()))
+            Self::Error(DimMessage { message }) => {
+                Err(crate::error::Error::UnitError(message.clone()))
+            }
         }
     }
 
@@ -75,7 +79,7 @@ impl Dimensioned {
             (Unit::KPa, &Dimensioned::KPa(_)) => true,
             (Unit::DegC, &Dimensioned::DegC(_)) => true,
             (Unit::Boolean, &Dimensioned::Boolean(_)) => true,
-            _ => false
+            _ => false,
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::app::db::models;
 use crate::app::device;
+use crate::app::dimensioned::Dimensioned;
 use crate::app::AppID;
 use crate::error::Error;
 use crate::session::{authenticate, AppContext};
@@ -156,6 +157,15 @@ impl Mutation {
     ) -> FieldResult<AppID> {
         check_session(context)?;
         Ok(context.channel().add_input(new_input).await?)
+    }
+
+    /// Set the output to a given boolean value
+    pub async fn set_output(
+        context: &AppContext,
+        output_id: AppID,
+        value: bool,
+    ) -> FieldResult<()> {
+        Ok(context.channel().write_boolean(output_id, value)?)
     }
 
     /// Add an output to a device. Outputs denote ways to send data to a device. this output will permit automations.

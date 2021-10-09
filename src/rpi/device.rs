@@ -26,17 +26,25 @@ impl Device {
 
     pub fn slots(&self) -> Vec<device::Slot> {
         match self.model {
-            device::Type::MCP9808(_) => vec![device::Slot{can_input: true, can_output: false, unit: Unit::DegC}],
+            device::Type::MCP9808(_) => vec![device::Slot {
+                can_input: true,
+                can_output: false,
+                unit: Unit::DegC,
+            }],
             device::Type::BMP085(_) => vec![
-                device::Slot{can_input: true, can_output: false, unit: Unit::DegC},
-                device::Slot{can_input: true, can_output: false, unit: Unit::KPa}
+                device::Slot {
+                    can_input: true,
+                    can_output: false,
+                    unit: Unit::DegC,
+                },
+                device::Slot {
+                    can_input: true,
+                    can_output: false,
+                    unit: Unit::KPa,
+                },
             ],
-            device::Type::MCP23017(
-                device::MCP23017{
-                bank_a,
-                bank_b, ..}
-                ) => {
-                let mut result : Vec<device::Slot> = Vec::new();
+            device::Type::MCP23017(device::MCP23017 { bank_a, bank_b, .. }) => {
+                let mut result: Vec<device::Slot> = Vec::new();
                 for bank in [bank_a, bank_b].iter() {
                     result.push(device::Slot::from_dir(bank.p0));
                     result.push(device::Slot::from_dir(bank.p1));
@@ -165,7 +173,7 @@ impl Device {
                 }
                 _ => Err(Error::OutOfBounds(index as usize)),
             },
-            device::Type::MCP23017(device::MCP23017{address, ..}) => {
+            device::Type::MCP23017(device::MCP23017 { address, .. }) => {
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let pin = self
                     .mcp23017_state

@@ -2,7 +2,7 @@ use super::SharedAppState;
 use crate::graphql::create_schema;
 use crate::session::{AppContext, WebSession};
 use juniper_warp::{make_graphql_filter, playground_filter};
-use warp::{http::Response, any, get, header, post, Filter, Rejection, Reply};
+use warp::{any, get, header, http::Response, post, Filter, Rejection, Reply};
 
 fn with_app(
     app: SharedAppState,
@@ -23,7 +23,12 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         let name = inp.name();
         let unit = v.unit()?;
         let value = v.value()?;
-        b.push_str(&format!("input_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n", name = name, unit = unit, value = value));
+        b.push_str(&format!(
+            "input_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n",
+            name = name,
+            unit = unit,
+            value = value
+        ));
     }
 
     b.push_str("\n");
@@ -34,7 +39,12 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         let name = op.name();
         let unit = v.unit()?;
         let value = v.value()?;
-        b.push_str(&format!("output_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n", name = name, unit = unit, value = value));
+        b.push_str(&format!(
+            "output_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n",
+            name = name,
+            unit = unit,
+            value = value
+        ));
     }
     b.push_str("\n");
 
@@ -47,10 +57,16 @@ pub fn graphql_api(
     warp::path("graphql")
         .and(
             post()
-                .and(make_graphql_filter(create_schema(), with_app(app.clone()).boxed()))
+                .and(make_graphql_filter(
+                    create_schema(),
+                    with_app(app.clone()).boxed(),
+                ))
                 .or(get().and(playground_filter("/graphql", None))),
         )
-        .or(warp::path("metrics").and(get()).and(with_app(app)).and_then(metrics_handler))
+        .or(warp::path("metrics")
+            .and(get())
+            .and(with_app(app))
+            .and_then(metrics_handler))
         .or(static_filter())
         .or(static_index_html())
 }

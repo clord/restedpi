@@ -1,6 +1,6 @@
 use crate::app::{db::models, input, output};
-use crate::session::AppContext;
 use crate::config::types::Unit;
+use crate::session::AppContext;
 use juniper::{
     graphql_object, FieldResult, GraphQLEnum, GraphQLInputObject, GraphQLObject, GraphQLUnion,
 };
@@ -159,14 +159,29 @@ pub struct Slot {
 impl Slot {
     pub fn from_dir(dir: Dir) -> Slot {
         match dir {
-            Dir::OutH => Slot { can_input: true, can_output: true, unit: Unit::Boolean },
-            Dir::OutL => Slot { can_input: true, can_output: true, unit: Unit::Boolean },
-            Dir::In => Slot { can_input: true, can_output: false, unit: Unit::Boolean },
-            Dir::InWithPD => Slot { can_input: true, can_output: false, unit: Unit::Boolean }
+            Dir::OutH => Slot {
+                can_input: true,
+                can_output: true,
+                unit: Unit::Boolean,
+            },
+            Dir::OutL => Slot {
+                can_input: true,
+                can_output: true,
+                unit: Unit::Boolean,
+            },
+            Dir::In => Slot {
+                can_input: true,
+                can_output: false,
+                unit: Unit::Boolean,
+            },
+            Dir::InWithPD => Slot {
+                can_input: true,
+                can_output: false,
+                unit: Unit::Boolean,
+            },
         }
     }
 }
-
 
 /**
  * Data for devices
