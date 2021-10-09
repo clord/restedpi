@@ -112,6 +112,11 @@ pub enum AppMessage {
         response: oneshot::Sender<Result<()>>,
     },
 
+    EvaluateBoolExpression {
+        expression: String,
+        response: oneshot::Sender<Result<bool>>,
+    },
+
     /**
      * Read config of a given device, and also all associated inputs and outputs
      */
@@ -359,6 +364,18 @@ impl AppChannel {
         receiver.await?
     }
 
+    pub async fn evaluate_bool_expression(&self, expression: String) -> Result<bool> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::EvaluateBoolExpression {
+                response,
+                expression,
+            })
+            .await?;
+        receiver.await?
+    }
+
     pub async fn get_device(&self, device_id: AppID) -> Result<Device> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -523,6 +540,21 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
 
         AppMessage::RemoveInput { input_id, response } => {
             let result = state.remove_input(&input_id).await;
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::EvaluateBoolExpression {
+            expression,
+            response,
+        } => {
+            let get_result = async move || -> Result<bool> {
+                let expr = crate::config::parse::bool_expr(&expression)?;
+                crate::config::boolean::evaluate(state, &expr).await
+            };
+            let result = get_result().await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),

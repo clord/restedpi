@@ -22,6 +22,17 @@ impl Query {
         Ok(device.model().to_string())
     }
 
+    pub async fn evaluate_expression(
+        expression: String,
+        context: &AppContext,
+    ) -> FieldResult<bool> {
+        let result = context
+            .channel()
+            .evaluate_bool_expression(expression)
+            .await?;
+        Ok(result)
+    }
+
     /// Current date and time used for computing the state of automations
     pub async fn current_date(context: &AppContext) -> FieldResult<String> {
         let now = context.channel().get_now().await?;
