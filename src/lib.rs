@@ -15,6 +15,7 @@ extern crate lazy_static;
 extern crate rust_embed;
 
 pub mod app;
+pub mod metrics;
 pub mod auth;
 pub mod config;
 pub mod error;

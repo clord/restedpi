@@ -8,7 +8,6 @@ use crate::rpi;
 use crate::rpi::device::Device;
 use chrono::prelude::*;
 use db::models;
-
 use std::collections::HashMap;
 use tracing::{error, info, instrument};
 

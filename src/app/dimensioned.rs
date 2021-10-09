@@ -40,9 +40,29 @@ impl Dimensioned {
     pub fn from_kpa(value: f64) -> Dimensioned {
         Dimensioned::KPa(DimKPa { value })
     }
+
     pub fn from_bool(value: bool) -> Dimensioned {
         Dimensioned::Boolean(DimBool { value })
     }
+
+    pub fn value(&self) -> crate::error::Result<f64> {
+        match self {
+            Self::DegC(DimDegC { value }) => Ok(*value),
+            Self::Boolean(DimBool { value }) => Ok(if *value {1.0} else {0.0}),
+            Self::KPa(DimKPa { value }) => Ok(*value),
+            Self::Error(DimMessage { message }) => Err(crate::error::Error::UnitError(message.clone()))
+        }
+    }
+
+    pub fn unit(&self) -> crate::error::Result<Unit> {
+        match self {
+            Self::DegC(_) => Ok(Unit::DegC),
+            Self::Boolean(_) => Ok(Unit::Boolean),
+            Self::KPa(_) => Ok(Unit::KPa),
+            Self::Error(DimMessage { message }) => Err(crate::error::Error::UnitError(message.clone()))
+        }
+    }
+
     pub fn new(unit: Unit, value: f64) -> Dimensioned {
         match unit {
             Unit::DegC => Dimensioned::DegC(DimDegC { value }),

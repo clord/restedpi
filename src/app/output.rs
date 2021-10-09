@@ -13,6 +13,23 @@ pub struct Output {
     pub data: models::Output,
 }
 
+impl Output {
+    pub fn name(&self) -> &str {
+        self.data.name.as_str()
+    }
+
+    pub async fn value(&self, context: &AppContext) -> Dimensioned {
+        match context
+            .channel()
+            .current_output_value(self.data.name.clone())
+            .await
+        {
+            Ok(v) => Dimensioned::from_bool(v),
+            Err(e) => Dimensioned::from_error(e.to_string()),
+        }
+    }
+}
+
 #[graphql_object(context = AppContext)]
 impl Output {
     pub fn name(&self) -> &str {
