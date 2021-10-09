@@ -26,6 +26,7 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         b.push_str(&format!("input_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n", name = name, unit = unit, value = value));
     }
 
+    b.push_str("\n");
     b.push_str("# HELP output_value The current value of outputs\n");
     b.push_str("# TYPE gauge\n");
     for op in app.channel().all_outputs().await? {
@@ -33,8 +34,9 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         let name = op.name();
         let unit = v.unit()?;
         let value = v.value()?;
-        b.push_str(&format!("output_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}", name = name, unit = unit, value = value));
+        b.push_str(&format!("output_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n", name = name, unit = unit, value = value));
     }
+    b.push_str("\n");
 
     Ok(response)
 }
