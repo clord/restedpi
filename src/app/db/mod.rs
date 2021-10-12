@@ -143,7 +143,9 @@ impl Db {
             ..
         } = fields
         {
-             let ex = diesel::update(table).filter(name.eq(old_output_id)).set(device_output_id.eq(f));
+            let ex = diesel::update(table)
+                .filter(name.eq(old_output_id))
+                .set(device_output_id.eq(f));
             let res = ex.execute(&db)?;
             info!("updated {} rows of output table", res);
         }
@@ -153,9 +155,11 @@ impl Db {
             ..
         } = fields
         {
-            let ex = diesel::update(table).filter(name.eq(old_output_id)).set(active_low.eq(*f));
-        let res = ex.execute(&db)?;
-        info!("updated {} rows of output table", res);
+            let ex = diesel::update(table)
+                .filter(name.eq(old_output_id))
+                .set(active_low.eq(*f));
+            let res = ex.execute(&db)?;
+            info!("updated {} rows of output table", res);
         }
 
         if let models::UpdateOutput {
@@ -163,9 +167,11 @@ impl Db {
             ..
         } = fields
         {
-            let ex = diesel::update(table).filter(name.eq(old_output_id)).set(automation_script.eq(f));
-        let res = ex.execute(&db)?;
-        info!("updated {} rows of output table", res);
+            let ex = diesel::update(table)
+                .filter(name.eq(old_output_id))
+                .set(automation_script.eq(f));
+            let res = ex.execute(&db)?;
+            info!("updated {} rows of output table", res);
         }
 
         let r: models::Output = outputs.find(old_output_id).first(&db)?;

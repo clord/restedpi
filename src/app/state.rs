@@ -154,7 +154,8 @@ impl State {
         if let models::UpdateOutput {
             automation_script: Some(Some(q)),
             ..
-        } = fields {
+        } = fields
+        {
             self.output_automation_cache.remove(&q);
         }
         Ok(output_id)
