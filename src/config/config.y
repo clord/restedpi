@@ -81,7 +81,7 @@ Factor -> Result<Value, ()>:
         Ok(Value::HourOfSunrise($3?, $5?))
       }
     | 'hour_of_sunset' '(' LOC ',' DT ')' {
-        Ok(Value::HourOfSunrise($3?, $5?))
+        Ok(Value::HourOfSunset($3?, $5?))
       }
     | 'offset_for_long' '(' LOC ')' {
         Ok(Value::HourOffset($3?))

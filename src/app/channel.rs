@@ -3,7 +3,7 @@ use super::dimensioned::Dimensioned;
 use crate::app::db::models;
 use crate::app::device::Device;
 use crate::app::input::Input;
-use crate::app::output::Output;
+use crate::app::output::{BoolExpr, Output};
 use crate::app::{device, state, AppID};
 use crate::error::Result;
 use chrono::prelude::*;
@@ -115,6 +115,11 @@ pub enum AppMessage {
     EvaluateBoolExpression {
         expression: String,
         response: oneshot::Sender<Result<bool>>,
+    },
+
+    EvaluateExpression {
+        expression: String,
+        response: oneshot::Sender<Result<f64>>,
     },
 
     /**
@@ -364,6 +369,18 @@ impl AppChannel {
         receiver.await?
     }
 
+    pub async fn evaluate_expression(&self, expression: String) -> Result<f64> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::EvaluateExpression {
+                response,
+                expression,
+            })
+            .await?;
+        receiver.await?
+    }
+
     pub async fn evaluate_bool_expression(&self, expression: String) -> Result<bool> {
         let (response, receiver) = oneshot::channel();
         self.sender
@@ -540,6 +557,26 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
 
         AppMessage::RemoveInput { input_id, response } => {
             let result = state.remove_input(&input_id).await;
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::EvaluateExpression {
+            expression,
+            response,
+        } => {
+            let get_result = async move || -> Result<f64> {
+                let expr = crate::config::parse::bool_expr(&format!("{} == 0", expression))?;
+                match expr {
+                    BoolExpr::Equal(_, a, crate::config::types::Value::Const(_)) =>
+                            crate::config::value::evaluate(state, &a).await
+                        ,
+                    _ => Err(crate::error::Error::ParseError),
+                }
+            };
+            let result = get_result().await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),

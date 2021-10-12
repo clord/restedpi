@@ -25,6 +25,14 @@ impl Query {
     pub async fn evaluate_expression(
         expression: String,
         context: &AppContext,
+    ) -> FieldResult<f64> {
+        let result = context.channel().evaluate_expression(expression).await?;
+        Ok(result)
+    }
+
+    pub async fn evaluate_bool_expression(
+        expression: String,
+        context: &AppContext,
     ) -> FieldResult<bool> {
         let result = context
             .channel()
