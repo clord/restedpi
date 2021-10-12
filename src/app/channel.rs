@@ -174,6 +174,15 @@ pub enum AppMessage {
     },
 
     /**
+     * Update an output
+     */
+    UpdateOutput {
+        output_id: AppID,
+        fields: models::UpdateOutput,
+        response: oneshot::Sender<Result<AppID>>,
+    },
+
+    /**
      * Add or replace output.
      */
     AddInput {
@@ -476,6 +485,23 @@ impl AppChannel {
             .await?;
         receiver.await?
     }
+
+    pub async fn update_output(
+        &self,
+        output_id: AppID,
+        fields: models::UpdateOutput,
+    ) -> Result<AppID> {
+        let (response, receiver) = oneshot::channel();
+        self.sender
+            .clone()
+            .send(AppMessage::UpdateOutput {
+                response,
+                output_id,
+                fields,
+            })
+            .await?;
+        receiver.await?
+    }
 }
 
 /**
@@ -570,9 +596,9 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             let get_result = async move || -> Result<f64> {
                 let expr = crate::config::parse::bool_expr(&format!("{} == 0", expression))?;
                 match expr {
-                    BoolExpr::Equal(_, a, crate::config::types::Value::Const(_)) =>
-                            crate::config::value::evaluate(state, &a).await
-                        ,
+                    BoolExpr::Equal(_, a, crate::config::types::Value::Const(_)) => {
+                        crate::config::value::evaluate(state, &a).await
+                    }
                     _ => Err(crate::error::Error::ParseError),
                 }
             };
@@ -678,6 +704,18 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             response,
         } => {
             let result = state.reset_device(&device_id).await;
+            match response.send(result) {
+                Ok(..) => (),
+                Err(e) => error!("send failed: {:?}", e),
+            };
+        }
+
+        AppMessage::UpdateOutput {
+            output_id,
+            fields,
+            response,
+        } => {
+            let result = state.update_output(output_id, fields).await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),

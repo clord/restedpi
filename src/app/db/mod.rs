@@ -129,6 +129,49 @@ impl Db {
         Ok(r)
     }
 
+    pub fn update_output(
+        &self,
+        old_output_id: &AppID,
+        fields: &models::UpdateOutput,
+    ) -> Result<models::Output> {
+        use crate::schema::outputs::dsl::*;
+        use crate::schema::outputs::table;
+        let db = self.db.get()?;
+
+        if let models::UpdateOutput {
+            device_output_id: Some(f),
+            ..
+        } = fields
+        {
+             let ex = diesel::update(table).filter(name.eq(old_output_id)).set(device_output_id.eq(f));
+            let res = ex.execute(&db)?;
+            info!("updated {} rows of output table", res);
+        }
+
+        if let models::UpdateOutput {
+            active_low: Some(f),
+            ..
+        } = fields
+        {
+            let ex = diesel::update(table).filter(name.eq(old_output_id)).set(active_low.eq(*f));
+        let res = ex.execute(&db)?;
+        info!("updated {} rows of output table", res);
+        }
+
+        if let models::UpdateOutput {
+            automation_script: Some(f),
+            ..
+        } = fields
+        {
+            let ex = diesel::update(table).filter(name.eq(old_output_id)).set(automation_script.eq(f));
+        let res = ex.execute(&db)?;
+        info!("updated {} rows of output table", res);
+        }
+
+        let r: models::Output = outputs.find(old_output_id).first(&db)?;
+        Ok(r)
+    }
+
     pub fn add_output(&self, new_output: &models::NewOutput) -> Result<models::Output> {
         use crate::schema::outputs::dsl::*;
         use crate::schema::outputs::table;

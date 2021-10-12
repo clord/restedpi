@@ -145,6 +145,21 @@ impl State {
         }
     }
 
+    pub async fn update_output(
+        &mut self,
+        output_id: AppID,
+        fields: models::UpdateOutput,
+    ) -> Result<AppID> {
+        let mout = self.db.update_output(&output_id, &fields)?;
+        if let models::UpdateOutput {
+            automation_script: Some(Some(q)),
+            ..
+        } = fields {
+            self.output_automation_cache.remove(&q);
+        }
+        Ok(output_id)
+    }
+
     pub async fn reset_device(&mut self, id: &AppID) -> Result<()> {
         let device = self.devices.get_mut(id).ok_or(Error::NonExistant(
             format!("reset_device: {}", id).to_string(),

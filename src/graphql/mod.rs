@@ -1,4 +1,5 @@
 use crate::app::db::models;
+use crate::app::db::models::UpdateOutput;
 use crate::app::device;
 use crate::app::AppID;
 use crate::error::Error;
@@ -22,10 +23,7 @@ impl Query {
         Ok(device.model().to_string())
     }
 
-    pub async fn evaluate_expression(
-        expression: String,
-        context: &AppContext,
-    ) -> FieldResult<f64> {
+    pub async fn evaluate_expression(expression: String, context: &AppContext) -> FieldResult<f64> {
         let result = context.channel().evaluate_expression(expression).await?;
         Ok(result)
     }
@@ -183,8 +181,20 @@ impl Mutation {
         output_id: AppID,
         value: bool,
     ) -> FieldResult<bool> {
+        check_session(context)?;
         context.channel().write_boolean(output_id, value).await?;
         Ok(true)
+    }
+
+    pub async fn update_output(
+        context: &AppContext,
+        output_id: AppID,
+        fields: UpdateOutput,
+    ) -> FieldResult<AppID> {
+        check_session(context)?;
+        info!("Updating output {} with {:?}", output_id, fields);
+        let outp = context.channel().update_output(output_id, fields).await?;
+        Ok(outp)
     }
 
     /// Add an output to a device. Outputs denote ways to send data to a device. this output will permit automations.

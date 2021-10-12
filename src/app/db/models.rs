@@ -85,6 +85,13 @@ pub struct Input {
     pub created_at: NaiveDateTime,
 }
 
+#[derive(Clone, Debug, GraphQLInputObject)]
+pub struct UpdateOutput {
+    pub device_output_id: Option<i32>,
+    pub active_low: Option<bool>,
+    pub automation_script: Option<Option<String>>,
+}
+
 #[derive(Insertable, Clone, Debug, GraphQLInputObject)]
 #[table_name = "outputs"]
 pub struct NewOutput {
