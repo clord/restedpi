@@ -9,11 +9,13 @@ pub async fn read_temp(rapi: &RpiApi, address: I2cAddress) -> Result<f32> {
     let ts = rapi.read_i2c(address, 0x05u8, 2).await?;
     let raw = uv2be(&ts);
     let t = raw & 0x0fffu16;
-    let sign = if raw & 0x1000u16 == 0x1000u16 {
-        -1.0f32
+    let neg = (raw & 0x1000u16) == 0x1000u16;
+    let sign = if neg { -1.0f32 } else { 1.0f32 };
+    let sig_part = if neg {
+        (t as f32 / 16f32)
     } else {
-        1.0f32
+        256f32 - (t as f32 / 16f32)
     };
-    let temp = (t as f32 / 16f32) * sign;
+    let temp = sig_part * sign;
     Ok(temp)
 }
