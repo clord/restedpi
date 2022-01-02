@@ -41,23 +41,23 @@ fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> DateTime<Local> {
         DateTimeValue::SpecificDTZ(v) => *v,
         DateTimeValue::SpecificDate(v) => match Local.from_local_date(v) {
             LocalResult::None => {
-                error!("invalid date {:?}", v);
+                error!("invalid date for SpecificDate");
                 Local.timestamp(0, 0)
             }
             LocalResult::Single(s) => s.and_hms(0, 0, 0),
             LocalResult::Ambiguous(s, x) => {
-                error!("ambiguous date {:?} {:?} {:?}", v, s, x);
+                error!("ambiguous SpecificDate date between {:?} and {:?}", s, x);
                 s.and_hms(0, 0, 0)
             }
         },
         DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) {
             LocalResult::None => {
-                error!("invalid date {:?}", v);
+                error!("invalid date for SpecificDT");
                 Local.timestamp(0, 0)
             }
             LocalResult::Single(s) => s,
             LocalResult::Ambiguous(s, x) => {
-                error!("ambiguous date {:?} {:?} {:?}", v, s, x);
+                error!("ambiguous specificDT date between {:?} {:?}", s, x);
                 s
             }
         },
