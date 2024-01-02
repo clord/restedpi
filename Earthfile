@@ -1,3 +1,4 @@
+VERSION 0.7
 FROM --platform=linux/amd64 ubuntu
 WORKDIR /root
 ENV DEBIAN_FRONTEND="noninteractive"

@@ -1,3 +1,7 @@
 /target
 /build
 **/*.rs.bk
+/result
+/.direnv/
+/dev-restedpi.db
+/.envrc
