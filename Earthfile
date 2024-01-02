@@ -67,7 +67,7 @@ build:
   # Do a cache build
   RUN mkdir /root/src && touch /root/src/lib.rs
   COPY Cargo.toml Cargo.lock .
-  RUN RUSTFLAGS='-L /root/sqlite-arm/lib' cargo build --target=arm-unknown-linux-gnueabihf --release
+  RUN RUSTFLAGS='-L /root/sqlite-arm/lib' cargo build --features=raspberrypi --target=arm-unknown-linux-gnueabihf --release
   RUN rm -fr /root/src
 
   # Do a real build
@@ -75,7 +75,7 @@ build:
   COPY static ./static
   COPY migrations ./migrations
   COPY src ./src
-  RUN RUSTFLAGS='-L /root/sqlite-arm/lib' cargo build --target=arm-unknown-linux-gnueabihf --release
+  RUN RUSTFLAGS='-L /root/sqlite-arm/lib' cargo build --features=raspberrypi --target=arm-unknown-linux-gnueabihf --release
   RUN ls -la target/arm-unknown-linux-gnueabihf
   SAVE ARTIFACT target/arm-unknown-linux-gnueabihf/release/restedpi AS LOCAL build/restedpi
 

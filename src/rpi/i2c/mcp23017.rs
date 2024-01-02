@@ -53,14 +53,14 @@ pub fn pin_to_ordinal(p: Pin) -> usize {
 
 pub fn ordinal_to_pin(p: usize) -> Pin {
     match p % 8 {
-        0 => (Pin::Pin0),
-        1 => (Pin::Pin1),
-        2 => (Pin::Pin2),
-        3 => (Pin::Pin3),
-        4 => (Pin::Pin4),
-        5 => (Pin::Pin5),
-        6 => (Pin::Pin6),
-        7 => (Pin::Pin7),
+        0 => Pin::Pin0,
+        1 => Pin::Pin1,
+        2 => Pin::Pin2,
+        3 => Pin::Pin3,
+        4 => Pin::Pin4,
+        5 => Pin::Pin5,
+        6 => Pin::Pin6,
+        7 => Pin::Pin7,
         _ => panic!("p % 8 !E [0..7]"),
     }
 }

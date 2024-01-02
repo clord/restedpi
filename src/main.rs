@@ -105,8 +105,7 @@ fn get_config(config_file: &Path) -> Config {
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
     let (command, config_file) = setup();
-    
-    command.bright_white()
+    command.bright_white();
     match command {
         Command::AddUser { username, password } => add_user(config_file, password, username),
         Command::BooleanRepl => bool_repl(config_file),

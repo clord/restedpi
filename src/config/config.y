@@ -165,11 +165,6 @@ LOC -> Result<LocationValue, ()>:
 
 DT -> Result<DateTimeValue, ()>:
     'now' { Ok(DateTimeValue::Now) }
-  | 'date' {
-        Ok(DateTimeValue::SpecificDate(
-          $lexer.span_str($span).parse().map_err(|_x| ())?
-          ))
-        }
   | 'date_time_z' {
         Ok(DateTimeValue::SpecificDTZ(
           $lexer.span_str($span).parse().map_err(|_x| ())?

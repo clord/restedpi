@@ -1,4 +1,5 @@
 use crate::error::Result;
+#[cfg(feature = "raspberrypi")]
 use rppal::i2c::I2c;
 use std::vec::Vec;
 use tokio::sync::mpsc;
@@ -22,6 +23,7 @@ pub enum RpiMessage {
         size: usize,
         response: oneshot::Sender<Result<Vec<u8>>>,
     },
+    #[cfg(feature = "raspberrypi")]
     ReadGpio {
         pin: u8,
         response: oneshot::Sender<Result<rppal::gpio::Level>>,
@@ -78,6 +80,7 @@ impl RpiApi {
         port.await?
     }
 
+    #[cfg(feature = "raspberrypi")]
     pub async fn read_gpio(&self, pin: u8) -> Result<rppal::gpio::Level> {
         let (response, port) = oneshot::channel();
         self.sender
@@ -90,8 +93,12 @@ impl RpiApi {
 }
 
 pub fn start() -> RpiApi {
+    #[cfg(feature = "raspberrypi")]
     let (sender, mut receiver) = mpsc::channel::<RpiMessage>(10);
+    #[cfg(not(feature = "raspberrypi"))]
+    let (sender, _receiver) = mpsc::channel::<RpiMessage>(10);
 
+    #[cfg(feature = "raspberrypi")]
     tokio::spawn(async move {
         let mut current_i2c_address: Option<i2c::I2cAddress> = None;
         match I2c::new() {
@@ -160,6 +167,7 @@ pub fn start() -> RpiApi {
                     None => break,
                 };
             },
+            #[cfg(feature = "raspberrypi")]
             Err(rppal::i2c::Error::UnknownModel) => {
                 error!("Unsupported Raspberry PI; I2C bus not available");
             }

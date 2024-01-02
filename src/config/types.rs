@@ -19,7 +19,6 @@ pub enum LocationValue {
 #[derive(Clone, PartialEq, Debug)]
 pub enum DateTimeValue {
     Now,
-    SpecificDate(NaiveDate),   // use local timezone of server
     SpecificDT(NaiveDateTime), // use local timezone of server
     SpecificDTZ(DateTime<Local>),
 }

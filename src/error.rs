@@ -1,6 +1,7 @@
 use hex::FromHexError;
 use juniper::graphql_value;
 use juniper::{FieldError, IntoFieldError};
+#[cfg(feature = "raspberrypi")]
 use rppal::i2c;
 use serde_derive::Serialize;
 use std::collections::HashMap;
@@ -30,6 +31,8 @@ pub enum Error {
     NotUnique(String),
     OutOfBounds(usize),
     UnitError(String),
+    TzError(String),
+    #[cfg(feature = "raspberrypi")]
     I2cError(String),
     RecvError(String),
     SendError(String),
@@ -46,6 +49,7 @@ impl IntoFieldError for Error {
             Error::DeviceReadError(ref err) => {
                 FieldError::new(err, graphql_value!({"slug": "device-read"}))
             }
+            Error::TzError(ref err) => FieldError::new(err, graphql_value!({"slug": "TZ"})),
             Error::NonExistant(ref name) => {
                 FieldError::new(name, graphql_value!({"slug": "Existance"}))
             }
@@ -55,6 +59,7 @@ impl IntoFieldError for Error {
             Error::OutOfBounds(ref index) => {
                 FieldError::new(index, graphql_value!({"slug": "Bounds"}))
             }
+            #[cfg(feature = "raspberrypi")]
             Error::I2cError(ref err) => FieldError::new(err, graphql_value!({"slug": "I2C"})),
             Error::UnitError(ref err) => FieldError::new(err, graphql_value!({"slug": "Units"})),
             Error::RecvError(ref err) => FieldError::new(err, graphql_value!({"slug": "Recv"})),
@@ -97,12 +102,14 @@ impl fmt::Display for Error {
             Error::Config(ref err) => write!(f, "Configuration error: {}", err),
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::DbError(ref err) => write!(f, "DB error: {}", err),
+            Error::TzError(ref err) => write!(f, "TZ error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::ParseError => write!(f, "Parse error"),
             Error::DeviceReadError(ref err) => write!(f, "Failed to read device: {}", err),
             Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
             Error::NotUnique(ref msg) => write!(f, "non-unique: {}", msg),
             Error::OutOfBounds(ref index) => write!(f, "Index '{:#?}' out of bounds", index),
+            #[cfg(feature = "raspberrypi")]
             Error::I2cError(ref err) => write!(f, "I2C Bus Error: {}", err),
             Error::UnitError(ref err) => write!(f, "Unit expected {:#?}", err),
             Error::RecvError(ref err) => write!(f, "Failed to read: {}", err),
@@ -228,6 +235,7 @@ impl From<diesel::result::Error> for Error {
     }
 }
 
+#[cfg(feature = "raspberrypi")]
 impl From<i2c::Error> for Error {
     fn from(err: i2c::Error) -> Error {
         Error::I2cError(format!("i2c error: {}", err))

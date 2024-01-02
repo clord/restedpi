@@ -261,9 +261,11 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
         let code = match err {
             Error::Config(_) => 0x2010,
             Error::DbError(_) => 0x2003,
+            Error::TzError(_) => 0x2004,
             Error::IoError(_) => 0x1000,
             Error::InvalidPinDirection => 0x1001,
             Error::ParseError => 0x1002,
+            #[cfg(feature = "raspberrypi")]
             Error::I2cError(_) => 0x1003,
             Error::NonExistant(_) => 0x0010,
             Error::NotUnique(_) => 0x1210,

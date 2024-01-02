@@ -5,7 +5,10 @@ use crate::app::AppID;
 use crate::error::Error;
 use crate::session::{authenticate, AppContext};
 use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
+
+#[cfg(feature = "raspberrypi")]
 use rppal::system::DeviceInfo;
+
 use tracing::info;
 
 pub struct Query;
@@ -19,8 +22,12 @@ impl Query {
 
     /// Get the name/type of the server
     pub fn server_name(_context: &AppContext) -> FieldResult<String> {
-        let device = DeviceInfo::new()?;
-        Ok(device.model().to_string())
+        #[cfg(not(feature = "raspberrypi"))]
+        let device = "NON_RASPBERRYPI";
+        #[cfg(feature = "raspberrypi")]
+        let device = DeviceInfo::new()?.model();
+
+        Ok(device.to_string())
     }
 
     pub async fn evaluate_expression(expression: String, context: &AppContext) -> FieldResult<f64> {

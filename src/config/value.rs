@@ -21,6 +21,31 @@ fn doy_for_dt(dt: DateTime<Local>) -> f64 {
         + ((dt.second() as f64 / 24.0f64) / 3600.0f64)
 }
 
+fn fractional_day_to_datetime(year: i32, fractional_day: f64) -> Option<NaiveDateTime> {
+    // Extract the integral day and fractional part of the day
+    let day_of_year = fractional_day.trunc() as u32;
+    let fractional_time = fractional_day - day_of_year as f64;
+
+    // Calculate the month and day from the day of the year
+    let naive_date = NaiveDate::from_yo_opt(year, day_of_year);
+    if let Some(naive_date) = naive_date {
+        // Calculate hours, minutes, and seconds from the fractional part
+        let total_seconds_in_day = 24.0 * 3600.0;
+        let seconds = (fractional_time * total_seconds_in_day).round() as u32;
+        let hours = seconds / 3600;
+        let minutes = (seconds % 3600) / 60;
+        let seconds = seconds % 60;
+
+        if let Some(t) = chrono::NaiveTime::from_hms_opt(hours, minutes, seconds) {
+            Some(NaiveDateTime::new(naive_date, t))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 fn lat_for_loc(app: &State, location: &LocationValue) -> f64 {
     match location {
         LocationValue::Here => app.lat(),
@@ -39,21 +64,17 @@ fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> DateTime<Local> {
     match datetime {
         DateTimeValue::Now => app.current_dt(),
         DateTimeValue::SpecificDTZ(v) => *v,
-        DateTimeValue::SpecificDate(v) => match Local.from_local_date(v) {
-            LocalResult::None => {
-                error!("invalid date for SpecificDate");
-                Local.timestamp(0, 0)
-            }
-            LocalResult::Single(s) => s.and_hms(0, 0, 0),
-            LocalResult::Ambiguous(s, x) => {
-                error!("ambiguous SpecificDate date between {:?} and {:?}", s, x);
-                s.and_hms(0, 0, 0)
-            }
-        },
         DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) {
             LocalResult::None => {
-                error!("invalid date for SpecificDT");
-                Local.timestamp(0, 0)
+                error!("invalid date {:?}", v);
+                match Local.timestamp_opt(0, 0) {
+                    LocalResult::None => panic!("invalid date from timestamp_opt {:?}", v),
+                    LocalResult::Single(s) => s,
+                    LocalResult::Ambiguous(s, x) => {
+                        error!("ambiguous date {:?} {:?} {:?}", v, s, x);
+                        s
+                    }
+                }
             }
             LocalResult::Single(s) => s,
             LocalResult::Ambiguous(s, x) => {
@@ -139,10 +160,21 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 / 15.0;
             let exact_offset = sched::exact_offset_hrs(long);
             let solar_offset = (12.0 + h / 2.0) * 3600.0;
-            let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
-                .yo(dt.year(), doy_ev as u32)
-                .and_hms(0, 0, 0)
-                + Duration::seconds(solar_offset as i64);
+            let solar_dt = match FixedOffset::east_opt((exact_offset * 3600.0) as i32)
+                .ok_or_else(|| {
+                    Error::TzError(
+                        "Failed to offset time by exact offset for HourOfSunset".to_string(),
+                    )
+                })?
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
+            {
+                LocalResult::None => panic!("invalid date from HourOfSunset {:?}", dt),
+                LocalResult::Single(s) => s,
+                LocalResult::Ambiguous(s, x) => {
+                    error!("ambiguous date {:?} {:?} {:?}", dt, s, x);
+                    s
+                }
+            } + Duration::seconds(solar_offset as i64);
             let local = solar_dt.with_timezone(&dt.timezone());
             Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
@@ -159,10 +191,21 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
 
             let exact_offset = sched::exact_offset_hrs(long);
             let solar_offset = (12.0 - h / 2.0) * 3600.0;
-            let solar_dt = FixedOffset::east((exact_offset * 3600.0) as i32)
-                .yo(dt.year(), doy_ev as u32)
-                .and_hms(0, 0, 0)
-                + Duration::seconds(solar_offset as i64);
+            let solar_dt = match FixedOffset::east_opt((exact_offset * 3600.0) as i32)
+                .ok_or_else(|| {
+                    Error::TzError(
+                        "Failed to offset time by exact offset for HourOfSunrise".to_string(),
+                    )
+                })?
+                .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
+            {
+                LocalResult::None => panic!("invalid date from HourOfSunrise {:?}", dt),
+                LocalResult::Single(s) => s,
+                LocalResult::Ambiguous(s, x) => {
+                    error!("ambiguous date {:?} {:?} {:?}", dt, s, x);
+                    s
+                }
+            } + Duration::seconds(solar_offset as i64);
             let local = solar_dt.with_timezone(&dt.timezone());
             Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
