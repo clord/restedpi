@@ -27,6 +27,7 @@ pub enum Error {
     PasswordIssue,
     NotLoggedIn,
     DeviceReadError(String),
+    PbkError(String),
     NonExistant(String),
     NotUnique(String),
     OutOfBounds(usize),
@@ -43,6 +44,7 @@ pub enum Error {
 impl IntoFieldError for Error {
     fn into_field_error(self) -> FieldError {
         match self {
+            Error::PbkError(ref err) => FieldError::new(err, graphql_value!({"slug": "PBK"})),
             Error::Config(ref err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
             Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
             Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
@@ -99,6 +101,7 @@ impl warp::reject::Reject for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Error::PbkError(ref err) => write!(f, "PBK error: {}", err),
             Error::Config(ref err) => write!(f, "Configuration error: {}", err),
             Error::IoError(ref err) => write!(f, "I/O error: {}", err),
             Error::DbError(ref err) => write!(f, "DB error: {}", err),

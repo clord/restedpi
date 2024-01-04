@@ -1,13 +1,11 @@
 VERSION 0.7
-FROM --platform=linux/amd64 ubuntu
+FROM --platform=$BUILDPLATFORM debian:12
 WORKDIR /root
 ENV DEBIAN_FRONTEND="noninteractive"
-ENV PATH=/root/.cargo/bin:/root/tools/arm-bcm2708/arm-linux-gnueabihf/bin:$PATH
+ENV PATH=/root/.cargo/bin:$PATH
 ENV CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 
 builder:
-  RUN dpkg --add-architecture i386
-
   RUN apt-get update
   RUN apt-get install -y apt-utils && dpkg-reconfigure apt-utils
   RUN apt-get install -y \
@@ -19,27 +17,20 @@ builder:
           git \
           make \
           runit \
-          sudo \
-          xz-utils
-
-  GIT CLONE https://github.com/raspberrypi/tools.git /root/tools
+          xz-utils \
+          gcc-arm-linux-gnueabihf
 
   RUN apt-get install -y \
-                      libc6:i386 libncurses5:i386 libstdc++6:i386 \
-                      lib32z1 gcc-multilib
+                      libc6 \
+                      libncurses5 \
+                      libstdc++6 
 
   RUN apt-get install -y \
-                      libc6-armel-cross libc6-dev-armel-cross \
-                      binutils-arm-linux-gnueabi libncurses5-dev build-essential \
-                      bison flex libssl-dev bc
-
-  RUN apt-get install -y \
-                      libc6:i386 libncurses5:i386 libstdc++6:i386 \
-                      lib32z1 gcc-multilib
-
-  RUN apt-get install -y \
-                      libc6-armel-cross libc6-dev-armel-cross \
-                      binutils-arm-linux-gnueabi libncurses5-dev build-essential \
+                      libc6-armel-cross \
+                      libc6-dev-armel-cross \
+                      binutils-arm-linux-gnueabi \
+                      libncurses5-dev \
+                      build-essential \
                       bison flex libssl-dev bc
 
 
@@ -55,9 +46,12 @@ sqlite:
 build:
   FROM +builder
 
+  RUN apt-get update
+  RUN apt-get install -y apt-utils && dpkg-reconfigure apt-utils
+  RUN apt-get install -y gcc-arm-linux-gnueabihf
+
   RUN curl https://sh.rustup.rs -o rustup.sh && \
-    sh rustup.sh --default-host i686-unknown-linux-gnu \
-        --default-toolchain nightly-2020-10-07 -y
+    sh rustup.sh --default-toolchain stable -y
 
   COPY +sqlite/sqlite-arm /root/sqlite-arm
   COPY dockerfiles/ci-build/config /root/.cargo/config

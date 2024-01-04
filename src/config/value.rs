@@ -21,31 +21,6 @@ fn doy_for_dt(dt: DateTime<Local>) -> f64 {
         + ((dt.second() as f64 / 24.0f64) / 3600.0f64)
 }
 
-fn fractional_day_to_datetime(year: i32, fractional_day: f64) -> Option<NaiveDateTime> {
-    // Extract the integral day and fractional part of the day
-    let day_of_year = fractional_day.trunc() as u32;
-    let fractional_time = fractional_day - day_of_year as f64;
-
-    // Calculate the month and day from the day of the year
-    let naive_date = NaiveDate::from_yo_opt(year, day_of_year);
-    if let Some(naive_date) = naive_date {
-        // Calculate hours, minutes, and seconds from the fractional part
-        let total_seconds_in_day = 24.0 * 3600.0;
-        let seconds = (fractional_time * total_seconds_in_day).round() as u32;
-        let hours = seconds / 3600;
-        let minutes = (seconds % 3600) / 60;
-        let seconds = seconds % 60;
-
-        if let Some(t) = chrono::NaiveTime::from_hms_opt(hours, minutes, seconds) {
-            Some(NaiveDateTime::new(naive_date, t))
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
 fn lat_for_loc(app: &State, location: &LocationValue) -> f64 {
     match location {
         LocationValue::Here => app.lat(),

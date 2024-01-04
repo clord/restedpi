@@ -4,6 +4,8 @@ use rppal::i2c::I2c;
 use std::vec::Vec;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+
+#[cfg(feature = "raspberrypi")]
 use tracing::{debug, error, info};
 
 pub mod device;

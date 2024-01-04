@@ -1,6 +1,6 @@
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 #[derive(PartialEq, Debug)]
 pub enum SessionError {
@@ -33,6 +33,8 @@ struct SignedToken {
  */
 static VERSION: u8 = 1u8;
 
+type HmacSha256 = Hmac<Sha256>;
+
 /**
  * make a signed token for use as a cookie, like a jwt but not sucky.
  * v1:
@@ -46,23 +48,24 @@ pub fn make_token<T: serde::Serialize>(token: T, secret: &str) -> Result<String,
         .map_err(|x| SessionError::BincodeError(format!("bincode_ser: {}", x)))?;
     let secret_u8 =
         hex::decode(secret).map_err(|x| SessionError::HexcodeError(format!("hexcode: {}", x)))?;
-    let mut hmac = Hmac::new(crypto::sha2::Sha256::new(), &secret_u8);
-    hmac.input(&[VERSION]); // version of signature
-    hmac.input(&payload); // bytes of payload
-    let mut signature: Vec<u8> = Vec::new();
-    signature.resize(hmac.output_bytes(), 0);
-    hmac.raw_result(&mut signature);
+    if let Ok(mut hmac) = HmacSha256::new_from_slice(&secret_u8) {
+        hmac.update(&[VERSION]); // version of signature
+        hmac.update(&payload); // bytes of payload
+        let signature = hmac.finalize().into_bytes();
 
-    let signed = SignedToken {
-        version: VERSION,
-        signature,
-        payload,
-    };
+        let signed = SignedToken {
+            version: VERSION,
+            signature: signature.to_vec(),
+            payload,
+        };
 
-    let raw = bincode::serialize(&signed)
-        .map_err(|x| SessionError::BincodeError(format!("bincode_ser: {}", x)))?;
+        let raw = bincode::serialize(&signed)
+            .map_err(|x| SessionError::BincodeError(format!("bincode_ser: {}", x)))?;
 
-    Ok(hex::encode(raw))
+        Ok(hex::encode(raw))
+    } else {
+        Err(SessionError::BincodeError("Length is wrong".to_string()))
+    }
 }
 
 /**
@@ -81,18 +84,17 @@ pub fn validate_token<T: serde::de::DeserializeOwned>(
         .map_err(|x| SessionError::BincodeError(format!("bincode_deser_tok: {}", x)))?;
     let secret_u8 =
         hex::decode(secret).map_err(|x| SessionError::HexcodeError(format!("hexcode: {}", x)))?;
-    let mut hmac = Hmac::new(crypto::sha2::Sha256::new(), &secret_u8);
 
-    hmac.input(&[VERSION]); // version of signature
-    hmac.input(&signed_token.payload); // bytes of payload
-
-    if hmac
-        .result()
-        .eq(&crypto::mac::MacResult::new(&signed_token.signature))
-    {
-        Ok(decoded)
+    if let Ok(mut hmac) = HmacSha256::new_from_slice(&secret_u8) {
+        hmac.update(&[VERSION]); // version of signature
+        hmac.update(&signed_token.payload); // bytes of payload
+        if let Ok(()) = hmac.verify_slice(&signed_token.signature) {
+            Ok(decoded)
+        } else {
+            Err(SessionError::ValidationFailure)
+        }
     } else {
-        Err(SessionError::ValidationFailure)
+        Err(SessionError::BincodeError("Length is wrong".to_string()))
     }
 }
 

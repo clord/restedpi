@@ -205,7 +205,7 @@ fn add_user(
         "Setting password for user '{}' in config file {:?}...",
         username, config_file
     );
-    match password::hash(&password, 1) {
+    match password::hash(&password) {
         Ok(hashed) => {
             let users = config.users.get_or_insert_with(|| HashMap::new());
             users.insert(username, hashed);

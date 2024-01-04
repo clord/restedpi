@@ -262,6 +262,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::Config(_) => 0x2010,
             Error::DbError(_) => 0x2003,
             Error::TzError(_) => 0x2004,
+            Error::PbkError(_) => 0x2204,
             Error::IoError(_) => 0x1000,
             Error::InvalidPinDirection => 0x1001,
             Error::ParseError => 0x1002,

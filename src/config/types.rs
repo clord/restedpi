@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Local, NaiveDateTime};
 use diesel_derive_enum::DbEnum;
 use lrpar::Span;
 use serde_derive::{Deserialize, Serialize};

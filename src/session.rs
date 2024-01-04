@@ -64,8 +64,7 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
 
     match ctx.channel().hash_for(user) {
         Some(user_hash) => match password::verify(pw, user_hash) {
-            Ok(false) => Err(Error::UserNotFound),
-            Ok(true) => match token::make_token(
+            Ok(()) => match token::make_token(
                 WebSession {
                     user: user.to_string(),
                     expires: since_the_epoch
