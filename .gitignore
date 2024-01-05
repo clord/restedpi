@@ -1,4 +1,7 @@
 /target
+.envrc
+.direnv
+/result
 /build
 **/*.rs.bk
 /result
