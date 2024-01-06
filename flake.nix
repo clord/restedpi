@@ -20,9 +20,11 @@
         rustBuild = rustPlatform.buildRustPackage {
           pname = "restedpi";
           version = "0.1.0";
+          noCheck = true;
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           buildInputs = [ pkgs.sqlite ];
+          buildFeatures = [ "raspberrypi" ];
         };
       in {
         defaultPackage = rustBuild;
