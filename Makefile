@@ -1,4 +1,5 @@
-
+image:
+	nix build .#rpi4
 
 build/restedpi:
 	earthly +build
