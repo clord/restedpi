@@ -30,23 +30,31 @@
 		rpi4System = nixpkgs.lib.nixosSystem {
 			system = "aarch64-linux";
 			modules = [
-				sops-nix.nixosModules.sops
+				sops-nix.nixosModules.sops {
+					sops.defaultSopsFile = ./secrets/rpi.yaml;
+					sops.age.keyFile = "/var/lib/sops/age/keys.txt";
+					sops.age.generateKey = true;
+
+					# Expose as /run/secrets/application_secret
+					sops.secrets.application_secret = {};
+					sops.secrets.configuration = {};
+					# Expose as /run/secrets/rpi_cert
+					sops.secrets.rip_cert = {};
+					# Expose as /run/secrets/rpi_key
+					sops.secrets.rip_key = {};
+				}
 				"${nixpkgs}/nixos/modules/installer/sd-card/sd-image-aarch64.nix"
 				({...}: {
 					config = {
-						# Sops config
-						imports =  [ <sops-nix/modules/sops> ];
-						sops.defaultSopsFile = ./secrets/rpi.yaml;
-						sops.age.keyFile = "/var/lib/sops-nix/key.txt";
-						sops.age.generateKey = true;
-						sops.secrets.application_key = {};
 						
 						time.timeZone = "America/Edmonton";
+						services.timesyncd.enable = true;            
 						i18n.defaultLocale = "en_CA.UTF-8";
 						sdImage.compressImage = false;
 						system = { stateVersion = "23.11";};
 						
 						networking = {
+							hostName = "chickenpi";
 							wireless.enable = false;
 							useDHCP = true;
 						};
@@ -71,12 +79,38 @@
 						];
 						nix = {
 							package = pkgs.nix;
-							settings.experimental-features = [ "nix-command" "flakes" ];
+							settings = {
+								auto-optimise-store = true;
+								max-jobs = 4;
+								cores = 4;	
+								trusted-users = ["root" "clord" "@wheel"];
+								experimental-features = [ "nix-command" "flakes" ];
+							};
+							gc = {
+								automatic = true;
+								dates = "weekly";
+								options = "--delete-older-than 60d";
+							};
+							# Free up to 1GiB whenever there is less than 100MiB left.
+							extraOptions = ''
+							  min-free = ${toString (100 * 1024 * 1024)}
+							  max-free = ${toString (1024 * 1024 * 1024)}
+							  keep-outputs = true
+							  keep-derivations = true
+							'';
 						};	
 						services.openssh = {
 							enable = true;
+							settings.PermitRootLogin = "yes";  
 							settings.PasswordAuthentication = false;
 							settings.KbdInteractiveAuthentication = false;
+						};
+						services.prometheus = {
+							exporters = {
+								enable = true;
+								enabledCollectors = ["systemd"];
+								port = 9002;
+							};
 						};
 						systemd.services.restedpi = {
 							enable = true;
@@ -88,7 +122,7 @@
 								
 							};
 							serviceConfig = {
-								ExecStart = "${rustBuild}/bin/restedpi --config-file ${configFile} --log-level 'warn' server";
+								ExecStart = "${rustBuild}/bin/restedpi --config-file /run/secrets/configuration --log-level 'warn' server";
 							};
 							wantedBy = [ "multi-user.target" ];
 						};
