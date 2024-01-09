@@ -43,11 +43,7 @@ struct Opt {
 #[derive(Debug, StructOpt)]
 enum Command {
     /// Run the main server.
-    Server {
-        /// The secret used to hash tokens. changing will invalidate all existing tokens.
-        #[structopt(short, long, env)]
-        app_secret: String,
-    },
+    Server,
 
     /// A REPL that shows how boolean expressions parse.
     BooleanRepl,
@@ -109,14 +105,17 @@ async fn main() -> Result<(), eyre::Error> {
     match command {
         Command::AddUser { username, password } => add_user(config_file, password, username),
         Command::BooleanRepl => bool_repl(config_file),
-        Command::Server { app_secret } => server(config_file, app_secret).await,
+        Command::Server => server(config_file).await,
     }
 }
 
-async fn server(config_file: PathBuf, app_secret: String) -> Result<(), color_eyre::Report> {
+async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut config_file = config_file.clone();
     let config = get_config(&config_file);
-    env::set_var("APP_SECRET", app_secret);
+    if let Some(app_secret_path) = config.app_secret_path {
+        let app_secret = fs::read_to_string(app_secret_path).expect("failed to read app secret");
+        env::set_var("APP_SECRET", app_secret);
+    }
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
     let key_and_cert = config.key_and_cert_path.clone();

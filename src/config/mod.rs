@@ -25,6 +25,11 @@ pub struct Config {
     pub lat: f64,
     pub long: f64,
 
+    // The app secret file, a file containing a reasonable length of random bytes.
+    // when it changes, all sessions are invalidated.
+    // if unset, we'll use the environment variable APP_SECRET for the secret value.
+    pub app_secret_path: Option<PathBuf>,
+
     // tls key and cert in that order
     pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
 
@@ -40,6 +45,7 @@ impl Config {
             port: None,
             lat: 0.0,
             long: 0.0,
+            app_secret_path: None,
             key_and_cert_path: None,
             users: None,
         }
