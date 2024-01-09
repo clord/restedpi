@@ -61,7 +61,10 @@
 							wireless.enable = false;
 							useDHCP = true;
 						};
+
+
 						hardware.bluetooth.powerOnBoot = false;
+
 						users = {
 							mutableUsers = false;
 							users.clord = {
@@ -107,9 +110,11 @@
 						};
 						services.openssh = {
 							enable = true;
-							settings.PermitRootLogin = "yes";
-							settings.PasswordAuthentication = false;
-							settings.KbdInteractiveAuthentication = false;
+							settings = { 
+								PermitRootLogin = "yes";
+								PasswordAuthentication = false;
+								KbdInteractiveAuthentication = false;
+							};
 						};
 						services.prometheus = {
 							exporters = {
@@ -141,7 +146,7 @@
 	in {
 		defaultPackage = rustBuild;
 		rpi4 = rpi4System.config.system.build.sdImage;
-		devShell = pkgs.mkShell {
+		devShells.aarch64-darwin.default = pkgs.mkShell {
 			buildInputs = [
 				pkgs.sqlite
 				(rustVersion.override { extensions = [ "rust-src" ]; })
