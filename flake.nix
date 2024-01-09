@@ -5,7 +5,7 @@
 		flake-utils.url = "github:numtide/flake-utils";
 		rust-overlay.url = "github:oxalica/rust-overlay";
 		sops-nix.url = "github:Mic92/sops-nix";
-  	};
+	};
 
 	outputs = { self, nixpkgs, sops-nix, flake-utils, rust-overlay, ... }: let
 		system = "aarch64-linux";
@@ -42,34 +42,40 @@
 					sops.secrets.rip_cert = {};
 					# Expose as /run/secrets/rpi_key
 					sops.secrets.rip_key = {};
+
+					 # mkpasswd -m sha-512
+					sops.secrets.clord_password = {neededForUsers = true;};
 				}
 				"${nixpkgs}/nixos/modules/installer/sd-card/sd-image-aarch64.nix"
-				({...}: {
+				({config,...}: {
 					config = {
-						
+
 						time.timeZone = "America/Edmonton";
-						services.timesyncd.enable = true;            
+						services.timesyncd.enable = true;
 						i18n.defaultLocale = "en_CA.UTF-8";
 						sdImage.compressImage = false;
 						system = { stateVersion = "23.11";};
-						
+
 						networking = {
 							hostName = "chickenpi";
 							wireless.enable = false;
 							useDHCP = true;
 						};
 						hardware.bluetooth.powerOnBoot = false;
-						users.users.clord = {
-							isNormalUser = true;
-							description = "Christopher Lord";
-							extraGroups = ["wheel"];
-							openssh.authorizedKeys.keys = [
-								"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP3DeyWHOIc+SdTqNP9iFD4jpf0fg1FVTsaWn2qcKDTa clord@edmon"
-								"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINXLYw43gNlnfEoHpmK/UWae4DcQyLBQTGQH9ZYlRG5q clord@wildwood"
-								"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINLtiIXQ0r+l0gtnjCj1hT5Z1YzRqgJ/g66pP/eEuXM3 clord@ipad"
-								"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO7InFCQXQltDI/NMOlm5ayhQmLnSN4K4TwX+KRlG3OG rpi-deploy"
-								"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHTOl4xwPOT82EmW5bEBpWyi5Iy9ZEYWPToJEQjIagyO clord@1p"
-							];	
+						users = {
+							mutableUsers = false;
+							users.clord = {
+								isNormalUser = true;
+								description = "Christopher Lord";
+								hashedPasswordFile = config.sops.secrets.clord_password.path;
+								extraGroups = ["wheel"];
+								openssh.authorizedKeys.keys = [
+										  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP3DeyWHOIc+SdTqNP9iFD4jpf0fg1FVTsaWn2qcKDTa clord@edmon"
+										  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINXLYw43gNlnfEoHpmK/UWae4DcQyLBQTGQH9ZYlRG5q clord@wildwood"
+										  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINLtiIXQ0r+l0gtnjCj1hT5Z1YzRqgJ/g66pP/eEuXM3 clord@ipad"
+										  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHTOl4xwPOT82EmW5bEBpWyi5Iy9ZEYWPToJEQjIagyO clord@1p"
+								];
+							};
 						};
 						environment.systemPackages = [
 							pkgs.git
@@ -82,7 +88,7 @@
 							settings = {
 								auto-optimise-store = true;
 								max-jobs = 4;
-								cores = 4;	
+								cores = 4;
 								trusted-users = ["root" "clord" "@wheel"];
 								experimental-features = [ "nix-command" "flakes" ];
 							};
@@ -98,10 +104,10 @@
 							  keep-outputs = true
 							  keep-derivations = true
 							'';
-						};	
+						};
 						services.openssh = {
 							enable = true;
-							settings.PermitRootLogin = "yes";  
+							settings.PermitRootLogin = "yes";
 							settings.PasswordAuthentication = false;
 							settings.KbdInteractiveAuthentication = false;
 						};
@@ -121,7 +127,7 @@
 							};
 							description = "Runs the restedpi system";
 							unitConfig = {
-								
+
 							};
 							serviceConfig = {
 								ExecStart = "${rustBuild}/bin/restedpi --config-file /run/secrets/configuration --log-level 'warn' server";
