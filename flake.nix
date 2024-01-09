@@ -107,9 +107,11 @@
 						};
 						services.prometheus = {
 							exporters = {
-								enable = true;
-								enabledCollectors = ["systemd"];
-								port = 9002;
+								node = {
+									enable = true;
+									enabledCollectors = ["systemd"];
+									port = 9002;
+								};
 							};
 						};
 						systemd.services.restedpi = {
