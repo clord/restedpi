@@ -1,5 +1,23 @@
 {
   "nodes": {
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
+      "locked": {
+        "lastModified": 1704982712,
+        "narHash": "sha256-2Ptt+9h8dczgle2Oo6z5ni5rt/uLMG47UFTR1ry/wgg=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "07f6395285469419cf9d078f59b5b49993198c00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -52,18 +70,20 @@
         "type": "github"
       }
     },
-    "nixpkgs-stable": {
+    "nixpkgs-lib": {
       "locked": {
-        "lastModified": 1704290814,
-        "narHash": "sha256-LWvKHp7kGxk/GEtlrGYV68qIvPHkU9iToomNFGagixU=",
+        "dir": "lib",
+        "lastModified": 1703961334,
+        "narHash": "sha256-M1mV/Cq+pgjk0rt6VxoyyD+O8cOUiai8t9Q6Yyq4noY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "70bdadeb94ffc8806c0570eb5c2695ad29f0e421",
+        "rev": "b0d36bd0a420ecee3bc916c91886caca87c894e9",
         "type": "github"
       },
       "original": {
+        "dir": "lib",
         "owner": "NixOS",
-        "ref": "release-23.05",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -84,28 +104,12 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
-      "locked": {
-        "lastModified": 1704161960,
-        "narHash": "sha256-QGua89Pmq+FBAro8NriTuoO/wNaUtugt29/qqA8zeeM=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "63143ac2c9186be6d9da6035fa22620018c85932",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
+        "flake-parts": "flake-parts",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
-        "rust-overlay": "rust-overlay",
-        "sops-nix": "sops-nix"
+        "rust-overlay": "rust-overlay"
       }
     },
     "rust-overlay": {
@@ -124,25 +128,6 @@
       "original": {
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "sops-nix": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_3",
-        "nixpkgs-stable": "nixpkgs-stable"
-      },
-      "locked": {
-        "lastModified": 1704596510,
-        "narHash": "sha256-tupdwwg1WeX2hNMOQrvtyafTaTVty0QC/gQp7yaYJic=",
-        "owner": "Mic92",
-        "repo": "sops-nix",
-        "rev": "f5fbcc0f50e7fc60c4f806fa7a09abccf0826d8a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Mic92",
-        "repo": "sops-nix",
         "type": "github"
       }
     },
