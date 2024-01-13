@@ -1,10 +1,7 @@
-/target
-.envrc
-.direnv
-/result
-/build
 **/*.rs.bk
-/result
 /.direnv/
-/dev-restedpi.db
 /.envrc
+/build
+/dev-restedpi.db
+/result
+/target
