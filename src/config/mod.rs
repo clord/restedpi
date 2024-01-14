@@ -33,6 +33,9 @@ pub struct Config {
     // tls key and cert in that order
     pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
 
+    // Use path of config file if unset, otherwise, directory containing rpi.sql3
+    pub db_path: Option<PathBuf>,
+
     // Map from username to hashed passwords
     pub users: Option<HashMap<String, String>>,
 }
@@ -45,6 +48,7 @@ impl Config {
             port: None,
             lat: 0.0,
             long: 0.0,
+            db_path: None,
             app_secret_path: None,
             key_and_cert_path: None,
             users: None,

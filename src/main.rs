@@ -119,11 +119,14 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
     let key_and_cert = config.key_and_cert_path.clone();
-    config_file.pop();
+    let db_path = config.db_path.unwrap_or_else(|| {
+        config_file.pop();
+        config_file
+    });
     let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
     let here = (config.lat, config.long);
 
-    let app = app::channel::start_app(here, &config_file, users)
+    let app = app::channel::start_app(here, &db_path, users)
         .await
         .expect("app failed to start");
 
