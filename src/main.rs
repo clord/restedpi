@@ -127,6 +127,7 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
     let here = (config.lat, config.long);
 
+    info!("Starting RestedPi server with I2C bus {:?}", bus);
     let app = app::channel::start_app(bus, here, &db_path, users)
         .await
         .expect("app failed to start");
