@@ -36,10 +36,13 @@
           default = restedpi;
         };
 
-        devShells.default = pkgs.mkShell { buildInputs = with pkgs; [ 
-          nixfmt 
-          sqlite 
-          rustVersion 
+        devShells.default = pkgs.mkShell { 
+          DATABASE_URL = "dev-restedpi.db";
+          buildInputs = with pkgs; [ 
+            nixfmt 
+            sqlite 
+            diesel-cli
+            rustVersion 
         ]; };
 
         apps = {
