@@ -593,7 +593,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             expression,
             response,
         } => {
-            let get_result = async move || -> Result<f64> {
+            let get_result = async {
                 let expr = crate::config::parse::bool_expr(&format!("{} == 0", expression))?;
                 match expr {
                     BoolExpr::Equal(_, a, crate::config::types::Value::Const(_)) => {
@@ -602,7 +602,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
                     _ => Err(crate::error::Error::ParseError),
                 }
             };
-            let result = get_result().await;
+            let result = get_result.await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
@@ -613,11 +613,11 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
             expression,
             response,
         } => {
-            let get_result = async move || -> Result<bool> {
+            let get_result = async {
                 let expr = crate::config::parse::bool_expr(&expression)?;
                 crate::config::boolean::evaluate(state, &expr).await
             };
-            let result = get_result().await;
+            let result = get_result.await;
             match response.send(result) {
                 Ok(..) => (),
                 Err(e) => error!("send failed: {:?}", e),
