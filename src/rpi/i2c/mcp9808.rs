@@ -14,7 +14,7 @@ pub async fn read_temp(rapi: &RpiApi, address: I2cAddress) -> Result<f32> {
     let sig_part = if neg {
         256f32 - (t as f32 / 16f32)
     } else {
-         (t as f32 / 16f32)
+        t as f32 / 16f32
     };
     let temp = sig_part * sign;
     Ok(temp)

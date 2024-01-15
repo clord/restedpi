@@ -150,7 +150,7 @@ impl State {
         output_id: AppID,
         fields: models::UpdateOutput,
     ) -> Result<AppID> {
-        let mout = self.db.update_output(&output_id, &fields)?;
+        let _mout = self.db.update_output(&output_id, &fields)?;
         if let models::UpdateOutput {
             automation_script: Some(Some(q)),
             ..

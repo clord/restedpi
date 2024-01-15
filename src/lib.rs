@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 extern crate tracing;
 #[macro_use]
 extern crate diesel;
