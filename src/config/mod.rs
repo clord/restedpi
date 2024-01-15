@@ -21,6 +21,9 @@ pub struct Config {
     pub listen: Option<String>,
     pub port: Option<u16>,
 
+    // determines which bus to talk on for i2c
+    pub i2cbus: Option<u8>,
+
     // Location to use as "here" value
     pub lat: f64,
     pub long: f64,
@@ -45,6 +48,7 @@ impl Config {
         Config {
             name: None,
             listen: None,
+            i2cbus: None,
             port: None,
             lat: 0.0,
             long: 0.0,

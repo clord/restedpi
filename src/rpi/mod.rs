@@ -94,7 +94,7 @@ impl RpiApi {
     }
 }
 
-pub fn start() -> RpiApi {
+pub fn start(bus: u8) -> RpiApi {
     #[cfg(feature = "raspberrypi")]
     let (sender, mut receiver) = mpsc::channel::<RpiMessage>(10);
     #[cfg(not(feature = "raspberrypi"))]
@@ -103,7 +103,7 @@ pub fn start() -> RpiApi {
     #[cfg(feature = "raspberrypi")]
     tokio::spawn(async move {
         let mut current_i2c_address: Option<i2c::I2cAddress> = None;
-        match I2c::new() {
+        match I2c::with_bus(bus) {
             Ok(mut i2c) => loop {
                 match receiver.recv().await {
                     Some(next) => match next {

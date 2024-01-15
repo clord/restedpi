@@ -316,9 +316,9 @@ impl State {
     }
 }
 
-pub async fn new_state(here: (f64, f64), db: crate::app::db::Db) -> Result<State> {
+pub async fn new_state(bus: u8, here: (f64, f64), db: crate::app::db::Db) -> Result<State> {
     let dt = Local::now();
-    let i2c = rpi::start();
+    let i2c = rpi::start(bus);
 
     let mut device_instances: HashMap<AppID, Device> = HashMap::new();
 

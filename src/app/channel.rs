@@ -769,6 +769,7 @@ async fn process_message(message: AppMessage, state: &mut state::State) -> bool 
 }
 
 pub async fn start_app(
+    bus: u8,
     here: (f64, f64),
     path: &std::path::Path,
     users: HashMap<String, String>,
@@ -777,7 +778,7 @@ pub async fn start_app(
 
     let db = db::Db::start_db(path)?;
 
-    let mut state = state::new_state(here, db).await?;
+    let mut state = state::new_state(bus, here, db).await?;
 
     let sender_clone = sender.clone();
 
