@@ -19,16 +19,16 @@
 ([±]|\b(plus/minus)\b) "plus/minus"
 (\^|\b(xor|XOR)\b) "xor"
 ([&∩]|\b(and|AND)\b) "and"
-(\b(not|NOT\b)|!) "not" 
+(\b(not|NOT\b)|!) "not"
 (\b(or|OR)\b|[∪|]) "or"
 [,] ","
 
 (\b(EQ|eq)\b|===) "eq"
 
-!= "!="
-== "=="
-<= "<="
->= ">="
+(!=) "!="
+(==) "=="
+(<=) "<="
+(>=) ">="
 (<|\b(below|lt)\b) "<"
 (>|\b(above|gt)\b) ">"
 
@@ -73,7 +73,6 @@
 \blerp\b "lerp"
 \btrunc\b "trunc"
 \bread\b "read"
- 
 (\b([a-zA-Z_])([0-9]|[a-zA-Z_])*\b|'[^']+') "identifier"
 
 [[:space:]]+ ;

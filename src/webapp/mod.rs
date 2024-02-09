@@ -19,7 +19,7 @@ pub type SharedAppState = app::channel::AppChannel;
 struct Asset;
 
 pub async fn static_serve(path: &str) -> Result<impl Reply, Rejection> {
-    let asset_a: Option<Cow<'static, [u8]>> = Asset::get(path);
+    let asset_a = Asset::get(path);
     let mime = from_path(path).first_or_octet_stream();
     match asset_a {
         Some(file) => Ok(Response::builder()

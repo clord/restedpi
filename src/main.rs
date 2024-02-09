@@ -16,7 +16,7 @@ use structopt::StructOpt;
 use warp::Filter;
 
 use tracing::{error, info, warn};
-use tracing_subscriber;
+use tracing_subscriber::prelude::*;
 
 // big picture:
 // read configuration and decide what sensors and switches are available. start up application, then
@@ -101,7 +101,7 @@ fn get_config(config_file: &Path) -> Config {
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
     let (command, config_file) = setup();
-    command.bright_white();
+    let _ = command.bright_white();
     match command {
         Command::AddUser { username, password } => add_user(config_file, password, username),
         Command::BooleanRepl => bool_repl(config_file),
@@ -112,6 +112,9 @@ async fn main() -> Result<(), eyre::Error> {
 async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut config_file = config_file.clone();
     let config = get_config(&config_file);
+    {
+        info!("Config file {:?}", &config);
+    };
     if let Some(app_secret_path) = config.app_secret_path {
         let app_secret = fs::read_to_string(app_secret_path).expect("failed to read app secret");
         env::set_var("APP_SECRET", app_secret);
@@ -249,7 +252,11 @@ fn setup() -> (Command, PathBuf) {
     if std::env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", log_level);
     }
-    tracing_subscriber::fmt::init();
+    let console_layer = console_subscriber::spawn();
+    tracing_subscriber::registry()
+        .with(console_layer)
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     let config_file = get_config_path(config_file);
     (command, config_file)
 }

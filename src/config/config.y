@@ -3,7 +3,9 @@
 %avoid_insert "true"
 %avoid_insert "false"
 %avoid_insert "identifier"
+
 %%
+
 BoolExpr -> Result<BoolExpr, ()>:
       BoolExpr 'eq' OrTerm { Ok(BoolExpr::EqBool($span, Box::new($1?), Box::new($3?))) }
     | OrTerm { $1 }
@@ -177,10 +179,6 @@ DT -> Result<DateTimeValue, ()>:
         }
   ;
 
-
-Unmatched -> ():
-      "UNMATCHED" { }
-    ;
 %%
 use crate::config::types::{Unit, LocationValue, DateTimeValue, Value, BoolExpr};
 

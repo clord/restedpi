@@ -1,4 +1,6 @@
-table! {
+// @generated automatically by Diesel CLI.
+
+diesel::table! {
     devices (name) {
         name -> Text,
         model -> Text,
@@ -8,7 +10,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     inputs (name) {
         name -> Text,
         device_id -> Text,
@@ -17,7 +19,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     outputs (name) {
         name -> Text,
         device_id -> Text,
@@ -28,4 +30,8 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(devices, inputs, outputs,);
+diesel::allow_tables_to_appear_in_same_query!(
+    devices,
+    inputs,
+    outputs,
+);
