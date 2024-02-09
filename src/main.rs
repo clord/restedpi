@@ -252,9 +252,9 @@ fn setup() -> (Command, PathBuf) {
     if std::env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", log_level);
     }
-    let console_layer = console_subscriber::spawn();
+    // let console_layer = console_subscriber::spawn();
     tracing_subscriber::registry()
-        .with(console_layer)
+        //  .with(console_layer)
         .with(tracing_subscriber::fmt::layer())
         .init();
     let config_file = get_config_path(config_file);
