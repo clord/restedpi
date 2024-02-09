@@ -112,9 +112,6 @@ async fn main() -> Result<(), eyre::Error> {
 async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut config_file = config_file.clone();
     let config = get_config(&config_file);
-    {
-        info!("Config file {:?}", &config);
-    };
     if let Some(app_secret_path) = config.app_secret_path {
         let app_secret = fs::read_to_string(app_secret_path).expect("failed to read app secret");
         env::set_var("APP_SECRET", app_secret);
@@ -252,11 +249,7 @@ fn setup() -> (Command, PathBuf) {
     if std::env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", log_level);
     }
-    // let console_layer = console_subscriber::spawn();
-    tracing_subscriber::registry()
-        //  .with(console_layer)
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    tracing_subscriber::fmt::init();
     let config_file = get_config_path(config_file);
     (command, config_file)
 }
