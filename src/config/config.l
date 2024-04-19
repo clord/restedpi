@@ -61,6 +61,7 @@
 \bbetween\b "between"
 \boffset_for_long\b "offset_for_long"
 \bminute_of_hour\b  "minute_of_hour"
+\bsecond_of_minute\b "second_of_minute"
 \bhour_of_day\b  "hour_of_day"
 \bweek_day\b "week_day"
 \b(now|today)\b "now"

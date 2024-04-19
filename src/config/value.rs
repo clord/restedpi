@@ -185,6 +185,11 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             Ok(local.hour() as f64 + local.minute() as f64 / 60.0 + local.second() as f64 / 3600.0)
         }
 
+        Value::SecondOfMinute(vdt) => {
+            let dt = dt_for_datetime(app, vdt);
+            Ok(dt.second() as f64)
+        }
+
         Value::MinuteOfHour(vdt) => {
             let dt = dt_for_datetime(app, vdt);
             Ok(dt.minute() as f64 + (dt.second() as f64 / 3600.0f64))

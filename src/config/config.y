@@ -91,6 +91,9 @@ Factor -> Result<Value, ()>:
     | 'minute_of_hour' '(' DT ')' {
         Ok(Value::MinuteOfHour($3?))
       }
+    | 'second_of_minute' '(' DT ')' {
+        Ok(Value::SecondOfMinute($3?))
+      }
     | 'hour_of_day' '(' DT ')' {
         Ok(Value::HourOfDay($3?))
       }

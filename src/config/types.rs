@@ -49,6 +49,9 @@ pub enum Value {
     // fractional minutes since start of this hour
     MinuteOfHour(DateTimeValue),
 
+    // fractional seconds since start of this minute
+    SecondOfMinute(DateTimeValue),
+
     // hour of day since midnight of this day
     HourOfDay(DateTimeValue),
 
