@@ -113,7 +113,10 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut config_file = config_file.clone();
     let config = get_config(&config_file);
     if let Some(app_secret_path) = config.app_secret_path {
-        let app_secret = fs::read_to_string(app_secret_path).expect("failed to read app secret");
+        let app_secret = fs::read_to_string(app_secret_path)
+            .expect("failed to read app secret")
+            .trim()
+            .to_string();
         env::set_var("APP_SECRET", app_secret);
     }
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
