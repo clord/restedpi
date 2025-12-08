@@ -5,29 +5,10 @@ use juniper::graphql_object;
 
 use super::dimensioned::Dimensioned;
 
-/**
- * we can write a boolean value to a given device via name
- */
+/// We can write a boolean value to a given device via name
 #[derive(Debug, Clone)]
 pub struct Output {
     pub data: models::Output,
-}
-
-impl Output {
-    pub fn name(&self) -> &str {
-        self.data.name.as_str()
-    }
-
-    pub async fn value(&self, context: &AppContext) -> Dimensioned {
-        match context
-            .channel()
-            .current_output_value(self.data.name.clone())
-            .await
-        {
-            Ok(v) => Dimensioned::from_bool(v),
-            Err(e) => Dimensioned::from_error(e.to_string()),
-        }
-    }
 }
 
 #[graphql_object(context = AppContext)]

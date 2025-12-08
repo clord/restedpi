@@ -1,15 +1,20 @@
 use crate::app::db::models;
 use crate::app::db::models::UpdateOutput;
 use crate::app::device;
+use crate::app::input::Input;
+use crate::app::output::Output;
 use crate::app::AppID;
 use crate::error::Error;
 use crate::session::{authenticate, AppContext};
-use juniper::{graphql_object, EmptySubscription, FieldResult, RootNode};
+use futures::Stream;
+use juniper::{graphql_object, graphql_subscription, FieldError, FieldResult, RootNode};
+use std::pin::Pin;
+use std::time::Duration;
 
 #[cfg(feature = "raspberrypi")]
 use rppal::system::DeviceInfo;
 
-use tracing::info;
+use tracing::{debug, info};
 
 pub struct Query;
 
@@ -219,7 +224,153 @@ impl Mutation {
     }
 }
 
-pub type Schema = RootNode<'static, Query, Mutation, EmptySubscription<AppContext>>;
+/// Snapshot of all inputs and outputs at a point in time
+#[derive(Debug, Clone)]
+pub struct StateSnapshot {
+    pub inputs: Vec<Input>,
+    pub outputs: Vec<Output>,
+    pub timestamp: String,
+}
+
+#[juniper::graphql_object(Context = AppContext)]
+impl StateSnapshot {
+    fn inputs(&self) -> &[Input] {
+        &self.inputs
+    }
+
+    fn outputs(&self) -> &[Output] {
+        &self.outputs
+    }
+
+    fn timestamp(&self) -> &str {
+        &self.timestamp
+    }
+}
+
+pub struct Subscription;
+
+type StateStream = Pin<Box<dyn Stream<Item = Result<StateSnapshot, FieldError>> + Send>>;
+
+#[graphql_subscription(context = AppContext)]
+impl Subscription {
+    /// Subscribe to state changes - polls every 3 seconds
+    async fn state_updates(context: &AppContext) -> StateStream {
+        let channel = context.channel().clone();
+
+        let stream = async_stream::stream! {
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
+
+            loop {
+                interval.tick().await;
+
+                let inputs = match channel.all_inputs().await {
+                    Ok(i) => i,
+                    Err(e) => {
+                        yield Err(FieldError::new(
+                            e.to_string(),
+                            juniper::Value::Null,
+                        ));
+                        continue;
+                    }
+                };
+
+                let outputs = match channel.all_outputs().await {
+                    Ok(o) => o,
+                    Err(e) => {
+                        yield Err(FieldError::new(
+                            e.to_string(),
+                            juniper::Value::Null,
+                        ));
+                        continue;
+                    }
+                };
+
+                let timestamp = match channel.get_now().await {
+                    Ok(t) => t.to_rfc3339(),
+                    Err(e) => {
+                        yield Err(FieldError::new(
+                            e.to_string(),
+                            juniper::Value::Null,
+                        ));
+                        continue;
+                    }
+                };
+
+                debug!("Subscription emitting state update with {} inputs, {} outputs", inputs.len(), outputs.len());
+
+                yield Ok(StateSnapshot {
+                    inputs,
+                    outputs,
+                    timestamp,
+                });
+            }
+        };
+
+        Box::pin(stream)
+    }
+
+    /// Subscribe to input value changes - polls every 3 seconds
+    async fn input_updates(
+        context: &AppContext,
+    ) -> Pin<Box<dyn Stream<Item = Result<Vec<Input>, FieldError>> + Send>> {
+        let channel = context.channel().clone();
+
+        let stream = async_stream::stream! {
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
+
+            loop {
+                interval.tick().await;
+
+                match channel.all_inputs().await {
+                    Ok(inputs) => {
+                        debug!("Input subscription emitting {} inputs", inputs.len());
+                        yield Ok(inputs);
+                    }
+                    Err(e) => {
+                        yield Err(FieldError::new(
+                            e.to_string(),
+                            juniper::Value::Null,
+                        ));
+                    }
+                }
+            }
+        };
+
+        Box::pin(stream)
+    }
+
+    /// Subscribe to output value changes - polls every 3 seconds
+    async fn output_updates(
+        context: &AppContext,
+    ) -> Pin<Box<dyn Stream<Item = Result<Vec<Output>, FieldError>> + Send>> {
+        let channel = context.channel().clone();
+
+        let stream = async_stream::stream! {
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
+
+            loop {
+                interval.tick().await;
+
+                match channel.all_outputs().await {
+                    Ok(outputs) => {
+                        debug!("Output subscription emitting {} outputs", outputs.len());
+                        yield Ok(outputs);
+                    }
+                    Err(e) => {
+                        yield Err(FieldError::new(
+                            e.to_string(),
+                            juniper::Value::Null,
+                        ));
+                    }
+                }
+            }
+        };
+
+        Box::pin(stream)
+    }
+}
+
+pub type Schema = RootNode<'static, Query, Mutation, Subscription>;
 
 fn check_session(context: &AppContext) -> FieldResult<()> {
     match &context.session {
@@ -229,5 +380,5 @@ fn check_session(context: &AppContext) -> FieldResult<()> {
 }
 
 pub fn create_schema() -> Schema {
-    Schema::new(Query, Mutation, EmptySubscription::new())
+    Schema::new(Query, Mutation, Subscription)
 }

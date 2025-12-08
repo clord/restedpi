@@ -86,10 +86,22 @@ impl Device {
                     .await?;
                 // by writing false, we will update with correct state for all pins after dir change
                 self.mcp23017_state
-                    .set_pin(addr, mcp23017::Bank::A, mcp23017::Pin::Pin0, false, &self.rapi)
+                    .set_pin(
+                        addr,
+                        mcp23017::Bank::A,
+                        mcp23017::Pin::Pin0,
+                        false,
+                        &self.rapi,
+                    )
                     .await?;
                 self.mcp23017_state
-                    .set_pin(addr, mcp23017::Bank::B, mcp23017::Pin::Pin0, false, &self.rapi)
+                    .set_pin(
+                        addr,
+                        mcp23017::Bank::B,
+                        mcp23017::Pin::Pin0,
+                        false,
+                        &self.rapi,
+                    )
                     .await?;
                 Ok(())
             }
@@ -138,10 +150,7 @@ impl Device {
                 let addr = to_i2c_addr(address)?;
                 match index {
                     0 => {
-                        let v = self
-                            .bmp085_state
-                            .temperature_in_c(addr, &self.rapi)
-                            .await?;
+                        let v = self.bmp085_state.temperature_in_c(addr, &self.rapi).await?;
                         Ok(Dimensioned::from_degc(v.into()))
                     }
                     1 => {
@@ -195,7 +204,13 @@ impl Device {
 
                 if old_dir != *dir_bank.get(index as usize) {
                     self.mcp23017_state
-                        .set_pin_direction(addr, bank, pin, *dir_bank.get(index as usize), &self.rapi)
+                        .set_pin_direction(
+                            addr,
+                            bank,
+                            pin,
+                            *dir_bank.get(index as usize),
+                            &self.rapi,
+                        )
                         .await?;
                 }
                 self.mcp23017_state

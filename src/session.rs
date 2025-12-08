@@ -37,8 +37,7 @@ impl FromStr for WebSession {
     type Err = token::SessionError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let secret = std::env::var("APP_SECRET")
-            .map_err(|_| token::SessionError::MissingSecret)?;
+        let secret = std::env::var("APP_SECRET").map_err(|_| token::SessionError::MissingSecret)?;
         let start = SystemTime::now();
         let now_timestamp = start
             .duration_since(UNIX_EPOCH)

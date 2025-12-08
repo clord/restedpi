@@ -14,7 +14,7 @@ create table inputs(
   device_input_id int not null,
   created_at timestamp not null default CURRENT_TIMESTAMP,
 
-  foreign key (device_id) references devices(device_id) on delete cascade
+  foreign key (device_id) references devices(name) on delete cascade
 );
 
 create table outputs(
@@ -25,6 +25,6 @@ create table outputs(
   automation_script text,
   created_at timestamp  not null default CURRENT_TIMESTAMP,
 
-  foreign key (device_id) references devices(device_id) on delete cascade
+  foreign key (device_id) references devices(name) on delete cascade
 );
 

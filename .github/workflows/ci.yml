@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Run tests with mock-gpio feature (no hardware required)
+  test:
+    name: Test (mock-gpio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-
+
+      - name: Run tests (mock-gpio)
+        run: cargo test --features mock-gpio
+
+      - name: Run tests (default, no features)
+        run: cargo test
+
+  # Build check for Raspberry Pi target
+  build-rpi:
+    name: Build (Raspberry Pi)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: armv7-unknown-linux-gnueabihf
+
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-rpi-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-rpi-
+
+      - name: Configure cargo for cross-compilation
+        run: |
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml << EOF
+          [target.armv7-unknown-linux-gnueabihf]
+          linker = "arm-linux-gnueabihf-gcc"
+          EOF
+
+      - name: Build for Raspberry Pi
+        run: cargo build --features raspberrypi --target armv7-unknown-linux-gnueabihf
+
+  # Lint and format checks
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-lint-
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy (default)
+        run: cargo clippy -- -D warnings
+
+      - name: Run clippy (mock-gpio)
+        run: cargo clippy --features mock-gpio -- -D warnings

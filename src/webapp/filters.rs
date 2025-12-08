@@ -1,7 +1,10 @@
 use super::SharedAppState;
 use crate::graphql::create_schema;
 use crate::session::{AppContext, WebSession};
+use juniper_graphql_ws::ConnectionConfig;
+use juniper_warp::subscriptions::make_ws_filter;
 use juniper_warp::{make_graphql_filter, playground_filter};
+use std::sync::Arc;
 use warp::{any, get, header, http::Response, post, Filter, Rejection, Reply};
 
 fn with_app(
@@ -54,19 +57,33 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
 pub fn graphql_api(
     app: SharedAppState,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path("graphql")
-        .and(
-            post()
-                .and(make_graphql_filter(
-                    create_schema(),
-                    with_app(app.clone()).boxed(),
-                ))
-                .or(get().and(playground_filter("/graphql", None))),
-        )
-        .or(warp::path("metrics")
-            .and(get())
-            .and(with_app(app))
-            .and_then(metrics_handler))
+    let schema = Arc::new(create_schema());
+
+    // WebSocket subscription endpoint
+    let subscriptions = {
+        let app_clone = app.clone();
+        warp::path("subscriptions").and(make_ws_filter(schema.clone(), move |_| {
+            let ctx = AppContext::new(app_clone.clone(), None);
+            async move { Ok::<_, std::convert::Infallible>(ConnectionConfig::new(ctx)) }
+        }))
+    };
+
+    // GraphQL query/mutation endpoint
+    let graphql = warp::path("graphql").and(
+        post()
+            .and(make_graphql_filter(schema, with_app(app.clone()).boxed()))
+            .or(get().and(playground_filter("/graphql", Some("/subscriptions")))),
+    );
+
+    // Metrics endpoint
+    let metrics = warp::path("metrics")
+        .and(get())
+        .and(with_app(app))
+        .and_then(metrics_handler);
+
+    subscriptions
+        .or(graphql)
+        .or(metrics)
         .or(static_filter())
         .or(static_index_html())
 }

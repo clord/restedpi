@@ -266,24 +266,23 @@ impl State {
         for output in outputs {
             if let Some(str_expr) = &output.automation_script {
                 // get or update the cached boolean expression
-                let expr: Option<BoolExpr> = if let Some((mark, expr)) =
-                    self.output_automation_cache.get_mut(str_expr)
-                {
-                    *mark = true;
-                    Some(expr.clone())
-                } else {
-                    match config::parse::bool_expr(str_expr) {
-                        Ok(expr) => {
-                            self.output_automation_cache
-                                .insert(str_expr.clone(), (true, expr.clone()));
-                            Some(expr)
+                let expr: Option<BoolExpr> =
+                    if let Some((mark, expr)) = self.output_automation_cache.get_mut(str_expr) {
+                        *mark = true;
+                        Some(expr.clone())
+                    } else {
+                        match config::parse::bool_expr(str_expr) {
+                            Ok(expr) => {
+                                self.output_automation_cache
+                                    .insert(str_expr.clone(), (true, expr.clone()));
+                                Some(expr)
+                            }
+                            Err(e) => {
+                                error!("error parsing automation script: {}", e);
+                                None
+                            }
                         }
-                        Err(e) => {
-                            error!("error parsing automation script: {}", e);
-                            None
-                        }
-                    }
-                };
+                    };
 
                 // evaluate the expression and write it to the right output
                 if let Some(expr) = expr {

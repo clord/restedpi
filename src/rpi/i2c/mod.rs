@@ -36,10 +36,16 @@ mod tests {
 
         // Temperature = 25.0625°C -> raw = 25.0625 * 16 = 401 = 0x0191
         let raw: u16 = 401;
-        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
+        rpi_api
+            .set_i2c_register(address, 0x05, encode_mcp9808_temp(raw))
+            .await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
-        assert!((temp - 25.0625).abs() < 0.01, "Expected ~25.0625°C, got {}", temp);
+        assert!(
+            (temp - 25.0625).abs() < 0.01,
+            "Expected ~25.0625°C, got {}",
+            temp
+        );
     }
 
     #[tokio::test]
@@ -48,7 +54,9 @@ mod tests {
         let address: I2cAddress = 0x18;
 
         // Temperature = 0°C -> raw = 0x0000
-        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(0)).await;
+        rpi_api
+            .set_i2c_register(address, 0x05, encode_mcp9808_temp(0))
+            .await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - 0.0).abs() < 0.01, "Expected 0°C, got {}", temp);
@@ -65,10 +73,16 @@ mod tests {
         // For -10: 256 - (raw/16) = 10 -> raw/16 = 246 -> raw = 3936 = 0x0F60
         // With sign bit: 0x1F60
         let raw: u16 = 0x1F60;
-        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
+        rpi_api
+            .set_i2c_register(address, 0x05, encode_mcp9808_temp(raw))
+            .await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
-        assert!((temp - (-10.0)).abs() < 0.1, "Expected ~-10°C, got {}", temp);
+        assert!(
+            (temp - (-10.0)).abs() < 0.1,
+            "Expected ~-10°C, got {}",
+            temp
+        );
     }
 
     #[tokio::test]
@@ -78,7 +92,9 @@ mod tests {
 
         // Max positive: +125°C -> raw = 125 * 16 = 2000 = 0x07D0
         let raw: u16 = 2000;
-        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
+        rpi_api
+            .set_i2c_register(address, 0x05, encode_mcp9808_temp(raw))
+            .await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - 125.0).abs() < 0.1, "Expected 125°C, got {}", temp);
@@ -94,13 +110,17 @@ mod tests {
 
         for (addr, expected_temp) in addresses.iter().zip(temps.iter()) {
             let raw = (*expected_temp * 16.0) as u16;
-            rpi_api.set_i2c_register(*addr, 0x05, encode_mcp9808_temp(raw)).await;
+            rpi_api
+                .set_i2c_register(*addr, 0x05, encode_mcp9808_temp(raw))
+                .await;
 
             let temp = mcp9808::read_temp(&rpi_api, *addr).await.unwrap();
             assert!(
                 (temp - expected_temp).abs() < 0.1,
                 "Address {:#x}: Expected {}°C, got {}",
-                addr, expected_temp, temp
+                addr,
+                expected_temp,
+                temp
             );
         }
     }
@@ -122,17 +142,39 @@ mod tests {
     /// Set up BMP085 calibration data from the datasheet example
     async fn setup_bmp085_calibration(rpi_api: &rpi::RpiApi, address: I2cAddress) {
         // Example calibration values from BMP085 datasheet
-        rpi_api.set_i2c_register(address, 0xAA, encode_bmp085_i16(408)).await;    // AC1
-        rpi_api.set_i2c_register(address, 0xAC, encode_bmp085_i16(-72)).await;   // AC2
-        rpi_api.set_i2c_register(address, 0xAE, encode_bmp085_i16(-14383)).await; // AC3
-        rpi_api.set_i2c_register(address, 0xB0, encode_bmp085_u16(32741)).await; // AC4
-        rpi_api.set_i2c_register(address, 0xB2, encode_bmp085_u16(32757)).await; // AC5
-        rpi_api.set_i2c_register(address, 0xB4, encode_bmp085_u16(23153)).await; // AC6
-        rpi_api.set_i2c_register(address, 0xB6, encode_bmp085_i16(6190)).await;  // B1
-        rpi_api.set_i2c_register(address, 0xB8, encode_bmp085_i16(4)).await;     // B2
-        rpi_api.set_i2c_register(address, 0xBA, encode_bmp085_i16(-32768)).await; // MB
-        rpi_api.set_i2c_register(address, 0xBC, encode_bmp085_i16(-8711)).await; // MC
-        rpi_api.set_i2c_register(address, 0xBE, encode_bmp085_i16(2868)).await;  // MD
+        rpi_api
+            .set_i2c_register(address, 0xAA, encode_bmp085_i16(408))
+            .await; // AC1
+        rpi_api
+            .set_i2c_register(address, 0xAC, encode_bmp085_i16(-72))
+            .await; // AC2
+        rpi_api
+            .set_i2c_register(address, 0xAE, encode_bmp085_i16(-14383))
+            .await; // AC3
+        rpi_api
+            .set_i2c_register(address, 0xB0, encode_bmp085_u16(32741))
+            .await; // AC4
+        rpi_api
+            .set_i2c_register(address, 0xB2, encode_bmp085_u16(32757))
+            .await; // AC5
+        rpi_api
+            .set_i2c_register(address, 0xB4, encode_bmp085_u16(23153))
+            .await; // AC6
+        rpi_api
+            .set_i2c_register(address, 0xB6, encode_bmp085_i16(6190))
+            .await; // B1
+        rpi_api
+            .set_i2c_register(address, 0xB8, encode_bmp085_i16(4))
+            .await; // B2
+        rpi_api
+            .set_i2c_register(address, 0xBA, encode_bmp085_i16(-32768))
+            .await; // MB
+        rpi_api
+            .set_i2c_register(address, 0xBC, encode_bmp085_i16(-8711))
+            .await; // MC
+        rpi_api
+            .set_i2c_register(address, 0xBE, encode_bmp085_i16(2868))
+            .await; // MD
     }
 
     #[tokio::test]
@@ -157,7 +199,9 @@ mod tests {
 
         // Set up temperature data register (0xF6)
         // Using datasheet example: UT = 27898 = 0x6CFA
-        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
+        rpi_api
+            .set_i2c_register(address, 0xF6, encode_bmp085_u16(27898))
+            .await;
 
         let mut state = bmp085::Bmp085State::new();
         state.reset(address, &rpi_api).await.unwrap();
@@ -181,7 +225,9 @@ mod tests {
         setup_bmp085_calibration(&rpi_api, address).await;
 
         // Set up temperature data (needed for pressure calculation)
-        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
+        rpi_api
+            .set_i2c_register(address, 0xF6, encode_bmp085_u16(27898))
+            .await;
 
         // Set up pressure data registers (single byte reads at 0xF6, 0xF7, 0xF8)
         // Datasheet example: UP = 23843 for mode 0 -> MSB=0x5D, LSB=0x23, XLSB=0x00
@@ -213,7 +259,9 @@ mod tests {
         setup_bmp085_calibration(&rpi_api, address).await;
 
         // Set up temperature data register
-        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
+        rpi_api
+            .set_i2c_register(address, 0xF6, encode_bmp085_u16(27898))
+            .await;
 
         // Set up pressure data
         rpi_api.set_i2c_register(address, 0xF6, vec![0x5D]).await;
@@ -225,7 +273,9 @@ mod tests {
 
         // Test all sampling modes - use UltraLowPower only since it's safest
         // Other modes may overflow with these test values
-        let result = state.pressure_kpa(address, SamplingMode::UltraLowPower, &rpi_api).await;
+        let result = state
+            .pressure_kpa(address, SamplingMode::UltraLowPower, &rpi_api)
+            .await;
         assert!(result.is_ok(), "UltraLowPower sampling mode should work");
     }
 
@@ -252,7 +302,13 @@ mod tests {
 
         // Set pin 0 on bank A as output high
         let result = state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::OutH, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::OutH,
+                &rpi_api,
+            )
             .await;
 
         assert!(result.is_ok(), "Setting pin direction should succeed");
@@ -290,13 +346,25 @@ mod tests {
 
         // Configure pin as output
         state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::OutH, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::OutH,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
         // Write to the pin
         let result = state
-            .set_pin(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, true, &rpi_api)
+            .set_pin(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                true,
+                &rpi_api,
+            )
             .await;
 
         assert!(result.is_ok(), "Writing to output pin should succeed");
@@ -312,13 +380,25 @@ mod tests {
 
         // Configure pin as input
         state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::In, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::In,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
         // Attempt to write to input pin should fail
         let result = state
-            .set_pin(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, true, &rpi_api)
+            .set_pin(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                true,
+                &rpi_api,
+            )
             .await;
 
         assert!(result.is_err(), "Writing to input pin should fail");
@@ -341,7 +421,13 @@ mod tests {
 
         // Configure pin as input
         state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::In, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::In,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
@@ -364,13 +450,25 @@ mod tests {
 
         // Configure pin as output
         state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::OutH, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::OutH,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
         // Write true to the pin
         state
-            .set_pin(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, true, &rpi_api)
+            .set_pin(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                true,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
@@ -393,12 +491,24 @@ mod tests {
 
         // Configure pin on bank B
         state
-            .set_pin_direction(address, mcp23017::Bank::B, mcp23017::Pin::Pin3, Dir::OutH, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::B,
+                mcp23017::Pin::Pin3,
+                Dir::OutH,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
         let result = state
-            .set_pin(address, mcp23017::Bank::B, mcp23017::Pin::Pin3, true, &rpi_api)
+            .set_pin(
+                address,
+                mcp23017::Bank::B,
+                mcp23017::Pin::Pin3,
+                true,
+                &rpi_api,
+            )
             .await;
 
         assert!(result.is_ok(), "Bank B operations should succeed");
@@ -414,7 +524,11 @@ mod tests {
         for addr in addresses {
             let mut state = mcp23017::Mcp23017State::new();
             let result = state.reset(addr, &rpi_api).await;
-            assert!(result.is_ok(), "Reset at address {:#x} should succeed", addr);
+            assert!(
+                result.is_ok(),
+                "Reset at address {:#x} should succeed",
+                addr
+            );
         }
     }
 
@@ -470,13 +584,25 @@ mod tests {
 
         // Configure pin as OutL (active low)
         state
-            .set_pin_direction(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, Dir::OutL, &rpi_api)
+            .set_pin_direction(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                Dir::OutL,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
         // Write true - should be inverted to false internally
         state
-            .set_pin(address, mcp23017::Bank::A, mcp23017::Pin::Pin0, true, &rpi_api)
+            .set_pin(
+                address,
+                mcp23017::Bank::A,
+                mcp23017::Pin::Pin0,
+                true,
+                &rpi_api,
+            )
             .await
             .unwrap();
 
@@ -525,10 +651,7 @@ mod tests {
         let rpi_api = create_mock_rpi();
 
         // Write to a GPIO pin
-        rpi_api
-            .write_gpio(17, rpi::GpioLevel::High)
-            .await
-            .unwrap();
+        rpi_api.write_gpio(17, rpi::GpioLevel::High).await.unwrap();
 
         // Read it back
         let level = rpi_api.read_gpio(17).await.unwrap();

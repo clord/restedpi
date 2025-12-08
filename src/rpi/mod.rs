@@ -2,16 +2,20 @@
 use crate::error::Error;
 use crate::error::Result;
 #[cfg(feature = "raspberrypi")]
+use rppal::gpio::{Gpio, InputPin, OutputPin};
+#[cfg(feature = "raspberrypi")]
 use rppal::i2c::I2c;
+#[cfg(any(feature = "raspberrypi", feature = "mock-gpio"))]
+use std::collections::HashMap;
+#[cfg(any(feature = "raspberrypi", feature = "mock-gpio"))]
 use std::sync::Arc;
 use std::vec::Vec;
+#[cfg(any(feature = "raspberrypi", feature = "mock-gpio"))]
 use tokio::sync::Mutex;
 
 #[cfg(feature = "raspberrypi")]
 use tracing::debug;
 
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-use std::collections::HashMap;
 #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
 use tracing::debug;
 
@@ -79,24 +83,38 @@ impl Default for MockPinState {
 }
 
 // ============================================================================
-// Real Raspberry Pi I2C State
+// Real Raspberry Pi I2C and GPIO State
 // ============================================================================
 
+/// Tracks configured GPIO pins - either as input or output
 #[cfg(feature = "raspberrypi")]
-struct I2cState {
-    i2c: I2c,
-    current_address: Option<i2c::I2cAddress>,
+enum GpioPin {
+    Input(InputPin),
+    Output(OutputPin),
 }
 
 #[cfg(feature = "raspberrypi")]
-impl I2cState {
+struct RpiState {
+    i2c: I2c,
+    current_address: Option<i2c::I2cAddress>,
+    gpio: Gpio,
+    pins: HashMap<u8, GpioPin>,
+}
+
+#[cfg(feature = "raspberrypi")]
+impl RpiState {
     fn new(bus: u8) -> Result<Self> {
         let i2c = I2c::with_bus(bus).map_err(|e| {
             crate::error::Error::I2cError(format!("Failed to open I2C bus {}: {}", bus, e))
         })?;
+        let gpio = Gpio::new().map_err(|e| {
+            crate::error::Error::DeviceReadError(format!("Failed to initialize GPIO: {}", e))
+        })?;
         Ok(Self {
             i2c,
             current_address: None,
+            gpio,
+            pins: HashMap::new(),
         })
     }
 
@@ -113,23 +131,128 @@ impl I2cState {
         Ok(())
     }
 
-    fn write(&mut self, address: i2c::I2cAddress, command: u8, data: &[u8]) -> Result<()> {
+    fn i2c_write(&mut self, address: i2c::I2cAddress, command: u8, data: &[u8]) -> Result<()> {
         self.ensure_address(address)?;
-        debug!("i2c write: addr={}, cmd={}, data={:?}", address, command, data);
-        self.i2c.block_write(command, data).map_err(|e| {
-            crate::error::Error::I2cError(format!("I2C write failed: {}", e))
-        })?;
+        debug!(
+            "i2c write: addr={}, cmd={}, data={:?}",
+            address, command, data
+        );
+        self.i2c
+            .block_write(command, data)
+            .map_err(|e| crate::error::Error::I2cError(format!("I2C write failed: {}", e)))?;
         Ok(())
     }
 
-    fn read(&mut self, address: i2c::I2cAddress, command: u8, size: usize) -> Result<Vec<u8>> {
+    fn i2c_read(&mut self, address: i2c::I2cAddress, command: u8, size: usize) -> Result<Vec<u8>> {
         self.ensure_address(address)?;
         let mut buffer = vec![0u8; size];
-        self.i2c.block_read(command, &mut buffer).map_err(|e| {
-            crate::error::Error::I2cError(format!("I2C read failed: {}", e))
-        })?;
-        debug!("i2c read: addr={}, cmd={}, size={}, result={:?}", address, command, size, buffer);
+        self.i2c
+            .block_read(command, &mut buffer)
+            .map_err(|e| crate::error::Error::I2cError(format!("I2C read failed: {}", e)))?;
+        debug!(
+            "i2c read: addr={}, cmd={}, size={}, result={:?}",
+            address, command, size, buffer
+        );
         Ok(buffer)
+    }
+
+    fn gpio_read(&mut self, pin: u8) -> Result<rppal::gpio::Level> {
+        // Check if we already have this pin configured
+        if let Some(gpio_pin) = self.pins.get(&pin) {
+            match gpio_pin {
+                GpioPin::Input(input_pin) => {
+                    let level = input_pin.read();
+                    debug!("gpio read pin {}: {:?}", pin, level);
+                    Ok(level)
+                }
+                GpioPin::Output(output_pin) => {
+                    // Can still read from an output pin
+                    let level = if output_pin.is_set_high() {
+                        rppal::gpio::Level::High
+                    } else {
+                        rppal::gpio::Level::Low
+                    };
+                    debug!("gpio read (output) pin {}: {:?}", pin, level);
+                    Ok(level)
+                }
+            }
+        } else {
+            // Configure as input and read
+            let input_pin = self
+                .gpio
+                .get(pin)
+                .map_err(|e| {
+                    crate::error::Error::DeviceReadError(format!(
+                        "Failed to get GPIO pin {}: {}",
+                        pin, e
+                    ))
+                })?
+                .into_input();
+            let level = input_pin.read();
+            debug!("gpio read pin {} (newly configured): {:?}", pin, level);
+            self.pins.insert(pin, GpioPin::Input(input_pin));
+            Ok(level)
+        }
+    }
+
+    fn gpio_write(&mut self, pin: u8, level: rppal::gpio::Level) -> Result<()> {
+        // Check if we already have this pin configured as output
+        if let Some(gpio_pin) = self.pins.get_mut(&pin) {
+            match gpio_pin {
+                GpioPin::Output(output_pin) => {
+                    match level {
+                        rppal::gpio::Level::High => output_pin.set_high(),
+                        rppal::gpio::Level::Low => output_pin.set_low(),
+                    }
+                    debug!("gpio write pin {}: {:?}", pin, level);
+                    Ok(())
+                }
+                GpioPin::Input(_) => {
+                    // Need to reconfigure as output
+                    // Remove the old pin first
+                    self.pins.remove(&pin);
+                    let mut output_pin = self
+                        .gpio
+                        .get(pin)
+                        .map_err(|e| {
+                            crate::error::Error::DeviceReadError(format!(
+                                "Failed to get GPIO pin {}: {}",
+                                pin, e
+                            ))
+                        })?
+                        .into_output();
+                    match level {
+                        rppal::gpio::Level::High => output_pin.set_high(),
+                        rppal::gpio::Level::Low => output_pin.set_low(),
+                    }
+                    debug!(
+                        "gpio write pin {} (reconfigured from input): {:?}",
+                        pin, level
+                    );
+                    self.pins.insert(pin, GpioPin::Output(output_pin));
+                    Ok(())
+                }
+            }
+        } else {
+            // Configure as output and write
+            let mut output_pin = self
+                .gpio
+                .get(pin)
+                .map_err(|e| {
+                    crate::error::Error::DeviceReadError(format!(
+                        "Failed to get GPIO pin {}: {}",
+                        pin, e
+                    ))
+                })?
+                .into_output();
+            match level {
+                rppal::gpio::Level::High => output_pin.set_high(),
+                rppal::gpio::Level::Low => output_pin.set_low(),
+            }
+            debug!("gpio write pin {} (newly configured): {:?}", pin, level);
+            self.pins.insert(pin, GpioPin::Output(output_pin));
+            Ok(())
+        }
     }
 }
 
@@ -152,7 +275,10 @@ impl MockState {
     }
 
     fn read_pin(&self, pin: u8) -> GpioLevel {
-        self.pins.get(&pin).map(|s| s.level).unwrap_or(GpioLevel::Low)
+        self.pins
+            .get(&pin)
+            .map(|s| s.level)
+            .unwrap_or(GpioLevel::Low)
     }
 
     fn write_pin(&mut self, pin: u8, level: GpioLevel) {
@@ -201,7 +327,7 @@ impl MockState {
 #[derive(Clone, Debug)]
 pub struct RpiApi {
     #[cfg(feature = "raspberrypi")]
-    state: Arc<Mutex<Option<I2cState>>>,
+    state: Arc<Mutex<Option<RpiState>>>,
 
     #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
     state: Arc<Mutex<MockState>>,
@@ -221,7 +347,7 @@ impl RpiApi {
     ) -> Result<()> {
         let mut guard = self.state.lock().await;
         match guard.as_mut() {
-            Some(i2c_state) => i2c_state.write(address, command, &parameters),
+            Some(rpi_state) => rpi_state.i2c_write(address, command, &parameters),
             None => Err(crate::error::Error::I2cError(
                 "I2C bus not initialized".to_string(),
             )),
@@ -236,7 +362,7 @@ impl RpiApi {
     ) -> Result<Vec<u8>> {
         let mut guard = self.state.lock().await;
         match guard.as_mut() {
-            Some(i2c_state) => i2c_state.read(address, command, size),
+            Some(rpi_state) => rpi_state.i2c_read(address, command, size),
             None => Err(crate::error::Error::I2cError(
                 "I2C bus not initialized".to_string(),
             )),
@@ -244,15 +370,23 @@ impl RpiApi {
     }
 
     pub async fn read_gpio(&self, pin: u8) -> Result<rppal::gpio::Level> {
-        // TODO: Implement real GPIO read
-        debug!("TODO: read gpio {}", pin);
-        Ok(rppal::gpio::Level::High)
+        let mut guard = self.state.lock().await;
+        match guard.as_mut() {
+            Some(rpi_state) => rpi_state.gpio_read(pin),
+            None => Err(crate::error::Error::DeviceReadError(
+                "GPIO not initialized".to_string(),
+            )),
+        }
     }
 
     pub async fn write_gpio(&self, pin: u8, level: rppal::gpio::Level) -> Result<()> {
-        // TODO: Implement real GPIO write
-        debug!("TODO: write gpio {} = {:?}", pin, level);
-        Ok(())
+        let mut guard = self.state.lock().await;
+        match guard.as_mut() {
+            Some(rpi_state) => rpi_state.gpio_write(pin, level),
+            None => Err(crate::error::Error::DeviceReadError(
+                "GPIO not initialized".to_string(),
+            )),
+        }
     }
 }
 
@@ -266,7 +400,10 @@ impl RpiApi {
         parameters: Vec<u8>,
     ) -> Result<()> {
         let mut guard = self.state.lock().await;
-        debug!("mock i2c write: addr={}, cmd={}, data={:?}", address, command, parameters);
+        debug!(
+            "mock i2c write: addr={}, cmd={}, data={:?}",
+            address, command, parameters
+        );
         guard.i2c_write(address, command, &parameters);
         Ok(())
     }
@@ -278,7 +415,10 @@ impl RpiApi {
         size: usize,
     ) -> Result<Vec<u8>> {
         let guard = self.state.lock().await;
-        debug!("mock i2c read: addr={}, cmd={}, size={}", address, command, size);
+        debug!(
+            "mock i2c read: addr={}, cmd={}, size={}",
+            address, command, size
+        );
         Ok(guard.i2c_read(address, command, size))
     }
 
@@ -353,17 +493,17 @@ impl RpiApi {
 // ============================================================================
 
 /// Create a new RpiApi instance.
-/// For raspberrypi: initializes the I2C bus
+/// For raspberrypi: initializes the I2C bus and GPIO
 /// For mock-gpio: creates empty mock state
 /// For neither: creates a stub that returns errors
 #[cfg(feature = "raspberrypi")]
 pub fn start(bus: u8) -> RpiApi {
     use tracing::{error, info};
 
-    let i2c_state = match I2cState::new(bus) {
+    let rpi_state = match RpiState::new(bus) {
         Ok(state) => Some(state),
         Err(e) => {
-            error!("Failed to initialize I2C bus: {}", e);
+            error!("Failed to initialize hardware: {}", e);
             info!("The I2C bus connected to pins 3 and 5 is disabled by default");
             info!("Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`");
             info!("(Remember to reboot the Raspberry Pi afterwards)");
@@ -372,7 +512,7 @@ pub fn start(bus: u8) -> RpiApi {
     };
 
     RpiApi {
-        state: Arc::new(Mutex::new(i2c_state)),
+        state: Arc::new(Mutex::new(rpi_state)),
     }
 }
 

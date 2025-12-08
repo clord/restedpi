@@ -106,7 +106,13 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let config = get_config(&config_file)?;
     if let Some(app_secret_path) = &config.app_secret_path {
         let app_secret = fs::read_to_string(app_secret_path)
-            .map_err(|e| eyre::eyre!("Failed to read app secret from {:?}: {}", app_secret_path, e))?
+            .map_err(|e| {
+                eyre::eyre!(
+                    "Failed to read app secret from {:?}: {}",
+                    app_secret_path,
+                    e
+                )
+            })?
             .trim()
             .to_string();
         env::set_var("APP_SECRET", app_secret);
@@ -216,8 +222,9 @@ fn add_user(
             // write config file back
             match toml::to_string(&config) {
                 Ok(as_str) => {
-                    fs::write(&config_file, as_str)
-                        .map_err(|e| eyre::eyre!("Failed to write config file {:?}: {}", config_file, e))?;
+                    fs::write(&config_file, as_str).map_err(|e| {
+                        eyre::eyre!("Failed to write config file {:?}: {}", config_file, e)
+                    })?;
                     info!("Success");
                     Ok(())
                 }

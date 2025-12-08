@@ -40,10 +40,7 @@ fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> Result<DateTime<Loc
         DateTimeValue::Now => Ok(app.current_dt()),
         DateTimeValue::SpecificDTZ(v) => Ok(*v),
         DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) {
-            LocalResult::None => Err(Error::TzError(format!(
-                "invalid local datetime: {:?}",
-                v
-            ))),
+            LocalResult::None => Err(Error::TzError(format!("invalid local datetime: {:?}", v))),
             LocalResult::Single(s) => Ok(s),
             LocalResult::Ambiguous(s, x) => {
                 error!("ambiguous specificDT date between {:?} {:?}", s, x);
