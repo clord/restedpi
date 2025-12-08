@@ -9,7 +9,7 @@ lazy_static! {
 
 // Convert arbitrary human name for something into a slug for url purposes
 pub fn slugify(name: &str, inc: usize) -> String {
-    if name.trim().len() == 0 {
+    if name.trim().is_empty() {
         return format!("{}", inc);
     }
     let mut replaced = String::new();
@@ -29,7 +29,7 @@ pub fn slugify(name: &str, inc: usize) -> String {
     if inc != 0 {
         result.push(format!("{}", inc));
     }
-    return result.join("-");
+    result.join("-")
 }
 
 // Make some common unicode characters into more usable slug ascii

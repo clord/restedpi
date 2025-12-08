@@ -16,7 +16,7 @@ pub fn bool_expr(as_str: &str) -> Result<BoolExpr> {
     let lexerdef = config_l::lexerdef();
     let lexer = lexerdef.lexer(as_str);
     let (res, errs) = config_y::parse(&lexer);
-    if errs.len() > 0 {
+    if !errs.is_empty() {
         for e in errs {
             warn!("{}", e.pp(&lexer, &config_y::token_epp));
         }

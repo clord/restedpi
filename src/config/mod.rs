@@ -42,8 +42,8 @@ pub struct Config {
     pub users: Option<HashMap<String, String>>,
 }
 
-impl Config {
-    pub fn new() -> Self {
+impl Default for Config {
+    fn default() -> Self {
         Config {
             name: None,
             listen: None,
@@ -57,14 +57,19 @@ impl Config {
             users: None,
         }
     }
+}
+
+impl Config {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn here(&self) -> LocationValue {
         LocationValue::LatLong(self.lat, self.long)
     }
 
     pub fn check_config(&self) -> Vec<ConfigError> {
-        let errors = Vec::<ConfigError>::new();
-        return errors;
+        Vec::<ConfigError>::new()
     }
 }
 

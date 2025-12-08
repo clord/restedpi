@@ -214,7 +214,7 @@ impl From<diesel::result::Error> for Error {
     fn from(err: diesel::result::Error) -> Error {
         match err {
             diesel::result::Error::NotFound => {
-                Error::NonExistant(format!("Database Entry Not Found"))
+                Error::NonExistant("Database Entry Not Found".to_string())
             }
             diesel::result::Error::DatabaseError(x, e) => match x {
                 diesel::result::DatabaseErrorKind::UniqueViolation => {

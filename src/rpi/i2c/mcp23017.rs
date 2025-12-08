@@ -130,13 +130,11 @@ impl State {
 
     pub fn pullup_word(&self) -> u8 {
         let mut ba = Bits::new();
-        let mut dex = 0;
-        for pinord in 0..7usize {
+        for (dex, pinord) in (0..7usize).enumerate() {
             let dir = self.direction.get(pinord);
             if let Dir::InWithPD = dir {
                 ba.set(7 - dex, true);
             }
-            dex += 1;
         }
         as_word(&ba)
     }
@@ -149,8 +147,7 @@ impl State {
 
     pub fn inout_word(&self) -> u8 {
         let mut ba = Bits::new();
-        let mut dex = 0;
-        for pinord in 0..7usize {
+        for (dex, pinord) in (0..7usize).enumerate() {
             let dir = self.direction.get(pinord);
             if let Dir::InWithPD = dir {
                 ba.set(7 - dex, true);
@@ -158,7 +155,6 @@ impl State {
             if let Dir::In = dir {
                 ba.set(7 - dex, true);
             };
-            dex += 1;
         }
         as_word(&ba)
     }
@@ -169,14 +165,20 @@ pub struct Mcp23017State {
     state: BankState<State>,
 }
 
-impl Mcp23017State {
-    pub fn new() -> Self {
+impl Default for Mcp23017State {
+    fn default() -> Self {
         Mcp23017State {
             state: BankState {
                 a: State::new(),
                 b: State::new(),
             },
         }
+    }
+}
+
+impl Mcp23017State {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     fn state_for_bank(&self, bank: Bank) -> &State {
@@ -355,11 +357,11 @@ impl Mcp23017State {
             Dir::OutH => Ok(state.pin_value(pin)),
             Dir::In => {
                 let value = self.read_gpio_value(address, bank, rapi).await?;
-                return Ok(value[7 - pin_to_ordinal(pin)]);
+                Ok(value[7 - pin_to_ordinal(pin)])
             }
             Dir::InWithPD => {
                 let value = self.read_gpio_value(address, bank, rapi).await?;
-                return Ok(value[7 - pin_to_ordinal(pin)]);
+                Ok(value[7 - pin_to_ordinal(pin)])
             }
         }
     }

@@ -135,7 +135,7 @@ impl State {
     pub async fn add_output(&mut self, config: &models::NewOutput) -> Result<AppID> {
         let mdev = self.devices.get_mut(&config.device_id);
         if let Some(_dev) = mdev {
-            let db_output = self.db.add_output(&config)?;
+            let db_output = self.db.add_output(config)?;
             Ok(db_output.name)
         } else {
             Err(Error::NonExistant(format!(
@@ -258,7 +258,7 @@ impl State {
     #[instrument(skip(self))]
     pub async fn emit_automations(&mut self) -> Result<()> {
         // Clear mark on all entries
-        for (_, (mark, _)) in &mut self.output_automation_cache {
+        for (mark, _) in self.output_automation_cache.values_mut() {
             *mark = false
         }
 

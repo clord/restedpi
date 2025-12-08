@@ -31,11 +31,11 @@ pub async fn evaluate(app: &State, expr: &BoolExpr) -> Result<bool> {
             <= evaluate_value(app, b).await?
             && evaluate_value(app, b).await? <= evaluate_value(app, c).await?),
         BoolExpr::Const(_s, a) => Ok(*a),
-        BoolExpr::EqBool(_s, a, b) => Ok(evaluate(app, &*a).await? == evaluate(app, &*b).await?),
-        BoolExpr::And(_s, a, b) => Ok(evaluate(app, &*a).await? && evaluate(app, &*b).await?),
-        BoolExpr::Or(_s, a, b) => Ok(evaluate(app, &*a).await? || evaluate(app, &*b).await?),
-        BoolExpr::Xor(_s, a, b) => Ok(evaluate(app, &*a).await? ^ evaluate(app, &*b).await?),
-        BoolExpr::Not(_s, b) => Ok(!(evaluate(app, &*b).await?)),
+        BoolExpr::EqBool(_s, a, b) => Ok(evaluate(app, a).await? == evaluate(app, b).await?),
+        BoolExpr::And(_s, a, b) => Ok(evaluate(app, a).await? && evaluate(app, b).await?),
+        BoolExpr::Or(_s, a, b) => Ok(evaluate(app, a).await? || evaluate(app, b).await?),
+        BoolExpr::Xor(_s, a, b) => Ok(evaluate(app, a).await? ^ evaluate(app, b).await?),
+        BoolExpr::Not(_s, b) => Ok(!(evaluate(app, b).await?)),
         BoolExpr::ReadBooleanInput(_s, input_id) => app.read_input_bool(input_id).await,
     }
 }

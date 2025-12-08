@@ -75,8 +75,8 @@ impl From<InputDirections> for Directions {
     }
 }
 
-impl Directions {
-    pub fn new() -> Self {
+impl Default for Directions {
+    fn default() -> Self {
         Directions {
             p0: Dir::OutH,
             p1: Dir::OutH,
@@ -87,6 +87,12 @@ impl Directions {
             p6: Dir::OutH,
             p7: Dir::OutH,
         }
+    }
+}
+
+impl Directions {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn get(&self, pin: usize) -> &Dir {

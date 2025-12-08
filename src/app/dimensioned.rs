@@ -75,11 +75,11 @@ impl Dimensioned {
         }
     }
     pub fn is_unit(&self, unit: Unit) -> bool {
-        match (unit, self) {
-            (Unit::KPa, &Dimensioned::KPa(_)) => true,
-            (Unit::DegC, &Dimensioned::DegC(_)) => true,
-            (Unit::Boolean, &Dimensioned::Boolean(_)) => true,
-            _ => false,
-        }
+        matches!(
+            (unit, self),
+            (Unit::KPa, &Dimensioned::KPa(_))
+                | (Unit::DegC, &Dimensioned::DegC(_))
+                | (Unit::Boolean, &Dimensioned::Boolean(_))
+        )
     }
 }

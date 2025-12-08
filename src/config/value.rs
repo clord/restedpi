@@ -68,7 +68,7 @@ impl FromStr for Unit {
 /// An evaluator for value expressions.
 #[async_recursion]
 pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
-    let res = match expr {
+    match expr {
         Value::Const(a) => Ok(*a),
 
         Value::ReadInput(input_name, unit) => match app.read_input_value(input_name).await? {
@@ -260,6 +260,5 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 Ok(1.0f64 / divisor)
             }
         }
-    };
-    res
+    }
 }

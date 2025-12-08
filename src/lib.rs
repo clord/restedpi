@@ -1,3 +1,6 @@
+// Allow clippy warning in generated parser code
+#![allow(clippy::unused_unit)]
+
 extern crate tracing;
 #[macro_use]
 extern crate diesel;

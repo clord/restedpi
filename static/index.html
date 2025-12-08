@@ -1,82 +1,1191 @@
 <!DOCTYPE html>
-<html class="bg-white antialiased">
-    <head>
-		<meta charset="utf-8">
-        <meta http-equiv="expires" content="0">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RestedPi Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #ef4444;
+            --border: #2a2a4a;
+        }
 
-        <base href="/">
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-		<title>Rested PI</title>
-		<meta name="viewport" content="initial-scale=0.86, maximum-scale=3.0, minimum-scale=0.86, width=device-width">
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
 
-        <!-- https://immutablewebapps.org/ -->
-        <script type="text/javascript">
-            window.env = {
-                version: "1.0",
-                build: "dev",
-                api: "/api",
-                NODE_ENV: 'development'
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .header-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-info span {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-dot.connected { background: var(--success); }
+        .status-dot.disconnected { background: var(--error); }
+
+        .auth-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .auth-section input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .auth-section input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #000;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin: 20px 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--border);
+            border-bottom-color: var(--bg-card);
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .card-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-device { background: #3b82f6; }
+        .badge-input { background: #8b5cf6; }
+        .badge-output { background: #10b981; }
+        .badge-disabled { background: var(--text-secondary); }
+
+        .value-display {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin: 15px 0;
+        }
+
+        .value-unit {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-primary);
+            transition: 0.3s;
+            border-radius: 30px;
+            border: 2px solid var(--border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--text-secondary);
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+            background-color: white;
+        }
+
+        .switch-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .query-section {
+            margin-top: 20px;
+        }
+
+        .query-editor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .query-editor {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .query-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .query-box label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .query-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        pre {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .quick-queries {
+            margin-bottom: 15px;
+        }
+
+        .quick-queries select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            min-width: 200px;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .success-message {
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .refresh-indicator {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auto-refresh input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .device-type {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>RestedPi Dashboard</h1>
+        </div>
+        <div class="header-info">
+            <span><span class="status-dot" id="connectionStatus"></span><span id="connectionText">Checking...</span></span>
+            <span id="serverName"></span>
+            <span id="currentTime"></span>
+        </div>
+        <div class="auth-section" id="authSection">
+            <input type="text" id="emailInput" placeholder="Email" />
+            <input type="password" id="passwordInput" placeholder="Password" />
+            <button class="btn-primary" onclick="signIn()">Sign In</button>
+        </div>
+        <div class="auth-section" id="loggedInSection" style="display: none;">
+            <span id="userDisplay"></span>
+            <button class="btn-secondary" onclick="signOut()">Sign Out</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showPanel('overview')">Overview</button>
+            <button class="tab" onclick="showPanel('devices')">Devices</button>
+            <button class="tab" onclick="showPanel('inputs')">Inputs</button>
+            <button class="tab" onclick="showPanel('outputs')">Outputs</button>
+            <button class="tab" onclick="showPanel('query')">GraphQL</button>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <!-- Overview Panel -->
+        <div id="overview" class="panel active">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h2>System Overview</h2>
+                <div class="auto-refresh">
+                    <input type="checkbox" id="autoRefresh" checked onchange="toggleAutoRefresh()">
+                    <label for="autoRefresh">Auto-refresh (5s)</label>
+                    <button class="btn-secondary" onclick="refreshAll()">Refresh Now</button>
+                </div>
+            </div>
+            <div id="overviewContent" class="card-grid"></div>
+        </div>
+
+        <!-- Devices Panel -->
+        <div id="devices" class="panel">
+            <h2>Devices</h2>
+            <div id="devicesContent" class="card-grid"></div>
+        </div>
+
+        <!-- Inputs Panel -->
+        <div id="inputs" class="panel">
+            <h2>Inputs</h2>
+            <div id="inputsContent" class="card-grid"></div>
+        </div>
+
+        <!-- Outputs Panel -->
+        <div id="outputs" class="panel">
+            <h2>Outputs</h2>
+            <div id="outputsContent" class="card-grid"></div>
+        </div>
+
+        <!-- Query Panel -->
+        <div id="query" class="panel">
+            <h2>GraphQL Explorer</h2>
+            <div class="query-section">
+                <div class="quick-queries">
+                    <label>Quick Queries: </label>
+                    <select id="quickQuerySelect" onchange="loadQuickQuery()">
+                        <option value="">-- Select a query --</option>
+                        <option value="allDevices">All Devices</option>
+                        <option value="allInputs">All Inputs with Values</option>
+                        <option value="allOutputs">All Outputs with Values</option>
+                        <option value="serverInfo">Server Info</option>
+                        <option value="evalExpr">Evaluate Expression</option>
+                    </select>
+                </div>
+                <div class="query-editor">
+                    <div class="query-box">
+                        <label>Query / Mutation</label>
+                        <textarea id="queryInput" placeholder="Enter your GraphQL query here...">{
+  devices {
+    name
+    notes
+    disabled
+    model {
+      __typename
+      ... on MCP9808 { address }
+      ... on BMP085 { address mode }
+      ... on MCP23017 { address }
+    }
+  }
+}</textarea>
+                        <div class="query-actions">
+                            <button class="btn-primary" onclick="executeQuery()">Execute</button>
+                            <button class="btn-secondary" onclick="formatQuery()">Format</button>
+                            <button class="btn-secondary" onclick="clearQuery()">Clear</button>
+                        </div>
+                    </div>
+                    <div class="query-box">
+                        <label>Variables (JSON)</label>
+                        <textarea id="variablesInput" placeholder="{}">{}</textarea>
+                    </div>
+                </div>
+                <div class="query-box" style="margin-top: 20px;">
+                    <label>Response</label>
+                    <pre id="queryResponse">// Response will appear here</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        RestedPi Dashboard &bull; <a href="/graphql" style="color: var(--accent);">GraphQL Playground</a>
+    </footer>
+
+    <script>
+        // State
+        const state = {
+            token: localStorage.getItem('restedpi_token') || null,
+            user: localStorage.getItem('restedpi_user') || null,
+            autoRefresh: true,
+            refreshInterval: null,
+            devices: [],
+            inputs: [],
+            outputs: []
+        };
+
+        // GraphQL helper
+        async function gql(query, variables = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
             };
-        </script>
+            if (state.token) {
+                headers['Authorization'] = state.token;
+            }
 
-        <!-- Preload dependencies async -->
-        <script type="module" src="/react/" async></script>
-        <script type="module" src="/js/depend/react/" async></script>
-        <script type="module" src="/js/depend/react/react.production.min-2585db34.js" async></script>
-        <script type="module" src="/js/depend/react/react.js" async></script>
-        <script type="module" src="/js/depend/react/react-dom.js" async></script>
-        <script type="module" src="/js/depend/react/dev/react.js" async></script>
-        <script type="module" src="/js/depend/react/prop-types.js" async></script>
-        <script type="module" src="/react/react-dom.js" async></script>
-        <script type="module" src="/js/depend/react/dev/_commonjsHelpers-62a4d7f9.js" async></script>
-        <script type="module" src="/js/depend/react/dev/checkPropTypes-9f1f0edf.js" async></script>
-        <script type="module" src="/js/depend/react/dev/react.development-0624802a.js" async></script>
-        <script type="module" src="/js/depend/react/dev/react-dom.js" async></script>
+            const response = await fetch('/graphql', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ query, variables })
+            });
 
-        <script type="module" src="/js/depend/htm.js" async></script>
-        <script type="module" src="/js/depend/zustand.js" async></script>
-        <script type="module" src="/js/depend/immer.module.js" async></script>
+            const result = await response.json();
+            if (result.errors) {
+                throw new Error(result.errors.map(e => e.message).join(', '));
+            }
+            return result.data;
+        }
 
-        <script type="module" src="/js/depend/react/_commonjsHelpers-62a4d7f9.js" async></script>
-        <script type="module" src="/js/depend/react/checkPropTypes-b5aa2e99.js" async></script>
+        // Auth functions
+        async function signIn() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
 
-        <script type="module" src="/js/depend/react-table.7.rc15.js" async></script>
-        <script type="module" src="/js/depend/react-hook-form.js" async></script>
+            if (!email || !password) {
+                showMessage('Please enter email and password', 'error');
+                return;
+            }
 
-        <script type="module" src="/js/depend/wouter/" async></script>
-        <script type="module" src="/js/depend/wouter/matcher.js" async></script>
-        <script type="module" src="/js/depend/wouter/use-location.js" async></script>
-        <script type="module" src="/js/depend/wouter/react-deps.js" async></script>
-        
+            try {
+                const data = await gql(`
+                    mutation SignIn($email: String!, $password: String!) {
+                        signIn(email: $email, plaintextPassword: $password)
+                    }
+                `, { email, password });
 
-        <!-- Preload core internal modules async -->
-        <script type="module" src="/js/hooks/network.js" async></script>
-        <script type="module" src="/js/useRefreshOnMount.js" async></script>
-        <script type="module" src="/js/hooks/useApp.js" async></script>
-        <script type="module" src="/js/html.js" async></script>
-        <script type="module" src="/js/Nav.js" async></script>
-        <script type="module" src="/js/Header.js" async></script>
-        <script type="module" src="/js/Forms/Form.js" async></script>
-        <script type="module" src="/js/Table/" async></script>
-        <script type="module" src="/js/Devices/" async></script>
-        <script type="module" src="/js/Devices/Device.js" async></script>
+                state.token = data.signIn;
+                state.user = email;
+                localStorage.setItem('restedpi_token', state.token);
+                localStorage.setItem('restedpi_user', state.user);
+                updateAuthUI();
+                showMessage('Signed in successfully', 'success');
+                refreshAll();
+            } catch (err) {
+                showMessage('Sign in failed: ' + err.message, 'error');
+            }
+        }
 
-        <!-- Start main application -->
-        <script type="module" src="/js/main.js"></script>
+        function signOut() {
+            state.token = null;
+            state.user = null;
+            localStorage.removeItem('restedpi_token');
+            localStorage.removeItem('restedpi_user');
+            updateAuthUI();
+            showMessage('Signed out', 'success');
+        }
 
-        <link rel="stylesheet" href="/styles/tailwind.css">
-        <link rel="stylesheet" href="/styles/fa.all.css">
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            const loggedInSection = document.getElementById('loggedInSection');
+            const userDisplay = document.getElementById('userDisplay');
 
-    </head>
+            if (state.token) {
+                authSection.style.display = 'none';
+                loggedInSection.style.display = 'flex';
+                userDisplay.textContent = state.user || 'Logged In';
+            } else {
+                authSection.style.display = 'flex';
+                loggedInSection.style.display = 'none';
+            }
+        }
 
-    <body class="text-gray-900 leading-normal">
-        <article id="app">
-            <header></header>
-            <aside></aside>
-            <section></section>
-            <footer></footer>
-        </article>
-    </body>
+        // Tab navigation
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+            event.target.classList.add('active');
+        }
 
+        // Messages
+        function showMessage(text, type = 'info') {
+            const area = document.getElementById('messageArea');
+            area.innerHTML = `<div class="${type}-message">${text}</div>`;
+            setTimeout(() => area.innerHTML = '', 5000);
+        }
+
+        // Data fetching
+        async function fetchDevices() {
+            try {
+                const data = await gql(`{
+                    devices {
+                        name
+                        notes
+                        disabled
+                        createdAt
+                        model {
+                            __typename
+                            ... on MCP9808 { address }
+                            ... on BMP085 { address mode }
+                            ... on MCP23017 { address }
+                        }
+                        slots { canInput canOutput unit }
+                    }
+                }`);
+                state.devices = data.devices || [];
+                return state.devices;
+            } catch (err) {
+                console.error('Failed to fetch devices:', err);
+                return [];
+            }
+        }
+
+        async function fetchInputs() {
+            try {
+                const data = await gql(`{
+                    inputs {
+                        name
+                        deviceId
+                        deviceInputId
+                        createdAt
+                        value {
+                            __typename
+                            ... on DegC { value }
+                            ... on KPa { value }
+                            ... on Boolean { value }
+                            ... on Error { message }
+                        }
+                    }
+                }`);
+                state.inputs = data.inputs || [];
+                return state.inputs;
+            } catch (err) {
+                console.error('Failed to fetch inputs:', err);
+                return [];
+            }
+        }
+
+        async function fetchOutputs() {
+            try {
+                const data = await gql(`{
+                    outputs {
+                        name
+                        deviceId
+                        deviceOutputId
+                        activeLow
+                        automationScript
+                        createdAt
+                        value {
+                            __typename
+                            ... on Boolean { value }
+                            ... on Error { message }
+                        }
+                    }
+                }`);
+                state.outputs = data.outputs || [];
+                return state.outputs;
+            } catch (err) {
+                console.error('Failed to fetch outputs:', err);
+                return [];
+            }
+        }
+
+        async function fetchServerInfo() {
+            try {
+                const data = await gql(`{
+                    serverName
+                    currentDate
+                    activeUser
+                }`);
+                document.getElementById('serverName').textContent = data.serverName || '';
+                return data;
+            } catch (err) {
+                console.error('Failed to fetch server info:', err);
+                return {};
+            }
+        }
+
+        // Rendering
+        function renderOverview() {
+            const container = document.getElementById('overviewContent');
+            let html = '';
+
+            // Summary card
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">System Summary</div>
+                            <div class="card-subtitle">Connected hardware</div>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Devices</span>
+                        <span>${state.devices.length}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Inputs</span>
+                        <span>${state.inputs.length}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Outputs</span>
+                        <span>${state.outputs.length}</span>
+                    </div>
+                </div>
+            `;
+
+            // Input values
+            state.inputs.forEach(input => {
+                const value = formatValue(input.value);
+                html += `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${escapeHtml(input.name)}</div>
+                                <div class="card-subtitle">Device: ${escapeHtml(input.deviceId)}</div>
+                            </div>
+                            <span class="badge badge-input">Input</span>
+                        </div>
+                        <div class="value-display">${value.display} <span class="value-unit">${value.unit}</span></div>
+                    </div>
+                `;
+            });
+
+            // Output controls
+            state.outputs.forEach(output => {
+                const isOn = output.value?.__typename === 'Boolean' && output.value.value;
+                html += `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${escapeHtml(output.name)}</div>
+                                <div class="card-subtitle">Device: ${escapeHtml(output.deviceId)}</div>
+                            </div>
+                            <span class="badge badge-output">Output</span>
+                        </div>
+                        <div class="switch-container">
+                            <label class="switch">
+                                <input type="checkbox" ${isOn ? 'checked' : ''}
+                                    onchange="setOutput('${escapeHtml(output.name)}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="switch-label">${isOn ? 'ON' : 'OFF'}</span>
+                        </div>
+                        ${output.automationScript ? `<div class="card-subtitle" style="margin-top: 10px;">Automation: ${escapeHtml(output.automationScript)}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            if (state.devices.length === 0 && state.inputs.length === 0 && state.outputs.length === 0) {
+                html = '<div class="empty-state">No devices configured. Add devices using the GraphQL API.</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderDevices() {
+            const container = document.getElementById('devicesContent');
+
+            if (state.devices.length === 0) {
+                container.innerHTML = '<div class="empty-state">No devices found</div>';
+                return;
+            }
+
+            let html = '';
+            state.devices.forEach(device => {
+                const model = device.model;
+                const modelType = model.__typename;
+                const address = model.address !== undefined ? `0x${model.address.toString(16).toUpperCase()}` : 'N/A';
+
+                html += `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${escapeHtml(device.name)}</div>
+                                <div class="card-subtitle">${escapeHtml(device.notes || '')}</div>
+                            </div>
+                            <span class="badge ${device.disabled ? 'badge-disabled' : 'badge-device'}">${device.disabled ? 'Disabled' : modelType}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Type</span>
+                            <span class="device-type">${modelType}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">I2C Address</span>
+                            <span>${address}</span>
+                        </div>
+                        ${model.mode ? `<div class="info-row"><span class="info-label">Mode</span><span>${model.mode}</span></div>` : ''}
+                        <div class="info-row">
+                            <span class="info-label">Slots</span>
+                            <span>${device.slots?.length || 0}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Created</span>
+                            <span>${formatDate(device.createdAt)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderInputs() {
+            const container = document.getElementById('inputsContent');
+
+            if (state.inputs.length === 0) {
+                container.innerHTML = '<div class="empty-state">No inputs found</div>';
+                return;
+            }
+
+            let html = '';
+            state.inputs.forEach(input => {
+                const value = formatValue(input.value);
+                html += `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${escapeHtml(input.name)}</div>
+                                <div class="card-subtitle">Pin ${input.deviceInputId} on ${escapeHtml(input.deviceId)}</div>
+                            </div>
+                            <span class="badge badge-input">${value.type}</span>
+                        </div>
+                        <div class="value-display">${value.display} <span class="value-unit">${value.unit}</span></div>
+                        <div class="info-row">
+                            <span class="info-label">Created</span>
+                            <span>${formatDate(input.createdAt)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderOutputs() {
+            const container = document.getElementById('outputsContent');
+
+            if (state.outputs.length === 0) {
+                container.innerHTML = '<div class="empty-state">No outputs found</div>';
+                return;
+            }
+
+            let html = '';
+            state.outputs.forEach(output => {
+                const isOn = output.value?.__typename === 'Boolean' && output.value.value;
+                html += `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">${escapeHtml(output.name)}</div>
+                                <div class="card-subtitle">Pin ${output.deviceOutputId} on ${escapeHtml(output.deviceId)}</div>
+                            </div>
+                            <span class="badge badge-output">Boolean</span>
+                        </div>
+                        <div class="switch-container">
+                            <label class="switch">
+                                <input type="checkbox" ${isOn ? 'checked' : ''}
+                                    onchange="setOutput('${escapeHtml(output.name)}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="switch-label">${isOn ? 'ON' : 'OFF'}</span>
+                        </div>
+                        <div class="info-row" style="margin-top: 15px;">
+                            <span class="info-label">Active Low</span>
+                            <span>${output.activeLow ? 'Yes' : 'No'}</span>
+                        </div>
+                        ${output.automationScript ? `<div class="info-row"><span class="info-label">Automation</span><span style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(output.automationScript)}</span></div>` : ''}
+                        <div class="info-row">
+                            <span class="info-label">Created</span>
+                            <span>${formatDate(output.createdAt)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Actions
+        async function setOutput(outputId, value) {
+            try {
+                await gql(`
+                    mutation SetOutput($outputId: String!, $value: Boolean!) {
+                        setOutput(outputId: $outputId, value: $value)
+                    }
+                `, { outputId, value });
+                showMessage(`Output "${outputId}" set to ${value ? 'ON' : 'OFF'}`, 'success');
+                await fetchOutputs();
+                renderOverview();
+                renderOutputs();
+            } catch (err) {
+                showMessage('Failed to set output: ' + err.message, 'error');
+                refreshAll(); // Refresh to get actual state
+            }
+        }
+
+        // Query panel
+        const quickQueries = {
+            allDevices: `{
+  devices {
+    name
+    notes
+    disabled
+    model {
+      __typename
+      ... on MCP9808 { address }
+      ... on BMP085 { address mode }
+      ... on MCP23017 { address }
+    }
+    slots { canInput canOutput unit }
+  }
+}`,
+            allInputs: `{
+  inputs {
+    name
+    deviceId
+    deviceInputId
+    value {
+      __typename
+      ... on DegC { value }
+      ... on KPa { value }
+      ... on Boolean { value }
+      ... on Error { message }
+    }
+  }
+}`,
+            allOutputs: `{
+  outputs {
+    name
+    deviceId
+    deviceOutputId
+    activeLow
+    automationScript
+    value {
+      __typename
+      ... on Boolean { value }
+      ... on Error { message }
+    }
+  }
+}`,
+            serverInfo: `{
+  serverName
+  currentDate
+  activeUser
+}`,
+            evalExpr: `{
+  evaluateExpression(expression: "hour_of_day(now)")
+}`
+        };
+
+        function loadQuickQuery() {
+            const select = document.getElementById('quickQuerySelect');
+            const query = quickQueries[select.value];
+            if (query) {
+                document.getElementById('queryInput').value = query;
+            }
+        }
+
+        async function executeQuery() {
+            const query = document.getElementById('queryInput').value;
+            let variables = {};
+
+            try {
+                const varsText = document.getElementById('variablesInput').value.trim();
+                if (varsText) {
+                    variables = JSON.parse(varsText);
+                }
+            } catch (err) {
+                document.getElementById('queryResponse').textContent = 'Invalid JSON in variables: ' + err.message;
+                return;
+            }
+
+            try {
+                document.getElementById('queryResponse').textContent = 'Executing...';
+                const result = await gql(query, variables);
+                document.getElementById('queryResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (err) {
+                document.getElementById('queryResponse').textContent = 'Error: ' + err.message;
+            }
+        }
+
+        function formatQuery() {
+            const textarea = document.getElementById('queryInput');
+            try {
+                // Basic formatting - this is simplified, real formatting would need a parser
+                let formatted = textarea.value
+                    .replace(/\s+/g, ' ')
+                    .replace(/\{\s*/g, ' {\n  ')
+                    .replace(/\s*\}/g, '\n}')
+                    .replace(/,\s*/g, '\n  ');
+                textarea.value = formatted;
+            } catch (err) {
+                // Ignore formatting errors
+            }
+        }
+
+        function clearQuery() {
+            document.getElementById('queryInput').value = '';
+            document.getElementById('variablesInput').value = '{}';
+            document.getElementById('queryResponse').textContent = '// Response will appear here';
+        }
+
+        // Helpers
+        function formatValue(value) {
+            if (!value) return { display: '--', unit: '', type: 'Unknown' };
+
+            switch (value.__typename) {
+                case 'DegC':
+                    return { display: value.value.toFixed(1), unit: '°C', type: 'Temperature' };
+                case 'KPa':
+                    return { display: value.value.toFixed(2), unit: 'kPa', type: 'Pressure' };
+                case 'Boolean':
+                    return { display: value.value ? 'ON' : 'OFF', unit: '', type: 'Boolean' };
+                case 'Error':
+                    return { display: 'Error', unit: value.message, type: 'Error' };
+                default:
+                    return { display: '--', unit: '', type: value.__typename || 'Unknown' };
+            }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                return new Date(dateStr).toLocaleDateString();
+            } catch {
+                return dateStr;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[char]);
+        }
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('connectionStatus');
+            const text = document.getElementById('connectionText');
+            dot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+            text.textContent = connected ? 'Connected' : 'Disconnected';
+        }
+
+        // Auto-refresh
+        function toggleAutoRefresh() {
+            state.autoRefresh = document.getElementById('autoRefresh').checked;
+            if (state.autoRefresh) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        }
+
+        function startAutoRefresh() {
+            if (state.refreshInterval) return;
+            state.refreshInterval = setInterval(refreshAll, 5000);
+        }
+
+        function stopAutoRefresh() {
+            if (state.refreshInterval) {
+                clearInterval(state.refreshInterval);
+                state.refreshInterval = null;
+            }
+        }
+
+        async function refreshAll() {
+            try {
+                await Promise.all([
+                    fetchDevices(),
+                    fetchInputs(),
+                    fetchOutputs(),
+                    fetchServerInfo()
+                ]);
+                updateConnectionStatus(true);
+                renderOverview();
+                renderDevices();
+                renderInputs();
+                renderOutputs();
+            } catch (err) {
+                console.error('Refresh failed:', err);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Initialize
+        async function init() {
+            updateAuthUI();
+            updateTime();
+            setInterval(updateTime, 1000);
+
+            await refreshAll();
+
+            if (state.autoRefresh) {
+                startAutoRefresh();
+            }
+        }
+
+        init();
+    </script>
+</body>
 </html>
-

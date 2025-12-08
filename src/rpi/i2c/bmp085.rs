@@ -38,7 +38,7 @@ enum Register {
     Data = 0xF6, // Pressure & Temp
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Bmp085State {
     ac1: i16,
     ac2: i16,
@@ -55,19 +55,7 @@ pub struct Bmp085State {
 
 impl Bmp085State {
     pub fn new() -> Self {
-        Bmp085State {
-            ac1: 0,
-            ac2: 0,
-            ac3: 0,
-            ac4: 0,
-            ac5: 0,
-            ac6: 0,
-            b1: 0,
-            b2: 0,
-            mb: 0,
-            mc: 0,
-            md: 0,
-        }
+        Self::default()
     }
 
     pub async fn reset(&mut self, address: I2cAddress, bus: &RpiApi) -> Result<()> {
@@ -85,17 +73,17 @@ impl Bmp085State {
         let md = bus.read_i2c(address, Register::Md as u8, 2).await?;
 
         // No mutation until all succeed
-        self.ac1 = iv2be(&ac1) as i16;
-        self.ac2 = iv2be(&ac2) as i16;
-        self.ac3 = iv2be(&ac3) as i16;
-        self.ac4 = uv2be(&ac4) as u16;
-        self.ac5 = uv2be(&ac5) as u16;
-        self.ac6 = uv2be(&ac6) as u16;
-        self.b1 = iv2be(&b1) as i16;
-        self.b2 = iv2be(&b2) as i16;
-        self.mb = iv2be(&mb) as i16;
-        self.mc = iv2be(&mc) as i16;
-        self.md = iv2be(&md) as i16;
+        self.ac1 = iv2be(&ac1);
+        self.ac2 = iv2be(&ac2);
+        self.ac3 = iv2be(&ac3);
+        self.ac4 = uv2be(&ac4);
+        self.ac5 = uv2be(&ac5);
+        self.ac6 = uv2be(&ac6);
+        self.b1 = iv2be(&b1);
+        self.b2 = iv2be(&b2);
+        self.mb = iv2be(&mb);
+        self.mc = iv2be(&mc);
+        self.md = iv2be(&md);
         Ok(())
     }
 
@@ -126,7 +114,7 @@ impl Bmp085State {
 
         let b6: i32 = b5 - 4000i32;
 
-        let _t = (b6 as i32).pow(2) >> 12;
+        let _t = b6.pow(2) >> 12;
         let mut x1: i32 = (b2 * _t) >> 11;
         let mut x2: i32 = (ac2 * b6) >> 11;
         let x3: u32 = (x1 + x2) as u32;
@@ -169,7 +157,7 @@ impl Bmp085State {
         let mc: i32 = self.mc as i32;
 
         let _ac5 = ac5 as i64;
-        let x1: i32 = ((ut - ac6) as i64 * _ac5 >> 15) as i32;
+        let x1: i32 = (((ut - ac6) as i64 * _ac5) >> 15) as i32;
         if (x1 + md) == 0 {
             return Err(crate::error::Error::DeviceReadError(
                 "BMP085 will divide by zero".to_string(),
@@ -207,14 +195,14 @@ impl Bmp085State {
 
         thread::sleep(duration);
 
-        let msbv = rapi.read_i2c(address, Register::Data as u8 + 0, 1).await?;
+        let msbv = rapi.read_i2c(address, Register::Data as u8, 1).await?;
         let lsbv = rapi.read_i2c(address, Register::Data as u8 + 1, 1).await?;
         let xlsbv = rapi.read_i2c(address, Register::Data as u8 + 2, 1).await?;
         let msb = msbv[0] as u32;
         let lsb = lsbv[0] as u32;
         let xlsb = xlsbv[0] as u32;
 
-        let up: i32 = ((msb << 16) + (lsb << 8) + xlsb >> (8 - sampling)) as i32;
+        let up: i32 = (((msb << 16) + (lsb << 8) + xlsb) >> (8 - sampling)) as i32;
 
         Ok(up)
     }

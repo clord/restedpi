@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 
 /// Convert i32 address to u16, returning error if out of valid I2C range
 fn to_i2c_addr(address: i32) -> Result<u16> {
-    if address < 0 || address > 0x7F {
+    if !(0..=0x7F).contains(&address) {
         Err(Error::OutOfBounds(address as usize))
     } else {
         Ok(address as u16)

@@ -265,8 +265,7 @@ impl AppChannel {
             .clone()
             .send(AppMessage::AllDevices { response })
             .await?;
-        let result = receiver.await?;
-        Ok(result?)
+        receiver.await?
     }
 
     pub async fn read_booleans(&self, input_ids: Vec<AppID>) -> Result<Vec<Result<bool>>> {
@@ -800,28 +799,23 @@ pub async fn start_app(
 
     tokio::spawn(async move {
         let mut last_emit = Instant::now();
-        loop {
-            match receiver.recv().await {
-                Some(next) => {
-                    debug!("processing message: {:?}", &next);
+        while let Some(next) = receiver.recv().await {
+            debug!("processing message: {:?}", &next);
 
-                    if process_message(next, &mut state).await {
-                        info!("terminating channel");
-                        break;
-                    } else if last_emit.elapsed().as_millis() > 700 {
-                        last_emit = Instant::now();
-                        debug!("running automation...");
-                        state
-                            .emit_automations()
-                            .await
-                            .expect("emit automations errors");
-                    }
-
-                    // TODO: Support sending real time change notification by allowing clients to send a sender to us,
-                    // which we'll keep in a list and notify each time we get to here, with removal upon error.
-                }
-                None => break,
+            if process_message(next, &mut state).await {
+                info!("terminating channel");
+                break;
+            } else if last_emit.elapsed().as_millis() > 700 {
+                last_emit = Instant::now();
+                debug!("running automation...");
+                state
+                    .emit_automations()
+                    .await
+                    .expect("emit automations errors");
             }
+
+            // TODO: Support sending real time change notification by allowing clients to send a sender to us,
+            // which we'll keep in a list and notify each time we get to here, with removal upon error.
         }
     });
 

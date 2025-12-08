@@ -124,25 +124,25 @@ pub async fn static_serve_tail(path: Tail) -> Result<impl Reply, Rejection> {
 //     }
 // }
 
-//// GET /api/config
-//pub fn server_config(_app: SharedAppState, server_name: String) -> impl warp::Reply {
-//    let reply = json!(
-//        {"serverConfig": {
-//        "deviceName": format!("restedpi on {}", server_name),
-//        }
-//    });
-//    warp::reply::json(&reply)
-//}
+// GET /api/config
+// pub fn server_config(_app: SharedAppState, server_name: String) -> impl warp::Reply {
+//     let reply = json!(
+//         {"serverConfig": {
+//         "deviceName": format!("restedpi on {}", server_name),
+//         }
+//     });
+//     warp::reply::json(&reply)
+// }
 
-//// POST /api/debug/check_config
-//pub fn evaluate_config_check(
-//    _app: SharedAppState,
-//    expr: config::Config,
-//) -> Result<impl warp::Reply, warp::Rejection> {
-//    debug!("config: {:?}", expr);
-//    //let app = app.lock().expect("failure");
-//    Ok(warp::reply::json(&expr))
-//}
+// POST /api/debug/check_config
+// pub fn evaluate_config_check(
+//     _app: SharedAppState,
+//     expr: config::Config,
+// ) -> Result<impl warp::Reply, warp::Rejection> {
+//     debug!("config: {:?}", expr);
+//     //let app = app.lock().expect("failure");
+//     Ok(warp::reply::json(&expr))
+// }
 
 // POST /api/debug/eval_bool
 // pub fn evaulate_bool_expr(
