@@ -61,7 +61,7 @@ pub fn ordinal_to_pin(p: usize) -> Pin {
         5 => Pin::Pin5,
         6 => Pin::Pin6,
         7 => Pin::Pin7,
-        _ => panic!("p % 8 !E [0..7]"),
+        _ => unreachable!("p % 8 is always 0-7"),
     }
 }
 
@@ -223,7 +223,12 @@ impl Mcp23017State {
 
         let result = rapi.read_i2c(address, register, 1).await?;
         debug!("did read: {}: {:?}", address, result);
-        Ok(read_word(result[0]))
+        match result.as_slice() {
+            [byte] => Ok(read_word(*byte)),
+            _ => Err(crate::error::Error::DeviceReadError(
+                "expected 1 byte from GPIO read".to_string(),
+            )),
+        }
     }
 
     // Unconditionally writes current direction to device

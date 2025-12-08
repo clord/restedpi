@@ -9,10 +9,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use types::LocationValue;
 
-/**
- * Top level configuration of the system
- */
+/// Top level configuration of the system
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[must_use = "Configuration should be used to start the application"]
 pub struct Config {
     // name of device (defaults to device name)
     pub name: Option<String>,

@@ -14,6 +14,7 @@ use std::sync::mpsc;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, PartialEq, Serialize)]
+#[must_use]
 pub enum Error {
     Config(String),
     IoError(String),

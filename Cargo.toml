@@ -8,6 +8,7 @@ edition = "2018"
 
 [features]
 raspberrypi = ["rppal"]
+mock-gpio = []
 
 [build-dependencies]
 cfgrammar = "0.13.4"

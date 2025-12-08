@@ -266,26 +266,35 @@ impl State {
         for output in outputs {
             if let Some(str_expr) = &output.automation_script {
                 // get or update the cached boolean expression
-                let expr: BoolExpr = {
-                    let (mark, expr) = self
-                        .output_automation_cache
-                        .entry(str_expr.clone())
-                        .or_insert_with(move || match config::parse::bool_expr(str_expr) {
-                            Ok(expr) => (false, expr),
-                            Err(e) => panic!("error parsing: {}", e),
-                        });
+                let expr: Option<BoolExpr> = if let Some((mark, expr)) =
+                    self.output_automation_cache.get_mut(str_expr)
+                {
                     *mark = true;
-                    expr.clone()
+                    Some(expr.clone())
+                } else {
+                    match config::parse::bool_expr(str_expr) {
+                        Ok(expr) => {
+                            self.output_automation_cache
+                                .insert(str_expr.clone(), (true, expr.clone()));
+                            Some(expr)
+                        }
+                        Err(e) => {
+                            error!("error parsing automation script: {}", e);
+                            None
+                        }
+                    }
                 };
 
                 // evaluate the expression and write it to the right output
-                match config::boolean::evaluate(self, &expr).await {
-                    Ok(result) => {
-                        if let Err(e) = self.write_output_bool(&output.name, result).await {
-                            error!("failed to write: {}", e);
+                if let Some(expr) = expr {
+                    match config::boolean::evaluate(self, &expr).await {
+                        Ok(result) => {
+                            if let Err(e) = self.write_output_bool(&output.name, result).await {
+                                error!("failed to write: {}", e);
+                            }
                         }
+                        Err(e) => error!("{:?} has an error: {}", expr, e),
                     }
-                    Err(e) => error!("{:?} has an error: {}", expr, e),
                 }
             }
         }

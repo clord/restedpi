@@ -4,7 +4,15 @@ use crate::app::device;
 use crate::app::dimensioned::Dimensioned;
 use crate::config::types::Unit;
 use crate::error::{Error, Result};
-use std::convert::TryInto;
+
+/// Convert i32 address to u16, returning error if out of valid I2C range
+fn to_i2c_addr(address: i32) -> Result<u16> {
+    if address < 0 || address > 0x7F {
+        Err(Error::OutOfBounds(address as usize))
+    } else {
+        Ok(address as u16)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Device {
@@ -68,50 +76,26 @@ impl Device {
                 bank_a,
                 bank_b,
             }) => {
+                let addr = to_i2c_addr(address)?;
+                self.mcp23017_state.reset(addr, &self.rapi).await?;
                 self.mcp23017_state
-                    .reset(address.try_into().unwrap(), &self.rapi)
+                    .set_pin_directions(addr, mcp23017::Bank::A, &bank_a, &self.rapi)
                     .await?;
                 self.mcp23017_state
-                    .set_pin_directions(
-                        address.try_into().unwrap(),
-                        mcp23017::Bank::A,
-                        &bank_a,
-                        &self.rapi,
-                    )
-                    .await?;
-                self.mcp23017_state
-                    .set_pin_directions(
-                        address.try_into().unwrap(),
-                        mcp23017::Bank::B,
-                        &bank_b,
-                        &self.rapi,
-                    )
+                    .set_pin_directions(addr, mcp23017::Bank::B, &bank_b, &self.rapi)
                     .await?;
                 // by writing false, we will update with correct state for all pins after dir change
                 self.mcp23017_state
-                    .set_pin(
-                        address.try_into().unwrap(),
-                        mcp23017::Bank::A,
-                        mcp23017::Pin::Pin0,
-                        false,
-                        &self.rapi,
-                    )
+                    .set_pin(addr, mcp23017::Bank::A, mcp23017::Pin::Pin0, false, &self.rapi)
                     .await?;
                 self.mcp23017_state
-                    .set_pin(
-                        address.try_into().unwrap(),
-                        mcp23017::Bank::B,
-                        mcp23017::Pin::Pin0,
-                        false,
-                        &self.rapi,
-                    )
+                    .set_pin(addr, mcp23017::Bank::B, mcp23017::Pin::Pin0, false, &self.rapi)
                     .await?;
                 Ok(())
             }
             device::Type::BMP085(device::BMP085 { address, .. }) => {
-                self.bmp085_state
-                    .reset(address.try_into().unwrap(), &self.rapi)
-                    .await
+                let addr = to_i2c_addr(address)?;
+                self.bmp085_state.reset(addr, &self.rapi).await
             }
         }
     }
@@ -137,49 +121,57 @@ impl Device {
             device::Type::BMP085 { .. } => Err(Error::OutOfBounds(index as usize)),
             device::Type::MCP9808 { .. } => Err(Error::OutOfBounds(index as usize)),
             device::Type::MCP23017(device::MCP23017 { address, .. }) => {
+                let addr = to_i2c_addr(address)?;
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
-                let pin = self
+                let pin_value = self
                     .mcp23017_state
-                    .get_pin(address.try_into().unwrap(), bank, pin, &self.rapi)
+                    .get_pin(addr, bank, pin, &self.rapi)
                     .await?;
-                Ok(pin)
+                Ok(pin_value)
             }
         }
     }
 
     pub async fn read_sensor(&self, index: i32) -> Result<Dimensioned> {
         match self.model {
-            device::Type::BMP085(device::BMP085 { address, mode }) => match index {
-                0 => {
-                    let v = self
-                        .bmp085_state
-                        .temperature_in_c(address.try_into().unwrap(), &self.rapi)
-                        .await?;
-                    Ok(Dimensioned::from_degc(v.into()))
+            device::Type::BMP085(device::BMP085 { address, mode }) => {
+                let addr = to_i2c_addr(address)?;
+                match index {
+                    0 => {
+                        let v = self
+                            .bmp085_state
+                            .temperature_in_c(addr, &self.rapi)
+                            .await?;
+                        Ok(Dimensioned::from_degc(v.into()))
+                    }
+                    1 => {
+                        let v = self
+                            .bmp085_state
+                            .pressure_kpa(addr, mode, &self.rapi)
+                            .await?;
+                        Ok(Dimensioned::from_kpa(v.into()))
+                    }
+                    _ => Err(Error::OutOfBounds(index as usize)),
                 }
-                1 => {
-                    let v = self
-                        .bmp085_state
-                        .pressure_kpa(address.try_into().unwrap(), mode, &self.rapi)
-                        .await?;
-                    Ok(Dimensioned::from_kpa(v.into()))
+            }
+            device::Type::MCP9808(device::MCP9808 { address }) => {
+                let addr = to_i2c_addr(address)?;
+                match index {
+                    0 => {
+                        let temp = mcp9808::read_temp(&self.rapi, addr).await?;
+                        Ok(Dimensioned::from_degc(temp.into()))
+                    }
+                    _ => Err(Error::OutOfBounds(index as usize)),
                 }
-                _ => Err(Error::OutOfBounds(index as usize)),
-            },
-            device::Type::MCP9808(device::MCP9808 { address }) => match index {
-                0 => {
-                    let temp = mcp9808::read_temp(&self.rapi, address.try_into().unwrap()).await?;
-                    Ok(Dimensioned::from_degc(temp.into()))
-                }
-                _ => Err(Error::OutOfBounds(index as usize)),
-            },
+            }
             device::Type::MCP23017(device::MCP23017 { address, .. }) => {
+                let addr = to_i2c_addr(address)?;
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
-                let pin = self
+                let pin_value = self
                     .mcp23017_state
-                    .get_pin(address.try_into().unwrap(), bank, pin, &self.rapi)
+                    .get_pin(addr, bank, pin, &self.rapi)
                     .await?;
-                Ok(Dimensioned::from_bool(pin))
+                Ok(Dimensioned::from_bool(pin_value))
             }
         }
     }
@@ -193,6 +185,7 @@ impl Device {
                 bank_a,
                 bank_b,
             }) => {
+                let addr = to_i2c_addr(address)?;
                 let (bank, pin) = mcp23017::index_to_bank_pin(index as usize);
                 let old_dir = self.mcp23017_state.get_pin_direction(bank, pin);
                 let dir_bank = match bank {
@@ -202,17 +195,11 @@ impl Device {
 
                 if old_dir != *dir_bank.get(index as usize) {
                     self.mcp23017_state
-                        .set_pin_direction(
-                            address.try_into().unwrap(),
-                            bank,
-                            pin,
-                            *dir_bank.get(index as usize),
-                            &self.rapi,
-                        )
+                        .set_pin_direction(addr, bank, pin, *dir_bank.get(index as usize), &self.rapi)
                         .await?;
                 }
                 self.mcp23017_state
-                    .set_pin(address.try_into().unwrap(), bank, pin, value, &self.rapi)
+                    .set_pin(addr, bank, pin, value, &self.rapi)
                     .await
             }
         }

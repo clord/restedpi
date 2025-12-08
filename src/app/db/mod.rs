@@ -9,9 +9,9 @@ use tracing::info;
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
-fn get_pool(db_url: &str) -> DbPool {
+fn get_pool(db_url: &str) -> Result<DbPool> {
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
-    Pool::new(manager).expect("Failed to create DB Pool")
+    Pool::new(manager).map_err(|e| Error::DbError(format!("Failed to create DB pool: {}", e)))
 }
 
 pub struct Db {
@@ -24,7 +24,7 @@ impl Db {
         let uri = joined
             .to_str()
             .ok_or(Error::IoError("path not set".to_string()))?;
-        Ok(Db { db: get_pool(uri) })
+        Ok(Db { db: get_pool(uri)? })
     }
 
     pub fn add_device(&self, new_device: &models::NewDevice) -> Result<models::Device> {

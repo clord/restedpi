@@ -90,10 +90,14 @@ impl Mutation {
         Ok(authenticate(context, &email, &plaintext_password).await?)
     }
 
-    /// Sign out from the system, invalidating all tokens for the active user
+    /// Sign out from the system.
+    ///
+    /// Note: This API uses stateless JWT tokens, so server-side session invalidation
+    /// is not possible. This endpoint verifies the session is valid but always returns
+    /// false. Clients should discard their token to complete sign-out.
     pub fn sign_out(context: &AppContext) -> FieldResult<bool> {
         check_session(context)?;
-        // TODO: expire all existing sessions for user by bumping session count
+        // JWT tokens are stateless - client must discard token to sign out
         Ok(false)
     }
 

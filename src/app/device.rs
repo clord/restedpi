@@ -99,7 +99,7 @@ impl Directions {
             5 => &self.p5,
             6 => &self.p6,
             7 => &self.p7,
-            _ => &self.p0,
+            _ => unreachable!("pin % 8 is always 0-7"),
         }
     }
     pub fn get_mut(&mut self, pin: usize) -> &mut Dir {
@@ -112,7 +112,7 @@ impl Directions {
             5 => &mut self.p5,
             6 => &mut self.p6,
             7 => &mut self.p7,
-            _ => &mut self.p0,
+            _ => unreachable!("pin % 8 is always 0-7"),
         }
     }
 }
@@ -193,8 +193,8 @@ pub struct Device {
 
 #[graphql_object(Context = AppContext)]
 impl Device {
-    pub fn model(&self) -> Type {
-        serde_json::from_str(&self.db_device.model).unwrap()
+    pub fn model(&self) -> FieldResult<Type> {
+        Ok(serde_json::from_str(&self.db_device.model)?)
     }
     pub fn name(&self) -> &str {
         self.db_device.name.as_str()

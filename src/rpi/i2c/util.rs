@@ -4,8 +4,14 @@
 /// assert_eq!(librpi::rpi::i2c::util::iv2be(&[1u8, 2u8]), 258i16);
 /// assert_eq!(librpi::rpi::i2c::util::iv2be(&[255u8, 10u8]),-246i16);
 /// ```
+///
+/// # Panics
+/// Panics if slice does not contain exactly 2 bytes
 pub fn iv2be(r: &[u8]) -> i16 {
-    let rs = ((r[1] as u16) << 8) + (r[0] as u16);
+    let [lo, hi] = r else {
+        panic!("iv2be requires exactly 2 bytes, got {}", r.len());
+    };
+    let rs = ((*hi as u16) << 8) + (*lo as u16);
     i2be(rs)
 }
 
@@ -15,8 +21,14 @@ pub fn iv2be(r: &[u8]) -> i16 {
 /// assert_eq!(librpi::rpi::i2c::util::uv2be(&[1u8, 2u8]), 258u16);
 /// assert_eq!(librpi::rpi::i2c::util::uv2be(&[255u8, 10u8]), 65290u16);
 /// ```
+///
+/// # Panics
+/// Panics if slice does not contain exactly 2 bytes
 pub fn uv2be(r: &[u8]) -> u16 {
-    let rs = ((r[1] as u16) << 8) + (r[0] as u16);
+    let [lo, hi] = r else {
+        panic!("uv2be requires exactly 2 bytes, got {}", r.len());
+    };
+    let rs = ((*hi as u16) << 8) + (*lo as u16);
     rs.to_be()
 }
 

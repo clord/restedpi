@@ -8,6 +8,7 @@ pub enum SessionError {
     HexcodeError(String),
     ValidationFailure,
     Expired,
+    MissingSecret,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

@@ -16,7 +16,6 @@ use structopt::StructOpt;
 use warp::Filter;
 
 use tracing::{error, info, warn};
-use tracing_subscriber::prelude::*;
 
 // big picture:
 // read configuration and decide what sensors and switches are available. start up application, then
@@ -64,36 +63,29 @@ enum Command {
 fn get_config_path(maybe_override: Option<PathBuf>) -> PathBuf {
     maybe_override
         .or_else(|| {
-            dirs::config_dir()
-                .map(|mut y| {
-                    y.push("restedpi");
-                    y.push("config.toml");
+            dirs::config_dir().and_then(|mut y| {
+                y.push("restedpi");
+                y.push("config.toml");
 
-                    if y.exists() {
-                        Some(y)
-                    } else {
-                        None
-                    }
-                })
-                .flatten()
+                if y.exists() {
+                    Some(y)
+                } else {
+                    None
+                }
+            })
         })
-        .unwrap_or(std::path::PathBuf::from("/etc/restedpi/config.toml"))
+        .unwrap_or_else(|| PathBuf::from("/etc/restedpi/config.toml"))
 }
 
-fn get_config(config_file: &Path) -> Config {
-    let contents = match fs::read_to_string(&config_file) {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            error!("invalid config file {:?}: {}", &config_file, e);
-            panic!("config file invalid");
-        }
-    };
+fn get_config(config_file: &Path) -> Result<Config, color_eyre::Report> {
+    let contents = fs::read_to_string(config_file)
+        .map_err(|e| eyre::eyre!("Failed to read config file {:?}: {}", config_file, e))?;
 
     match toml::from_str(&contents) {
-        Ok(cfg) => cfg,
+        Ok(cfg) => Ok(cfg),
         Err(e) => {
             warn!("error parsing config, using defaults. error: {}", e);
-            Config::new()
+            Ok(Config::new())
         }
     }
 }
@@ -111,10 +103,10 @@ async fn main() -> Result<(), eyre::Error> {
 
 async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     let mut config_file = config_file.clone();
-    let config = get_config(&config_file);
-    if let Some(app_secret_path) = config.app_secret_path {
+    let config = get_config(&config_file)?;
+    if let Some(app_secret_path) = &config.app_secret_path {
         let app_secret = fs::read_to_string(app_secret_path)
-            .expect("failed to read app secret")
+            .map_err(|e| eyre::eyre!("Failed to read app secret from {:?}: {}", app_secret_path, e))?
             .trim()
             .to_string();
         env::set_var("APP_SECRET", app_secret);
@@ -127,17 +119,19 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
         config_file.pop();
         config_file
     });
-    let users = config.users.unwrap_or_else(|| HashMap::new()).clone();
+    let users = config.users.unwrap_or_else(HashMap::new).clone();
     let here = (config.lat, config.long);
 
     info!("Starting RestedPi server with I2C bus {:?}", bus);
     let app = app::channel::start_app(bus, here, &db_path, users)
         .await
-        .expect("app failed to start");
+        .map_err(|e| eyre::eyre!("Failed to start app: {}", e))?;
 
     let api = webapp::filters::graphql_api(app);
 
-    let addr = SocketAddr::new(listen.parse().expect("IP address"), port);
+    let addr: SocketAddr = format!("{}:{}", listen, port)
+        .parse()
+        .map_err(|e| eyre::eyre!("Invalid listen address '{}:{}': {}", listen, port, e))?;
     let serve = warp::serve((api.with(warp::log("web"))).recover(webapp::handle_rejection));
     if let Some((key_path, cert_path)) = key_and_cert {
         info!("RestedPi listening: https://{}", addr);
@@ -158,10 +152,10 @@ fn bool_repl(config_file: PathBuf) -> Result<(), color_eyre::Report> {
     history_path.set_file_name("repl.history");
     println!("restedpi boolean expression evaluator");
     println!("=====================================");
-    println!("");
+    println!();
     println!("example: ");
     println!("   a or b and x and y");
-    println!("");
+    println!();
     let mut rl = Editor::<()>::new();
     if rl.load_history(&history_path).is_err() {
         eprintln!("No previous history");
@@ -201,9 +195,12 @@ fn add_user(
     password: Option<String>,
     username: String,
 ) -> Result<(), color_eyre::Report> {
-    let mut config = get_config(&config_file);
-    let password = password
-        .unwrap_or_else(|| rpassword::read_password_from_tty(Some("User's Password: ")).unwrap());
+    let mut config = get_config(&config_file)?;
+    let password = match password {
+        Some(p) => p,
+        None => rpassword::read_password_from_tty(Some("User's Password: "))
+            .map_err(|e| eyre::eyre!("Failed to read password: {}", e))?,
+    };
     if password.trim().len() < 8 {
         error!("password too short");
         return Err(librpi::error::Error::PasswordIssue.into());
@@ -214,12 +211,13 @@ fn add_user(
     );
     match password::hash(&password) {
         Ok(hashed) => {
-            let users = config.users.get_or_insert_with(|| HashMap::new());
+            let users = config.users.get_or_insert_with(HashMap::new);
             users.insert(username, hashed);
             // write config file back
             match toml::to_string(&config) {
                 Ok(as_str) => {
-                    fs::write(config_file, as_str).expect("failed to write change");
+                    fs::write(&config_file, as_str)
+                        .map_err(|e| eyre::eyre!("Failed to write config file {:?}: {}", config_file, e))?;
                     info!("Success");
                     Ok(())
                 }

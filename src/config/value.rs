@@ -35,26 +35,19 @@ fn long_for_loc(app: &State, location: &LocationValue) -> f64 {
     }
 }
 
-fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> DateTime<Local> {
+fn dt_for_datetime(app: &State, datetime: &DateTimeValue) -> Result<DateTime<Local>> {
     match datetime {
-        DateTimeValue::Now => app.current_dt(),
-        DateTimeValue::SpecificDTZ(v) => *v,
+        DateTimeValue::Now => Ok(app.current_dt()),
+        DateTimeValue::SpecificDTZ(v) => Ok(*v),
         DateTimeValue::SpecificDT(v) => match Local.from_local_datetime(v) {
-            LocalResult::None => {
-                error!("invalid date {:?}", v);
-                match Local.timestamp_opt(0, 0) {
-                    LocalResult::None => panic!("invalid date from timestamp_opt {:?}", v),
-                    LocalResult::Single(s) => s,
-                    LocalResult::Ambiguous(s, x) => {
-                        error!("ambiguous date {:?} {:?} {:?}", v, s, x);
-                        s
-                    }
-                }
-            }
-            LocalResult::Single(s) => s,
+            LocalResult::None => Err(Error::TzError(format!(
+                "invalid local datetime: {:?}",
+                v
+            ))),
+            LocalResult::Single(s) => Ok(s),
             LocalResult::Ambiguous(s, x) => {
                 error!("ambiguous specificDT date between {:?} {:?}", s, x);
-                s
+                Ok(s)
             }
         },
     }
@@ -106,27 +99,34 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::Sub(a, b) => Ok(evaluate(app, a).await? - evaluate(app, b).await?),
         Value::Add(a, b) => Ok(evaluate(app, a).await? + evaluate(app, b).await?),
         Value::Mul(a, b) => Ok(evaluate(app, a).await? * evaluate(app, b).await?),
-        Value::Div(a, b) => Ok(evaluate(app, a).await? / evaluate(app, b).await?),
+        Value::Div(a, b) => {
+            let divisor = evaluate(app, b).await?;
+            if divisor == 0.0 {
+                Err(Error::UnitError("division by zero in Div".to_string()))
+            } else {
+                Ok(evaluate(app, a).await? / divisor)
+            }
+        }
 
         Value::HourOffset(location) => Ok(sched::exact_offset_hrs(long_for_loc(app, location))),
 
         Value::HourAngleSunrise(location, datetime) => Ok(sched::hour_angle_sunrise(
             lat_for_loc(app, location),
-            sched::noon_decl_sun(doy_for_dt(dt_for_datetime(app, datetime))),
+            sched::noon_decl_sun(doy_for_dt(dt_for_datetime(app, datetime)?)),
         )
         .to_degrees()),
 
         Value::NoonSunDeclinationAngle(datetime) => Ok(sched::noon_decl_sun(doy_for_dt(
-            dt_for_datetime(app, datetime),
+            dt_for_datetime(app, datetime)?,
         ))),
 
         Value::HoursOfDaylight(location, datetime) => Ok(sched::day_length_hrs(
             lat_for_loc(app, location),
-            doy_for_dt(dt_for_datetime(app, datetime)),
+            doy_for_dt(dt_for_datetime(app, datetime)?),
         )),
 
         Value::HourOfSunset(location, datetime) => {
-            let dt = dt_for_datetime(app, datetime);
+            let dt = dt_for_datetime(app, datetime)?;
             let doy_ev = doy_for_dt(dt);
             let lat = lat_for_loc(app, location);
             let long = long_for_loc(app, location);
@@ -143,7 +143,12 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 })?
                 .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
             {
-                LocalResult::None => panic!("invalid date from HourOfSunset {:?}", dt),
+                LocalResult::None => {
+                    return Err(Error::TzError(format!(
+                        "invalid date from HourOfSunset: {:?}",
+                        dt
+                    )))
+                }
                 LocalResult::Single(s) => s,
                 LocalResult::Ambiguous(s, x) => {
                     error!("ambiguous date {:?} {:?} {:?}", dt, s, x);
@@ -155,7 +160,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         }
 
         Value::HourOfSunrise(location, datetime) => {
-            let dt = dt_for_datetime(app, datetime);
+            let dt = dt_for_datetime(app, datetime)?;
             let doy_ev = doy_for_dt(dt);
             let lat = lat_for_loc(app, location);
             let long = long_for_loc(app, location);
@@ -174,7 +179,12 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 })?
                 .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
             {
-                LocalResult::None => panic!("invalid date from HourOfSunrise {:?}", dt),
+                LocalResult::None => {
+                    return Err(Error::TzError(format!(
+                        "invalid date from HourOfSunrise: {:?}",
+                        dt
+                    )))
+                }
                 LocalResult::Single(s) => s,
                 LocalResult::Ambiguous(s, x) => {
                     error!("ambiguous date {:?} {:?} {:?}", dt, s, x);
@@ -186,16 +196,16 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         }
 
         Value::SecondOfMinute(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.second() as f64)
         }
 
         Value::MinuteOfHour(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.minute() as f64 + (dt.second() as f64 / 3600.0f64))
         }
         Value::HourOfDay(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(
                 dt.hour() as f64
                     + (dt.minute() as f64 / 60.0f64)
@@ -204,22 +214,22 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         }
 
         Value::Year(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.year() as f64)
         }
 
         Value::MonthOfYear(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.month() as f64)
         }
 
         Value::DayOfMonth(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.day() as f64)
         }
 
         Value::DayOfYear(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             let hour_ratio = (dt.hour() as f64)
                 + (dt.minute() as f64 / 60.0f64)
                 + (dt.second() as f64 / 3600.0f64);
@@ -227,7 +237,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         }
 
         Value::WeekDayFromMonday(vdt) => {
-            let dt = dt_for_datetime(app, vdt);
+            let dt = dt_for_datetime(app, vdt)?;
             Ok(dt.weekday().number_from_monday() as f64)
         }
 
@@ -242,7 +252,14 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
             Ok(evaluate(app, a).await? * evaluate(app, x).await? + evaluate(app, b).await?)
         }
         Value::Trunc(x) => Ok(evaluate(app, x).await?.trunc()),
-        Value::Inverse(v) => Ok(1.0f64 / evaluate(app, v).await?),
+        Value::Inverse(v) => {
+            let divisor = evaluate(app, v).await?;
+            if divisor == 0.0 {
+                Err(Error::UnitError("division by zero in Inverse".to_string()))
+            } else {
+                Ok(1.0f64 / divisor)
+            }
+        }
     };
     res
 }

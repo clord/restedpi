@@ -1,0 +1,4 @@
+#V2
+((hour_of_day(now) between 7 and 10) or (hour_of_day(now) between 13 and 18)) and minute_of_hour(now) between 20 and 21 and second_of_hour(now) between 30 and 50
+((hour_of_day(now) between 7 and 10) or (hour_of_day(now) between 13 and 18)) and minute_of_hour(now) between 20 and 20.3 
+((hour_of_day(now) between 7 and 10) or (hour_of_day(now) between 13 and 18)) and minute_of_hour(now) between 20 and 21 and second_of_minute(now) between 30 and 50

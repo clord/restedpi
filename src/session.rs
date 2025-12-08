@@ -32,13 +32,13 @@ impl AppContext {
 impl juniper::Context for AppContext {}
 
 /// We can parse sessions from strings.
-/// If invalid for any reason (crypto, expired, etc) then it will result in an error.
+/// If invalid for any reason (crypto, expired, missing APP_SECRET, etc) then it will result in an error.
 impl FromStr for WebSession {
     type Err = token::SessionError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let secret =
-            std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+        let secret = std::env::var("APP_SECRET")
+            .map_err(|_| token::SessionError::MissingSecret)?;
         let start = SystemTime::now();
         let now_timestamp = start
             .duration_since(UNIX_EPOCH)
@@ -55,22 +55,24 @@ impl FromStr for WebSession {
 const TOKEN_DURATION: u64 = 60 * 60 * 24 * 660;
 
 pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<String> {
-    let secret =
-        std::env::var("APP_SECRET").expect("Failed to read APP_SECRET environment variable");
+    let secret = std::env::var("APP_SECRET")
+        .map_err(|_| Error::Config("APP_SECRET environment variable not set".to_string()))?;
     let start = SystemTime::now();
     let since_the_epoch = start
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
+        .map_err(|_| Error::Config("System time before UNIX epoch".to_string()))?;
+
+    let expires = since_the_epoch
+        .checked_add(Duration::new(TOKEN_DURATION, 0))
+        .ok_or_else(|| Error::Config("Token expiration overflow".to_string()))?
+        .as_secs();
 
     match ctx.channel().hash_for(user) {
         Some(user_hash) => match password::verify(pw, user_hash) {
             Ok(()) => match token::make_token(
                 WebSession {
                     user: user.to_string(),
-                    expires: since_the_epoch
-                        .checked_add(Duration::new(TOKEN_DURATION, 0))
-                        .unwrap()
-                        .as_secs(),
+                    expires,
                 },
                 &secret,
             ) {
