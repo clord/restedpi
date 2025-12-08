@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use argon2::Argon2;
-use password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng};
 
 /**
  * upon creating an account, we would use this to generate hashed password for future auth.

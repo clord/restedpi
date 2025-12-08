@@ -1,6 +1,6 @@
 use super::super::RpiApi;
-use super::util::{iv2be, uv2be};
 use super::I2cAddress;
+use super::util::{iv2be, uv2be};
 use crate::app::device::SamplingMode;
 use crate::error::Result;
 use std::thread;

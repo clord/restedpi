@@ -45,34 +45,26 @@ pub enum Error {
 impl IntoFieldError for Error {
     fn into_field_error(self) -> FieldError {
         match self {
-            Error::PbkError(ref err) => FieldError::new(err, graphql_value!({"slug": "PBK"})),
-            Error::Config(ref err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
-            Error::IoError(ref err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
-            Error::DbError(ref err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
-            Error::DeviceReadError(ref err) => {
+            Error::PbkError(err) => FieldError::new(err, graphql_value!({"slug": "PBK"})),
+            Error::Config(err) => FieldError::new(err, graphql_value!({"slug": "Config"})),
+            Error::IoError(err) => FieldError::new(err, graphql_value!({"slug": "IO"})),
+            Error::DbError(err) => FieldError::new(err, graphql_value!({"slug": "DB"})),
+            Error::DeviceReadError(err) => {
                 FieldError::new(err, graphql_value!({"slug": "device-read"}))
             }
-            Error::TzError(ref err) => FieldError::new(err, graphql_value!({"slug": "TZ"})),
-            Error::NonExistant(ref name) => {
+            Error::TzError(err) => FieldError::new(err, graphql_value!({"slug": "TZ"})),
+            Error::NonExistant(name) => {
                 FieldError::new(name, graphql_value!({"slug": "Existance"}))
             }
-            Error::NotUnique(ref msg) => {
-                FieldError::new(msg, graphql_value!({"slug": "Uniqueness"}))
-            }
-            Error::OutOfBounds(ref index) => {
-                FieldError::new(index, graphql_value!({"slug": "Bounds"}))
-            }
+            Error::NotUnique(msg) => FieldError::new(msg, graphql_value!({"slug": "Uniqueness"})),
+            Error::OutOfBounds(index) => FieldError::new(index, graphql_value!({"slug": "Bounds"})),
             #[cfg(feature = "raspberrypi")]
-            Error::I2cError(ref err) => FieldError::new(err, graphql_value!({"slug": "I2C"})),
-            Error::UnitError(ref err) => FieldError::new(err, graphql_value!({"slug": "Units"})),
-            Error::RecvError(ref err) => FieldError::new(err, graphql_value!({"slug": "Recv"})),
-            Error::SendError(ref err) => FieldError::new(err, graphql_value!({"slug": "Send"})),
-            Error::StorageError(ref err) => {
-                FieldError::new(err, graphql_value!({"slug": "Storage"}))
-            }
-            Error::EncodingError(ref err) => {
-                FieldError::new(err, graphql_value!({"slug": "Encoding"}))
-            }
+            Error::I2cError(err) => FieldError::new(err, graphql_value!({"slug": "I2C"})),
+            Error::UnitError(err) => FieldError::new(err, graphql_value!({"slug": "Units"})),
+            Error::RecvError(err) => FieldError::new(err, graphql_value!({"slug": "Recv"})),
+            Error::SendError(err) => FieldError::new(err, graphql_value!({"slug": "Send"})),
+            Error::StorageError(err) => FieldError::new(err, graphql_value!({"slug": "Storage"})),
+            Error::EncodingError(err) => FieldError::new(err, graphql_value!({"slug": "Encoding"})),
             Error::InputNotFound(n) => FieldError::new(n, graphql_value!({"slug": "Input"})),
             Error::OutputNotFound(n) => FieldError::new(n, graphql_value!({"slug": "Output"})),
             Error::InvalidPinDirection => FieldError::new(
@@ -102,24 +94,24 @@ impl warp::reject::Reject for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::PbkError(ref err) => write!(f, "PBK error: {}", err),
-            Error::Config(ref err) => write!(f, "Configuration error: {}", err),
-            Error::IoError(ref err) => write!(f, "I/O error: {}", err),
-            Error::DbError(ref err) => write!(f, "DB error: {}", err),
-            Error::TzError(ref err) => write!(f, "TZ error: {}", err),
+            Error::PbkError(err) => write!(f, "PBK error: {}", err),
+            Error::Config(err) => write!(f, "Configuration error: {}", err),
+            Error::IoError(err) => write!(f, "I/O error: {}", err),
+            Error::DbError(err) => write!(f, "DB error: {}", err),
+            Error::TzError(err) => write!(f, "TZ error: {}", err),
             Error::InvalidPinDirection => write!(f, "Invalid pin direction"),
             Error::ParseError => write!(f, "Parse error"),
-            Error::DeviceReadError(ref err) => write!(f, "Failed to read device: {}", err),
-            Error::NonExistant(ref name) => write!(f, "'{}' does not exist", name),
-            Error::NotUnique(ref msg) => write!(f, "non-unique: {}", msg),
-            Error::OutOfBounds(ref index) => write!(f, "Index '{:#?}' out of bounds", index),
+            Error::DeviceReadError(err) => write!(f, "Failed to read device: {}", err),
+            Error::NonExistant(name) => write!(f, "'{}' does not exist", name),
+            Error::NotUnique(msg) => write!(f, "non-unique: {}", msg),
+            Error::OutOfBounds(index) => write!(f, "Index '{:#?}' out of bounds", index),
             #[cfg(feature = "raspberrypi")]
-            Error::I2cError(ref err) => write!(f, "I2C Bus Error: {}", err),
-            Error::UnitError(ref err) => write!(f, "Unit expected {:#?}", err),
-            Error::RecvError(ref err) => write!(f, "Failed to read: {}", err),
-            Error::SendError(ref err) => write!(f, "Failed to send: {}", err),
-            Error::StorageError(ref err) => write!(f, "Storage error: {}", err),
-            Error::EncodingError(ref err) => write!(f, "Encoding error: {}", err),
+            Error::I2cError(err) => write!(f, "I2C Bus Error: {}", err),
+            Error::UnitError(err) => write!(f, "Unit expected {:#?}", err),
+            Error::RecvError(err) => write!(f, "Failed to read: {}", err),
+            Error::SendError(err) => write!(f, "Failed to send: {}", err),
+            Error::StorageError(err) => write!(f, "Storage error: {}", err),
+            Error::EncodingError(err) => write!(f, "Encoding error: {}", err),
             Error::InputNotFound(n) => write!(f, "Input not found: {}", n),
             Error::OutputNotFound(n) => write!(f, "Output not found: {}", n),
             Error::UserNotFound => write!(f, "User not found"),

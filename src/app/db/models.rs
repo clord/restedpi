@@ -3,7 +3,7 @@ use chrono::prelude::*;
 use juniper::{GraphQLInputObject, GraphQLObject};
 
 #[derive(Insertable, Clone, Debug, GraphQLObject)]
-#[table_name = "devices"]
+#[diesel(table_name = devices)]
 pub struct NewDevice {
     pub name: String,
     model: String,
@@ -50,7 +50,7 @@ pub struct Device {
 }
 
 #[derive(Insertable, Clone, Debug, GraphQLInputObject)]
-#[table_name = "inputs"]
+#[diesel(table_name = inputs)]
 pub struct NewInput {
     pub name: String,
     pub device_id: String,
@@ -93,7 +93,7 @@ pub struct UpdateOutput {
 }
 
 #[derive(Insertable, Clone, Debug, GraphQLInputObject)]
-#[table_name = "outputs"]
+#[diesel(table_name = outputs)]
 pub struct NewOutput {
     pub name: String,
     pub device_id: String,

@@ -1,5 +1,5 @@
-use super::i2c::{bmp085, mcp23017, mcp9808};
 use super::RpiApi;
+use super::i2c::{bmp085, mcp9808, mcp23017};
 use crate::app::device;
 use crate::app::dimensioned::Dimensioned;
 use crate::config::types::Unit;

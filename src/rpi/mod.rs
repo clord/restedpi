@@ -505,7 +505,9 @@ pub fn start(bus: u8) -> RpiApi {
         Err(e) => {
             error!("Failed to initialize hardware: {}", e);
             info!("The I2C bus connected to pins 3 and 5 is disabled by default");
-            info!("Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`");
+            info!(
+                "Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`"
+            );
             info!("(Remember to reboot the Raspberry Pi afterwards)");
             None
         }

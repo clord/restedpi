@@ -2,11 +2,11 @@ use color_eyre::eyre;
 use color_eyre::owo_colors::OwoColorize;
 use librpi::app;
 use librpi::auth::password;
-use librpi::config::parse;
 use librpi::config::Config;
+use librpi::config::parse;
 use librpi::webapp;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::error::ReadlineError;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -67,11 +67,7 @@ fn get_config_path(maybe_override: Option<PathBuf>) -> PathBuf {
                 y.push("restedpi");
                 y.push("config.toml");
 
-                if y.exists() {
-                    Some(y)
-                } else {
-                    None
-                }
+                if y.exists() { Some(y) } else { None }
             })
         })
         .unwrap_or_else(|| PathBuf::from("/etc/restedpi/config.toml"))
@@ -115,7 +111,8 @@ async fn server(config_file: PathBuf) -> Result<(), color_eyre::Report> {
             })?
             .trim()
             .to_string();
-        env::set_var("APP_SECRET", app_secret);
+        // SAFETY: This is called early in main() before other threads are spawned
+        unsafe { env::set_var("APP_SECRET", app_secret) };
     }
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
@@ -245,8 +242,9 @@ fn add_user(
 }
 
 fn setup() -> (Command, PathBuf) {
+    // SAFETY: These set_var calls happen at program startup before any threads are spawned
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-        std::env::set_var("RUST_LIB_BACKTRACE", "1");
+        unsafe { std::env::set_var("RUST_LIB_BACKTRACE", "1") };
     }
     color_eyre::install().unwrap();
     let Opt {
@@ -255,7 +253,7 @@ fn setup() -> (Command, PathBuf) {
         command,
     } = Opt::from_args();
     if std::env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", log_level);
+        unsafe { env::set_var("RUST_LOG", log_level) };
     }
     tracing_subscriber::fmt::init();
     let config_file = get_config_path(config_file);

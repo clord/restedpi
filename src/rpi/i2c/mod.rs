@@ -618,7 +618,7 @@ mod tests {
 
     #[test]
     fn test_pin_ordinal_conversion() {
-        use mcp23017::{ordinal_to_pin, pin_to_ordinal, Pin};
+        use mcp23017::{Pin, ordinal_to_pin, pin_to_ordinal};
 
         for i in 0..8 {
             let pin = ordinal_to_pin(i);
@@ -632,7 +632,7 @@ mod tests {
 
     #[test]
     fn test_bank_pin_index_conversion() {
-        use mcp23017::{bank_pin_to_index, index_to_bank_pin, Bank, Pin};
+        use mcp23017::{Bank, Pin, bank_pin_to_index, index_to_bank_pin};
 
         // Test bank A
         assert_eq!(bank_pin_to_index(Bank::A, Pin::Pin0), 0);

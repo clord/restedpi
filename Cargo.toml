@@ -4,7 +4,7 @@
 name = "restedpi"
 version = "0.2.0"
 authors = ["Christopher Lord <christopher@lord.ac>"]
-edition = "2018"
+edition = "2024"
 
 [features]
 raspberrypi = ["rppal"]
@@ -45,8 +45,8 @@ bit-array = "0.4.4"
 typenum = "1.13.0"
 serde_derive = "1.0.126"
 async-recursion = "1.0.5"
-diesel = { version = "1.4.7", features = ["chrono", "sqlite", "r2d2"] }
-diesel-derive-enum = { version = "1.1.1", features = ["sqlite"] } 
+diesel = { version = "2.2", features = ["chrono", "sqlite", "r2d2"] }
+diesel-derive-enum = { version = "2.1", features = ["sqlite"] } 
 tracing = "0.1.26"
 tracing-subscriber = "0.3.18"
 tracing-futures = "0.2.5"

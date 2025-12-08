@@ -5,7 +5,7 @@ use juniper_graphql_ws::ConnectionConfig;
 use juniper_warp::subscriptions::make_ws_filter;
 use juniper_warp::{make_graphql_filter, playground_filter};
 use std::sync::Arc;
-use warp::{any, get, header, http::Response, post, Filter, Rejection, Reply};
+use warp::{Filter, Rejection, Reply, any, get, header, http::Response, post};
 
 fn with_app(
     app: SharedAppState,

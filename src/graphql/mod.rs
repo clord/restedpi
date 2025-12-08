@@ -1,13 +1,13 @@
+use crate::app::AppID;
 use crate::app::db::models;
 use crate::app::db::models::UpdateOutput;
 use crate::app::device;
 use crate::app::input::Input;
 use crate::app::output::Output;
-use crate::app::AppID;
 use crate::error::Error;
-use crate::session::{authenticate, AppContext};
+use crate::session::{AppContext, authenticate};
 use futures::Stream;
-use juniper::{graphql_object, graphql_subscription, FieldError, FieldResult, RootNode};
+use juniper::{FieldError, FieldResult, RootNode, graphql_object, graphql_subscription};
 use std::pin::Pin;
 use std::time::Duration;
 

@@ -5,7 +5,7 @@ use serde_json::json;
 use std::borrow::Cow;
 use tracing::error;
 use warp::filters::path::Tail;
-use warp::{http::Response, http::StatusCode, reject, reply, Rejection, Reply};
+use warp::{Rejection, Reply, http::Response, http::StatusCode, reject, reply};
 
 pub mod filters;
 mod handlers;
@@ -18,7 +18,7 @@ pub type SharedAppState = app::channel::AppChannel;
 #[folder = "static/"]
 struct Asset;
 
-pub async fn static_serve(path: &str) -> Result<impl Reply, Rejection> {
+pub async fn static_serve(path: &str) -> Result<impl Reply + use<>, Rejection> {
     let asset_a = Asset::get(path);
     let mime = from_path(path).first_or_octet_stream();
     match asset_a {
@@ -46,7 +46,7 @@ pub async fn static_serve(path: &str) -> Result<impl Reply, Rejection> {
         }
     }
 }
-pub async fn static_serve_tail(path: Tail) -> Result<impl Reply, Rejection> {
+pub async fn static_serve_tail(path: Tail) -> Result<impl Reply + use<>, Rejection> {
     static_serve(path.as_str()).await
 }
 

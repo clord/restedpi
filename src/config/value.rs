@@ -4,9 +4,9 @@ use crate::config::sched;
 use crate::config::types::{DateTimeValue, LocationValue, Unit, Value};
 use crate::error::{Error, Result};
 use async_recursion::async_recursion;
+use chrono::Duration;
 use chrono::offset::LocalResult;
 use chrono::prelude::*;
-use chrono::Duration;
 use std::str::FromStr;
 use tracing::error;
 
@@ -144,7 +144,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                     return Err(Error::TzError(format!(
                         "invalid date from HourOfSunset: {:?}",
                         dt
-                    )))
+                    )));
                 }
                 LocalResult::Single(s) => s,
                 LocalResult::Ambiguous(s, x) => {
@@ -180,7 +180,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                     return Err(Error::TzError(format!(
                         "invalid date from HourOfSunrise: {:?}",
                         dt
-                    )))
+                    )));
                 }
                 LocalResult::Single(s) => s,
                 LocalResult::Ambiguous(s, x) => {

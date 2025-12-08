@@ -4,7 +4,7 @@ use crate::app::db::models;
 use crate::app::device::Device;
 use crate::app::input::Input;
 use crate::app::output::{BoolExpr, Output};
-use crate::app::{device, state, AppID};
+use crate::app::{AppID, device, state};
 use crate::error::Result;
 use chrono::prelude::*;
 use std::collections::HashMap;

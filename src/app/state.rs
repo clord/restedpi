@@ -1,6 +1,6 @@
 extern crate chrono;
 
-use crate::app::{db, device, input, output, AppID};
+use crate::app::{AppID, db, device, input, output};
 use crate::config;
 use crate::config::types::BoolExpr;
 use crate::error::{Error, Result};
