@@ -3,23 +3,20 @@ use crate::error::Error;
 use crate::error::Result;
 #[cfg(feature = "raspberrypi")]
 use rppal::i2c::I2c;
+use std::sync::Arc;
 use std::vec::Vec;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
+use tokio::sync::Mutex;
 
 #[cfg(feature = "raspberrypi")]
-use tracing::{debug, error, info};
+use tracing::debug;
 
 #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
 use std::collections::HashMap;
 #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-use std::sync::{Arc, Mutex};
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
 use tracing::debug;
 
-/// Type alias for mock I2C device registers: address -> (register -> value)
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-type MockI2cDevices = Arc<Mutex<HashMap<u16, HashMap<u8, Vec<u8>>>>>;
+pub mod device;
+pub mod i2c;
 
 /// GPIO level for non-raspberrypi builds
 #[cfg(not(feature = "raspberrypi"))]
@@ -81,149 +78,140 @@ impl Default for MockPinState {
     }
 }
 
-/// Mock GPIO state manager - tracks state of all GPIO pins
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-#[derive(Debug, Clone)]
-pub struct MockGpioState {
-    pins: Arc<Mutex<HashMap<u8, MockPinState>>>,
-    /// Mock I2C device registers
-    i2c_devices: MockI2cDevices,
+// ============================================================================
+// Real Raspberry Pi I2C State
+// ============================================================================
+
+#[cfg(feature = "raspberrypi")]
+struct I2cState {
+    i2c: I2c,
+    current_address: Option<i2c::I2cAddress>,
 }
 
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-impl MockGpioState {
-    pub fn new() -> Self {
-        Self {
-            pins: Arc::new(Mutex::new(HashMap::new())),
-            i2c_devices: Arc::new(Mutex::new(HashMap::new())),
+#[cfg(feature = "raspberrypi")]
+impl I2cState {
+    fn new(bus: u8) -> Result<Self> {
+        let i2c = I2c::with_bus(bus).map_err(|e| {
+            crate::error::Error::I2cError(format!("Failed to open I2C bus {}: {}", bus, e))
+        })?;
+        Ok(Self {
+            i2c,
+            current_address: None,
+        })
+    }
+
+    fn ensure_address(&mut self, address: i2c::I2cAddress) -> Result<()> {
+        if self.current_address != Some(address) {
+            self.i2c.set_slave_address(address).map_err(|e| {
+                crate::error::Error::I2cError(format!(
+                    "Failed to set I2C address {}: {}",
+                    address, e
+                ))
+            })?;
+            self.current_address = Some(address);
         }
-    }
-
-    /// Get the current level of a pin
-    pub fn read_pin(&self, pin: u8) -> GpioLevel {
-        let pins = self.pins.lock().unwrap();
-        pins.get(&pin).map(|s| s.level).unwrap_or(GpioLevel::Low)
-    }
-
-    /// Set the level of a pin (for output pins or simulating input)
-    pub fn write_pin(&self, pin: u8, level: GpioLevel) {
-        let mut pins = self.pins.lock().unwrap();
-        let state = pins.entry(pin).or_default();
-        state.level = level;
-    }
-
-    /// Set pin mode
-    pub fn set_pin_mode(&self, pin: u8, mode: MockPinMode) {
-        let mut pins = self.pins.lock().unwrap();
-        let state = pins.entry(pin).or_default();
-        state.mode = mode;
-    }
-
-    /// Get pin state
-    pub fn get_pin_state(&self, pin: u8) -> MockPinState {
-        let pins = self.pins.lock().unwrap();
-        pins.get(&pin).cloned().unwrap_or_default()
-    }
-
-    /// Register a mock I2C device at an address
-    pub fn register_i2c_device(&self, address: u16) {
-        let mut devices = self.i2c_devices.lock().unwrap();
-        devices.entry(address).or_default();
-    }
-
-    /// Write to a mock I2C device register
-    pub fn i2c_write(&self, address: u16, register: u8, data: &[u8]) -> Result<()> {
-        let mut devices = self.i2c_devices.lock().unwrap();
-        let device = devices.entry(address).or_default();
-        device.insert(register, data.to_vec());
         Ok(())
     }
 
-    /// Read from a mock I2C device register
-    pub fn i2c_read(&self, address: u16, register: u8, size: usize) -> Result<Vec<u8>> {
-        let devices = self.i2c_devices.lock().unwrap();
-        if let Some(device) = devices.get(&address) {
+    fn write(&mut self, address: i2c::I2cAddress, command: u8, data: &[u8]) -> Result<()> {
+        self.ensure_address(address)?;
+        debug!("i2c write: addr={}, cmd={}, data={:?}", address, command, data);
+        self.i2c.block_write(command, data).map_err(|e| {
+            crate::error::Error::I2cError(format!("I2C write failed: {}", e))
+        })?;
+        Ok(())
+    }
+
+    fn read(&mut self, address: i2c::I2cAddress, command: u8, size: usize) -> Result<Vec<u8>> {
+        self.ensure_address(address)?;
+        let mut buffer = vec![0u8; size];
+        self.i2c.block_read(command, &mut buffer).map_err(|e| {
+            crate::error::Error::I2cError(format!("I2C read failed: {}", e))
+        })?;
+        debug!("i2c read: addr={}, cmd={}, size={}, result={:?}", address, command, size, buffer);
+        Ok(buffer)
+    }
+}
+
+// ============================================================================
+// Mock GPIO State (for testing without hardware)
+// ============================================================================
+
+#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
+#[derive(Debug, Default)]
+struct MockState {
+    pins: HashMap<u8, MockPinState>,
+    /// Mock I2C device registers: address -> (register -> value)
+    i2c_devices: HashMap<u16, HashMap<u8, Vec<u8>>>,
+}
+
+#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
+impl MockState {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn read_pin(&self, pin: u8) -> GpioLevel {
+        self.pins.get(&pin).map(|s| s.level).unwrap_or(GpioLevel::Low)
+    }
+
+    fn write_pin(&mut self, pin: u8, level: GpioLevel) {
+        let state = self.pins.entry(pin).or_default();
+        state.level = level;
+    }
+
+    fn set_pin_mode(&mut self, pin: u8, mode: MockPinMode) {
+        let state = self.pins.entry(pin).or_default();
+        state.mode = mode;
+    }
+
+    fn get_pin_state(&self, pin: u8) -> MockPinState {
+        self.pins.get(&pin).cloned().unwrap_or_default()
+    }
+
+    fn i2c_write(&mut self, address: u16, register: u8, data: &[u8]) {
+        let device = self.i2c_devices.entry(address).or_default();
+        device.insert(register, data.to_vec());
+    }
+
+    fn i2c_read(&self, address: u16, register: u8, size: usize) -> Vec<u8> {
+        if let Some(device) = self.i2c_devices.get(&address) {
             if let Some(data) = device.get(&register) {
                 let mut result = data.clone();
                 result.resize(size, 0);
-                return Ok(result);
+                return result;
             }
         }
         // Return zeros for uninitialized registers
-        Ok(vec![0u8; size])
+        vec![0u8; size]
     }
 
-    /// Pre-populate I2C register with test data
-    pub fn set_i2c_register(&self, address: u16, register: u8, data: Vec<u8>) {
-        let mut devices = self.i2c_devices.lock().unwrap();
-        let device = devices.entry(address).or_default();
+    fn set_i2c_register(&mut self, address: u16, register: u8, data: Vec<u8>) {
+        let device = self.i2c_devices.entry(address).or_default();
         device.insert(register, data);
     }
 }
 
-#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-impl Default for MockGpioState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// ============================================================================
+// RpiApi - Direct async API (no message queue!)
+// ============================================================================
 
-pub mod device;
-pub mod i2c;
-
-#[derive(Debug)]
-pub enum RpiMessage {
-    WriteI2C {
-        address: i2c::I2cAddress,
-        command: i2c::I2cCommand,
-        parameters: Vec<u8>,
-        response: oneshot::Sender<Result<()>>,
-    },
-    ReadI2C {
-        address: i2c::I2cAddress,
-        command: i2c::I2cCommand,
-        size: usize,
-        response: oneshot::Sender<Result<Vec<u8>>>,
-    },
-    #[cfg(feature = "raspberrypi")]
-    ReadGpio {
-        pin: u8,
-        response: oneshot::Sender<Result<rppal::gpio::Level>>,
-    },
-    #[cfg(feature = "raspberrypi")]
-    WriteGpio {
-        pin: u8,
-        level: rppal::gpio::Level,
-        response: oneshot::Sender<Result<()>>,
-    },
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    ReadGpio {
-        pin: u8,
-        response: oneshot::Sender<Result<GpioLevel>>,
-    },
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    WriteGpio {
-        pin: u8,
-        level: GpioLevel,
-        response: oneshot::Sender<Result<()>>,
-    },
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    SetPinMode {
-        pin: u8,
-        mode: MockPinMode,
-        response: oneshot::Sender<Result<()>>,
-    },
-}
-
-/// Represent the system I2C bus and GPIO to arbitrary threads.
-/// Read and write actions are atomically performed, including any address change.
+/// Represent the system I2C bus and GPIO.
+/// Uses a Mutex for thread-safe access - much simpler than message queues.
 #[derive(Clone, Debug)]
 pub struct RpiApi {
-    sender: mpsc::Sender<RpiMessage>,
+    #[cfg(feature = "raspberrypi")]
+    state: Arc<Mutex<Option<I2cState>>>,
+
     #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    mock_state: MockGpioState,
+    state: Arc<Mutex<MockState>>,
+
+    #[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+    _phantom: std::marker::PhantomData<()>,
 }
 
+// Real Raspberry Pi implementation
+#[cfg(feature = "raspberrypi")]
 impl RpiApi {
     pub async fn write_i2c(
         &self,
@@ -231,114 +219,128 @@ impl RpiApi {
         command: u8,
         parameters: Vec<u8>,
     ) -> Result<()> {
-        let (response, port) = oneshot::channel();
-
-        self.sender
-            .clone()
-            .send(RpiMessage::WriteI2C {
-                parameters,
-                response,
-                address,
-                command,
-            })
-            .await?;
-
-        port.await?
+        let mut guard = self.state.lock().await;
+        match guard.as_mut() {
+            Some(i2c_state) => i2c_state.write(address, command, &parameters),
+            None => Err(crate::error::Error::I2cError(
+                "I2C bus not initialized".to_string(),
+            )),
+        }
     }
 
-    pub async fn read_i2c(&self, address: u16, command: u8, size: usize) -> Result<Vec<u8>> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::ReadI2C {
-                size,
-                response,
-                address,
-                command,
-            })
-            .await?;
-
-        port.await?
+    pub async fn read_i2c(
+        &self,
+        address: i2c::I2cAddress,
+        command: u8,
+        size: usize,
+    ) -> Result<Vec<u8>> {
+        let mut guard = self.state.lock().await;
+        match guard.as_mut() {
+            Some(i2c_state) => i2c_state.read(address, command, size),
+            None => Err(crate::error::Error::I2cError(
+                "I2C bus not initialized".to_string(),
+            )),
+        }
     }
 
-    #[cfg(feature = "raspberrypi")]
     pub async fn read_gpio(&self, pin: u8) -> Result<rppal::gpio::Level> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::ReadGpio { response, pin })
-            .await?;
-
-        port.await?
+        // TODO: Implement real GPIO read
+        debug!("TODO: read gpio {}", pin);
+        Ok(rppal::gpio::Level::High)
     }
 
-    #[cfg(feature = "raspberrypi")]
     pub async fn write_gpio(&self, pin: u8, level: rppal::gpio::Level) -> Result<()> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::WriteGpio {
-                response,
-                pin,
-                level,
-            })
-            .await?;
+        // TODO: Implement real GPIO write
+        debug!("TODO: write gpio {} = {:?}", pin, level);
+        Ok(())
+    }
+}
 
-        port.await?
+// Mock implementation for testing
+#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
+impl RpiApi {
+    pub async fn write_i2c(
+        &self,
+        address: i2c::I2cAddress,
+        command: u8,
+        parameters: Vec<u8>,
+    ) -> Result<()> {
+        let mut guard = self.state.lock().await;
+        debug!("mock i2c write: addr={}, cmd={}, data={:?}", address, command, parameters);
+        guard.i2c_write(address, command, &parameters);
+        Ok(())
     }
 
-    /// Mock GPIO read - reads from simulated pin state
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
+    pub async fn read_i2c(
+        &self,
+        address: i2c::I2cAddress,
+        command: u8,
+        size: usize,
+    ) -> Result<Vec<u8>> {
+        let guard = self.state.lock().await;
+        debug!("mock i2c read: addr={}, cmd={}, size={}", address, command, size);
+        Ok(guard.i2c_read(address, command, size))
+    }
+
     pub async fn read_gpio(&self, pin: u8) -> Result<GpioLevel> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::ReadGpio { response, pin })
-            .await?;
-
-        port.await?
+        let guard = self.state.lock().await;
+        let level = guard.read_pin(pin);
+        debug!("mock read gpio {}: {:?}", pin, level);
+        Ok(level)
     }
 
-    /// Mock GPIO write - writes to simulated pin state
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
     pub async fn write_gpio(&self, pin: u8, level: GpioLevel) -> Result<()> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::WriteGpio {
-                response,
-                pin,
-                level,
-            })
-            .await?;
-
-        port.await?
+        let mut guard = self.state.lock().await;
+        debug!("mock write gpio {}: {:?}", pin, level);
+        guard.write_pin(pin, level);
+        Ok(())
     }
 
-    /// Set GPIO pin mode (mock only)
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
     pub async fn set_pin_mode(&self, pin: u8, mode: MockPinMode) -> Result<()> {
-        let (response, port) = oneshot::channel();
-        self.sender
-            .clone()
-            .send(RpiMessage::SetPinMode {
-                response,
-                pin,
-                mode,
-            })
-            .await?;
-
-        port.await?
+        let mut guard = self.state.lock().await;
+        debug!("mock set pin mode {}: {:?}", pin, mode);
+        guard.set_pin_mode(pin, mode);
+        Ok(())
     }
 
-    /// Get access to mock state for test setup (mock only)
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    pub fn mock_state(&self) -> &MockGpioState {
-        &self.mock_state
+    /// Get a copy of pin state for test assertions
+    pub async fn get_pin_state(&self, pin: u8) -> MockPinState {
+        let guard = self.state.lock().await;
+        guard.get_pin_state(pin)
     }
 
-    /// GPIO unavailable - returns error when neither raspberrypi nor mock-gpio feature is enabled
-    #[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+    /// Pre-populate I2C register with test data (for test setup)
+    pub async fn set_i2c_register(&self, address: u16, register: u8, data: Vec<u8>) {
+        let mut guard = self.state.lock().await;
+        guard.set_i2c_register(address, register, data);
+    }
+}
+
+// Stub implementation when no GPIO feature is enabled
+#[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+impl RpiApi {
+    pub async fn write_i2c(
+        &self,
+        _address: i2c::I2cAddress,
+        _command: u8,
+        _parameters: Vec<u8>,
+    ) -> Result<()> {
+        Err(Error::DeviceReadError(
+            "I2C unavailable: enable 'raspberrypi' or 'mock-gpio' feature".to_string(),
+        ))
+    }
+
+    pub async fn read_i2c(
+        &self,
+        _address: i2c::I2cAddress,
+        _command: u8,
+        _size: usize,
+    ) -> Result<Vec<u8>> {
+        Err(Error::DeviceReadError(
+            "I2C unavailable: enable 'raspberrypi' or 'mock-gpio' feature".to_string(),
+        ))
+    }
+
     pub async fn read_gpio(&self, _pin: u8) -> Result<GpioLevel> {
         Err(Error::DeviceReadError(
             "GPIO unavailable: enable 'raspberrypi' or 'mock-gpio' feature".to_string(),
@@ -346,169 +348,44 @@ impl RpiApi {
     }
 }
 
-pub fn start(#[cfg_attr(not(feature = "raspberrypi"), allow(unused))] bus: u8) -> RpiApi {
-    #[cfg(feature = "raspberrypi")]
-    let (sender, mut receiver) = mpsc::channel::<RpiMessage>(10);
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    let (sender, mut receiver) = mpsc::channel::<RpiMessage>(10);
-    #[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
-    let (sender, _receiver) = mpsc::channel::<RpiMessage>(10);
+// ============================================================================
+// Constructor
+// ============================================================================
 
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    let mock_state = MockGpioState::new();
+/// Create a new RpiApi instance.
+/// For raspberrypi: initializes the I2C bus
+/// For mock-gpio: creates empty mock state
+/// For neither: creates a stub that returns errors
+#[cfg(feature = "raspberrypi")]
+pub fn start(bus: u8) -> RpiApi {
+    use tracing::{error, info};
 
-    #[cfg(feature = "raspberrypi")]
-    tokio::spawn(async move {
-        let mut current_i2c_address: Option<i2c::I2cAddress> = None;
-        match I2c::with_bus(bus) {
-            Ok(mut i2c) => loop {
-                match receiver.recv().await {
-                    Some(next) => match next {
-                        RpiMessage::ReadGpio { pin, response } => {
-                            debug!("TODO: read gpio {}", pin);
-                            response.send(Ok(rppal::gpio::Level::High)).unwrap();
-                        }
-                        RpiMessage::WriteI2C {
-                            address,
-                            command,
-                            response,
-                            parameters,
-                        } => {
-                            if current_i2c_address != Some(address) {
-                                match i2c.set_slave_address(address) {
-                                    Ok(()) => current_i2c_address = Some(address),
-                                    Err(e) => error!("Failed to switch address: {}", e),
-                                };
-                            };
-                            debug!("i2c write: {}, {}, {:?}", address, command, parameters);
-                            let _result = i2c.block_write(command, &parameters);
-                            match response.send(Ok(())) {
-                                Ok(()) => (),
-                                Err(e) => error!("Failed to respond in write: {:?}", e),
-                            };
-                        }
-
-                        RpiMessage::ReadI2C {
-                            address,
-                            command,
-                            size,
-                            response,
-                        } => {
-                            if current_i2c_address != Some(address) {
-                                match i2c.set_slave_address(address) {
-                                    Ok(()) => current_i2c_address = Some(address),
-                                    Err(e) => error!("Failed to switch address: {}", e),
-                                };
-                            }
-                            let mut vec = Vec::new();
-                            vec.resize(size, 0u8);
-                            match i2c.block_read(command, &mut vec) {
-                                Ok(()) => match response.send(Ok(vec)) {
-                                    Ok(()) => {
-                                        debug!(
-                                            "i2c read result: {}, {}, {}",
-                                            address, command, size
-                                        )
-                                    }
-                                    Err(e) => error!("Failed to send response: {:?}", e),
-                                },
-                                Err(e) => {
-                                    match response
-                                        .send(Err(crate::error::Error::I2cError(format!("{}", e))))
-                                    {
-                                        Ok(()) => (),
-                                        Err(e) => error!("Failed to send response: {:?}", e),
-                                    }
-                                }
-                            };
-                        }
-                    },
-                    None => break,
-                };
-            },
-            #[cfg(feature = "raspberrypi")]
-            Err(rppal::i2c::Error::UnknownModel) => {
-                error!("Unsupported Raspberry PI; I2C bus not available");
-            }
-            Err(err) => {
-                error!("There was a problem connecting to the I2C bus: {:?}", err);
-                info!("The I2C bus connected to pins 3 and 5 is disabled by default");
-                info!("Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`");
-                info!("(Remember to reboot the Raspberry Pi afterwards)");
-            }
+    let i2c_state = match I2cState::new(bus) {
+        Ok(state) => Some(state),
+        Err(e) => {
+            error!("Failed to initialize I2C bus: {}", e);
+            info!("The I2C bus connected to pins 3 and 5 is disabled by default");
+            info!("Bus can be enabled with `sudo raspi-config`, or by adding `dtparam=i2c_arm=on` to `/boot/config.txt`");
+            info!("(Remember to reboot the Raspberry Pi afterwards)");
+            None
         }
-    });
+    };
 
-    // Mock GPIO handler loop - processes messages using simulated state
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    {
-        let mock_state_clone = mock_state.clone();
-        tokio::spawn(async move {
-            loop {
-                match receiver.recv().await {
-                    Some(next) => match next {
-                        RpiMessage::ReadGpio { pin, response } => {
-                            let level = mock_state_clone.read_pin(pin);
-                            debug!("mock read gpio {}: {:?}", pin, level);
-                            let _ = response.send(Ok(level));
-                        }
-                        RpiMessage::WriteGpio {
-                            pin,
-                            level,
-                            response,
-                        } => {
-                            debug!("mock write gpio {}: {:?}", pin, level);
-                            mock_state_clone.write_pin(pin, level);
-                            let _ = response.send(Ok(()));
-                        }
-                        RpiMessage::SetPinMode {
-                            pin,
-                            mode,
-                            response,
-                        } => {
-                            debug!("mock set pin mode {}: {:?}", pin, mode);
-                            mock_state_clone.set_pin_mode(pin, mode);
-                            let _ = response.send(Ok(()));
-                        }
-                        RpiMessage::WriteI2C {
-                            address,
-                            command,
-                            parameters,
-                            response,
-                        } => {
-                            debug!(
-                                "mock i2c write: addr={}, cmd={}, data={:?}",
-                                address, command, parameters
-                            );
-                            let result = mock_state_clone.i2c_write(address, command, &parameters);
-                            let _ = response.send(result);
-                        }
-                        RpiMessage::ReadI2C {
-                            address,
-                            command,
-                            size,
-                            response,
-                        } => {
-                            debug!(
-                                "mock i2c read: addr={}, cmd={}, size={}",
-                                address, command, size
-                            );
-                            let result = mock_state_clone.i2c_read(address, command, size);
-                            let _ = response.send(result);
-                        }
-                    },
-                    None => break,
-                }
-            }
-        });
+    RpiApi {
+        state: Arc::new(Mutex::new(i2c_state)),
     }
+}
 
-    #[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
-    {
-        RpiApi { sender, mock_state }
+#[cfg(all(feature = "mock-gpio", not(feature = "raspberrypi")))]
+pub fn start(_bus: u8) -> RpiApi {
+    RpiApi {
+        state: Arc::new(Mutex::new(MockState::new())),
     }
-    #[cfg(not(all(feature = "mock-gpio", not(feature = "raspberrypi"))))]
-    {
-        RpiApi { sender }
+}
+
+#[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+pub fn start(_bus: u8) -> RpiApi {
+    RpiApi {
+        _phantom: std::marker::PhantomData,
     }
 }

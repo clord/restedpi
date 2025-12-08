@@ -36,7 +36,7 @@ mod tests {
 
         // Temperature = 25.0625°C -> raw = 25.0625 * 16 = 401 = 0x0191
         let raw: u16 = 401;
-        rpi_api.mock_state().set_i2c_register(address, 0x05, encode_mcp9808_temp(raw));
+        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - 25.0625).abs() < 0.01, "Expected ~25.0625°C, got {}", temp);
@@ -48,7 +48,7 @@ mod tests {
         let address: I2cAddress = 0x18;
 
         // Temperature = 0°C -> raw = 0x0000
-        rpi_api.mock_state().set_i2c_register(address, 0x05, encode_mcp9808_temp(0));
+        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(0)).await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - 0.0).abs() < 0.01, "Expected 0°C, got {}", temp);
@@ -65,7 +65,7 @@ mod tests {
         // For -10: 256 - (raw/16) = 10 -> raw/16 = 246 -> raw = 3936 = 0x0F60
         // With sign bit: 0x1F60
         let raw: u16 = 0x1F60;
-        rpi_api.mock_state().set_i2c_register(address, 0x05, encode_mcp9808_temp(raw));
+        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - (-10.0)).abs() < 0.1, "Expected ~-10°C, got {}", temp);
@@ -78,7 +78,7 @@ mod tests {
 
         // Max positive: +125°C -> raw = 125 * 16 = 2000 = 0x07D0
         let raw: u16 = 2000;
-        rpi_api.mock_state().set_i2c_register(address, 0x05, encode_mcp9808_temp(raw));
+        rpi_api.set_i2c_register(address, 0x05, encode_mcp9808_temp(raw)).await;
 
         let temp = mcp9808::read_temp(&rpi_api, address).await.unwrap();
         assert!((temp - 125.0).abs() < 0.1, "Expected 125°C, got {}", temp);
@@ -94,7 +94,7 @@ mod tests {
 
         for (addr, expected_temp) in addresses.iter().zip(temps.iter()) {
             let raw = (*expected_temp * 16.0) as u16;
-            rpi_api.mock_state().set_i2c_register(*addr, 0x05, encode_mcp9808_temp(raw));
+            rpi_api.set_i2c_register(*addr, 0x05, encode_mcp9808_temp(raw)).await;
 
             let temp = mcp9808::read_temp(&rpi_api, *addr).await.unwrap();
             assert!(
@@ -120,19 +120,19 @@ mod tests {
     }
 
     /// Set up BMP085 calibration data from the datasheet example
-    fn setup_bmp085_calibration(rpi_api: &rpi::RpiApi, address: I2cAddress) {
+    async fn setup_bmp085_calibration(rpi_api: &rpi::RpiApi, address: I2cAddress) {
         // Example calibration values from BMP085 datasheet
-        rpi_api.mock_state().set_i2c_register(address, 0xAA, encode_bmp085_i16(408));    // AC1
-        rpi_api.mock_state().set_i2c_register(address, 0xAC, encode_bmp085_i16(-72));   // AC2
-        rpi_api.mock_state().set_i2c_register(address, 0xAE, encode_bmp085_i16(-14383)); // AC3
-        rpi_api.mock_state().set_i2c_register(address, 0xB0, encode_bmp085_u16(32741)); // AC4
-        rpi_api.mock_state().set_i2c_register(address, 0xB2, encode_bmp085_u16(32757)); // AC5
-        rpi_api.mock_state().set_i2c_register(address, 0xB4, encode_bmp085_u16(23153)); // AC6
-        rpi_api.mock_state().set_i2c_register(address, 0xB6, encode_bmp085_i16(6190));  // B1
-        rpi_api.mock_state().set_i2c_register(address, 0xB8, encode_bmp085_i16(4));     // B2
-        rpi_api.mock_state().set_i2c_register(address, 0xBA, encode_bmp085_i16(-32768)); // MB
-        rpi_api.mock_state().set_i2c_register(address, 0xBC, encode_bmp085_i16(-8711)); // MC
-        rpi_api.mock_state().set_i2c_register(address, 0xBE, encode_bmp085_i16(2868));  // MD
+        rpi_api.set_i2c_register(address, 0xAA, encode_bmp085_i16(408)).await;    // AC1
+        rpi_api.set_i2c_register(address, 0xAC, encode_bmp085_i16(-72)).await;   // AC2
+        rpi_api.set_i2c_register(address, 0xAE, encode_bmp085_i16(-14383)).await; // AC3
+        rpi_api.set_i2c_register(address, 0xB0, encode_bmp085_u16(32741)).await; // AC4
+        rpi_api.set_i2c_register(address, 0xB2, encode_bmp085_u16(32757)).await; // AC5
+        rpi_api.set_i2c_register(address, 0xB4, encode_bmp085_u16(23153)).await; // AC6
+        rpi_api.set_i2c_register(address, 0xB6, encode_bmp085_i16(6190)).await;  // B1
+        rpi_api.set_i2c_register(address, 0xB8, encode_bmp085_i16(4)).await;     // B2
+        rpi_api.set_i2c_register(address, 0xBA, encode_bmp085_i16(-32768)).await; // MB
+        rpi_api.set_i2c_register(address, 0xBC, encode_bmp085_i16(-8711)).await; // MC
+        rpi_api.set_i2c_register(address, 0xBE, encode_bmp085_i16(2868)).await;  // MD
     }
 
     #[tokio::test]
@@ -140,7 +140,7 @@ mod tests {
         let rpi_api = create_mock_rpi();
         let address: I2cAddress = 0x77;
 
-        setup_bmp085_calibration(&rpi_api, address);
+        setup_bmp085_calibration(&rpi_api, address).await;
 
         let mut state = bmp085::Bmp085State::new();
         let result = state.reset(address, &rpi_api).await;
@@ -153,11 +153,11 @@ mod tests {
         let rpi_api = create_mock_rpi();
         let address: I2cAddress = 0x77;
 
-        setup_bmp085_calibration(&rpi_api, address);
+        setup_bmp085_calibration(&rpi_api, address).await;
 
         // Set up temperature data register (0xF6)
         // Using datasheet example: UT = 27898 = 0x6CFA
-        rpi_api.mock_state().set_i2c_register(address, 0xF6, encode_bmp085_u16(27898));
+        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
 
         let mut state = bmp085::Bmp085State::new();
         state.reset(address, &rpi_api).await.unwrap();
@@ -178,16 +178,16 @@ mod tests {
         let rpi_api = create_mock_rpi();
         let address: I2cAddress = 0x77;
 
-        setup_bmp085_calibration(&rpi_api, address);
+        setup_bmp085_calibration(&rpi_api, address).await;
 
         // Set up temperature data (needed for pressure calculation)
-        rpi_api.mock_state().set_i2c_register(address, 0xF6, encode_bmp085_u16(27898));
+        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
 
         // Set up pressure data registers (single byte reads at 0xF6, 0xF7, 0xF8)
         // Datasheet example: UP = 23843 for mode 0 -> MSB=0x5D, LSB=0x23, XLSB=0x00
-        rpi_api.mock_state().set_i2c_register(address, 0xF6, vec![0x5D]);
-        rpi_api.mock_state().set_i2c_register(address, 0xF7, vec![0x23]);
-        rpi_api.mock_state().set_i2c_register(address, 0xF8, vec![0x00]);
+        rpi_api.set_i2c_register(address, 0xF6, vec![0x5D]).await;
+        rpi_api.set_i2c_register(address, 0xF7, vec![0x23]).await;
+        rpi_api.set_i2c_register(address, 0xF8, vec![0x00]).await;
 
         let mut state = bmp085::Bmp085State::new();
         state.reset(address, &rpi_api).await.unwrap();
@@ -210,15 +210,15 @@ mod tests {
         let rpi_api = create_mock_rpi();
         let address: I2cAddress = 0x77;
 
-        setup_bmp085_calibration(&rpi_api, address);
+        setup_bmp085_calibration(&rpi_api, address).await;
 
         // Set up temperature data register
-        rpi_api.mock_state().set_i2c_register(address, 0xF6, encode_bmp085_u16(27898));
+        rpi_api.set_i2c_register(address, 0xF6, encode_bmp085_u16(27898)).await;
 
         // Set up pressure data
-        rpi_api.mock_state().set_i2c_register(address, 0xF6, vec![0x5D]);
-        rpi_api.mock_state().set_i2c_register(address, 0xF7, vec![0x23]);
-        rpi_api.mock_state().set_i2c_register(address, 0xF8, vec![0x00]);
+        rpi_api.set_i2c_register(address, 0xF6, vec![0x5D]).await;
+        rpi_api.set_i2c_register(address, 0xF7, vec![0x23]).await;
+        rpi_api.set_i2c_register(address, 0xF8, vec![0x00]).await;
 
         let mut state = bmp085::Bmp085State::new();
         state.reset(address, &rpi_api).await.unwrap();
@@ -334,7 +334,7 @@ mod tests {
         // BitArray::from_bytes treats bit 0 as MSB
         // So for pin 0: index = 7 - 0 = 7, which is the LSB of the byte
         // To set LSB high, use 0x01 (binary: 00000001)
-        rpi_api.mock_state().set_i2c_register(address, 0x12, vec![0x01]);
+        rpi_api.set_i2c_register(address, 0x12, vec![0x01]).await;
 
         let mut state = mcp23017::Mcp23017State::new();
         state.reset(address, &rpi_api).await.unwrap();
@@ -550,7 +550,7 @@ mod tests {
             .await
             .unwrap();
 
-        let state = rpi_api.mock_state().get_pin_state(18);
+        let state = rpi_api.get_pin_state(18).await;
         assert_eq!(state.mode, rpi::MockPinMode::Output);
 
         rpi_api
@@ -558,7 +558,7 @@ mod tests {
             .await
             .unwrap();
 
-        let state = rpi_api.mock_state().get_pin_state(18);
+        let state = rpi_api.get_pin_state(18).await;
         assert_eq!(state.mode, rpi::MockPinMode::Input);
     }
 
@@ -592,12 +592,10 @@ mod tests {
     async fn test_mock_state_direct_access() {
         let rpi_api = create_mock_rpi();
 
-        // Use mock_state() for test setup
-        rpi_api.mock_state().write_pin(22, rpi::GpioLevel::High);
-        let level = rpi_api.mock_state().read_pin(22);
-        assert_eq!(level, rpi::GpioLevel::High);
+        // Write via async API
+        rpi_api.write_gpio(22, rpi::GpioLevel::High).await.unwrap();
 
-        // Verify via async API too
+        // Verify via async API
         let level = rpi_api.read_gpio(22).await.unwrap();
         assert_eq!(level, rpi::GpioLevel::High);
     }
