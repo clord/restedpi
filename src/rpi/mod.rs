@@ -311,12 +311,12 @@ impl MockState {
     }
 
     fn i2c_read(&self, address: u16, register: u8, size: usize) -> Vec<u8> {
-        if let Some(device) = self.i2c_devices.get(&address) {
-            if let Some(data) = device.get(&register) {
-                let mut result = data.clone();
-                result.resize(size, 0);
-                return result;
-            }
+        if let Some(device) = self.i2c_devices.get(&address)
+            && let Some(data) = device.get(&register)
+        {
+            let mut result = data.clone();
+            result.resize(size, 0);
+            return result;
         }
         // Return zeros for uninitialized registers
         vec![0u8; size]

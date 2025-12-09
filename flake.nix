@@ -50,7 +50,7 @@
         devShells.default = pkgs.mkShell {
           DATABASE_URL = "dev-restedpi.db";
           buildInputs = with pkgs; [
-            nixfmt
+            nixfmt-rfc-style
             sqlite
             diesel-cli
             rustVersion
