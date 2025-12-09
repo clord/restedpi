@@ -92,9 +92,11 @@ impl Db {
             })?;
 
             for statement in SCHEMA_STATEMENTS {
-                diesel::sql_query(*statement).execute(&mut conn).map_err(|e| {
-                    Error::DbError(format!("Failed to execute schema statement: {}", e))
-                })?;
+                diesel::sql_query(*statement)
+                    .execute(&mut conn)
+                    .map_err(|e| {
+                        Error::DbError(format!("Failed to execute schema statement: {}", e))
+                    })?;
             }
 
             info!("Database schema created successfully");

@@ -98,7 +98,9 @@ async fn main() -> Result<(), eyre::Error> {
     let (command, config_file) = setup();
     let _ = command.bright_white();
     match command {
-        Command::AddUser { username, password } => add_user(config_file.as_ref(), password, username),
+        Command::AddUser { username, password } => {
+            add_user(config_file.as_ref(), password, username)
+        }
         Command::BooleanRepl => bool_repl(config_file.as_ref()),
         Command::Server => server(config_file).await,
     }
@@ -172,10 +174,14 @@ async fn server(config_file: Option<PathBuf>) -> Result<(), color_eyre::Report> 
             serve.run(addr).await
         }
         (Some(_), None) => {
-            return Err(eyre::eyre!("TLS key provided but missing certificate (tls_cert_path)"));
+            return Err(eyre::eyre!(
+                "TLS key provided but missing certificate (tls_cert_path)"
+            ));
         }
         (None, Some(_)) => {
-            return Err(eyre::eyre!("TLS certificate provided but missing key (tls_key_path)"));
+            return Err(eyre::eyre!(
+                "TLS certificate provided but missing key (tls_key_path)"
+            ));
         }
     }
     Ok(())
