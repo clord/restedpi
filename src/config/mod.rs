@@ -4,8 +4,13 @@ pub mod sched;
 pub mod types;
 pub mod value;
 
+use figment::{
+    Figment,
+    providers::{Env, Format, Serialized, Toml},
+};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 use types::LocationValue;
 
@@ -32,8 +37,11 @@ pub struct Config {
     // if unset, we'll use the environment variable APP_SECRET for the secret value.
     pub app_secret_path: Option<PathBuf>,
 
-    // tls key and cert in that order
-    pub key_and_cert_path: Option<(PathBuf, PathBuf)>,
+    // TLS key file path
+    pub tls_key_path: Option<PathBuf>,
+
+    // TLS certificate file path
+    pub tls_cert_path: Option<PathBuf>,
 
     // Use path of config file if unset, otherwise, directory containing rpi.sql3
     pub db_path: Option<PathBuf>,
@@ -53,7 +61,8 @@ impl Default for Config {
             long: 0.0,
             db_path: None,
             app_secret_path: None,
-            key_and_cert_path: None,
+            tls_key_path: None,
+            tls_cert_path: None,
             users: None,
         }
     }
@@ -62,6 +71,35 @@ impl Default for Config {
 impl Config {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Load configuration with priority: env vars > config file > defaults
+    ///
+    /// Environment variables are prefixed with `RESTEDPI_` and use uppercase with underscores.
+    /// For example:
+    /// - `RESTEDPI_PORT=8080`
+    /// - `RESTEDPI_DB_PATH=/var/lib/restedpi`
+    /// - `RESTEDPI_LISTEN=0.0.0.0`
+    /// - `RESTEDPI_I2CBUS=1`
+    /// - `RESTEDPI_LAT=45.5`
+    /// - `RESTEDPI_LONG=-122.6`
+    /// - `RESTEDPI_APP_SECRET_PATH=/etc/restedpi/secret`
+    /// - `RESTEDPI_TLS_KEY_PATH=/etc/restedpi/key.pem`
+    /// - `RESTEDPI_TLS_CERT_PATH=/etc/restedpi/cert.pem`
+    pub fn load(config_file: Option<&Path>) -> Result<Self, figment::Error> {
+        let mut figment = Figment::from(Serialized::defaults(Config::default()));
+
+        // Add config file if it exists
+        if let Some(path) = config_file
+            && path.exists()
+        {
+            figment = figment.merge(Toml::file(path));
+        }
+
+        // Environment variables override everything (RESTEDPI_ prefix)
+        figment = figment.merge(Env::prefixed("RESTEDPI_").split("__"));
+
+        figment.extract()
     }
 
     pub fn here(&self) -> LocationValue {

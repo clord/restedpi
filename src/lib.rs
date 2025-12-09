@@ -14,9 +14,6 @@ extern crate warp;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate rust_embed;
-
 pub mod app;
 pub mod auth;
 pub mod config;

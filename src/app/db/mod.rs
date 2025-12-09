@@ -5,9 +5,38 @@ use crate::error::{Error, Result};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::sqlite::SqliteConnection;
+use std::path::Path;
 use tracing::info;
 
 pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+
+/// SQL statements for bootstrapping a new database (executed in order)
+const SCHEMA_STATEMENTS: &[&str] = &[
+    "PRAGMA foreign_keys = ON",
+    "CREATE TABLE IF NOT EXISTS devices(
+        name TEXT NOT NULL PRIMARY KEY,
+        model TEXT NOT NULL,
+        notes TEXT NOT NULL,
+        disabled BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )",
+    "CREATE TABLE IF NOT EXISTS inputs(
+        name TEXT NOT NULL PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        device_input_id INT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (device_id) REFERENCES devices(name) ON DELETE CASCADE
+    )",
+    "CREATE TABLE IF NOT EXISTS outputs(
+        name TEXT NOT NULL PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        device_output_id INT NOT NULL,
+        active_low BOOLEAN NOT NULL DEFAULT FALSE,
+        automation_script TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (device_id) REFERENCES devices(name) ON DELETE CASCADE
+    )",
+];
 
 fn get_pool(db_url: &str) -> Result<DbPool> {
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
@@ -19,12 +48,61 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn start_db(path: &std::path::Path) -> Result<Self> {
-        let joined = path.join("rpi.sql3");
-        let uri = joined
-            .to_str()
-            .ok_or(Error::IoError("path not set".to_string()))?;
-        Ok(Db { db: get_pool(uri)? })
+    /// Initialize the database, creating it if necessary.
+    ///
+    /// The database file will be created at `{path}/rpi.sql3`.
+    /// If the file doesn't exist or is empty, the schema will be bootstrapped.
+    pub fn start_db(path: &Path) -> Result<Self> {
+        // Ensure the directory exists
+        if !path.exists() {
+            std::fs::create_dir_all(path).map_err(|e| {
+                Error::DbError(format!(
+                    "Failed to create database directory {:?}: {}. \
+                     Set db_path in config.toml or use --config-file to specify location.",
+                    path, e
+                ))
+            })?;
+            info!("Created database directory: {:?}", path);
+        }
+
+        let db_file = path.join("rpi.sql3");
+        let db_uri = db_file.to_str().ok_or_else(|| {
+            Error::IoError(format!(
+                "Database path {:?} contains invalid UTF-8",
+                db_file
+            ))
+        })?;
+
+        let needs_bootstrap = !db_file.exists();
+
+        // Create the connection pool
+        let pool = get_pool(db_uri).map_err(|e| {
+            Error::DbError(format!(
+                "Failed to open database at {:?}: {}. \
+                 Check that the path is writable and has sufficient disk space.",
+                db_file, e
+            ))
+        })?;
+
+        // Bootstrap schema if this is a new database
+        if needs_bootstrap {
+            info!("Bootstrapping new database at {:?}", db_file);
+            let mut conn = pool.get().map_err(|e| {
+                Error::DbError(format!("Failed to get connection for bootstrap: {}", e))
+            })?;
+
+            for statement in SCHEMA_STATEMENTS {
+                diesel::sql_query(*statement).execute(&mut conn).map_err(|e| {
+                    Error::DbError(format!("Failed to execute schema statement: {}", e))
+                })?;
+            }
+
+            info!("Database schema created successfully");
+        } else {
+            info!("Using existing database at {:?}", db_file);
+        }
+
+        Ok(Db { db: pool })
     }
 
     pub fn add_device(&self, new_device: &models::NewDevice) -> Result<models::Device> {

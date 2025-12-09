@@ -15,7 +15,6 @@ fn with_app(
         .map(move |t| AppContext::new(app.clone(), t))
 }
 
-// pub async fn configured_devices(app: SharedAppState) -> Result<impl Reply, Rejection> {
 async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
     let mut response: Response<String> = Response::default();
     let b = response.body_mut();
@@ -28,9 +27,6 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         let value = v.value()?;
         b.push_str(&format!(
             "input_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n",
-            name = name,
-            unit = unit,
-            value = value
         ));
     }
 
@@ -44,9 +40,6 @@ async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
         let value = v.value()?;
         b.push_str(&format!(
             "output_value{{name=\"{name}\", unit=\"{unit:?}\"}} {value}\n",
-            name = name,
-            unit = unit,
-            value = value
         ));
     }
     b.push('\n');
@@ -81,23 +74,8 @@ pub fn graphql_api(
         .and(with_app(app))
         .and_then(metrics_handler);
 
-    subscriptions
-        .or(graphql)
-        .or(metrics)
-        .or(static_filter())
-        .or(static_index_html())
-}
+    // Serve index.html for root and any other path (SPA-style)
+    let index = get().and_then(super::serve_index);
 
-pub fn api(_app: SharedAppState) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    static_filter().or(static_index_html())
-}
-
-fn static_index_html() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    get().and_then(|| super::static_serve("index.html"))
-}
-
-fn static_filter() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    get()
-        .and(warp::path::tail())
-        .and_then(super::static_serve_tail)
+    subscriptions.or(graphql).or(metrics).or(index)
 }
