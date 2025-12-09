@@ -413,6 +413,18 @@
             color: var(--text-secondary);
         }
 
+        .login-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-left: 10px;
+            font-style: italic;
+        }
+
+        .switch input:disabled + .slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .refresh-indicator {
             font-size: 0.8rem;
             color: var(--text-secondary);
@@ -674,7 +686,6 @@
                         name
                         notes
                         disabled
-                        createdAt
                         model {
                             __typename
                             ... on MCP9808 { address }
@@ -697,15 +708,13 @@
                 const data = await gql(`{
                     inputs {
                         name
-                        deviceId
-                        deviceInputId
-                        createdAt
+                        device { name }
                         value {
                             __typename
-                            ... on DegC { value }
-                            ... on KPa { value }
-                            ... on Boolean { value }
-                            ... on Error { message }
+                            ... on DimDegC { value }
+                            ... on DimKPa { value }
+                            ... on DimBool { value }
+                            ... on DimMessage { message }
                         }
                     }
                 }`);
@@ -726,11 +735,10 @@
                         deviceOutputId
                         activeLow
                         automationScript
-                        createdAt
                         value {
                             __typename
-                            ... on Boolean { value }
-                            ... on Error { message }
+                            ... on DimBool { value }
+                            ... on DimMessage { message }
                         }
                     }
                 }`);
@@ -789,12 +797,13 @@
             // Input values
             state.inputs.forEach(input => {
                 const value = formatValue(input.value);
+                const deviceName = input.device?.name || 'Unknown';
                 html += `
                     <div class="card">
                         <div class="card-header">
                             <div>
                                 <div class="card-title">${escapeHtml(input.name)}</div>
-                                <div class="card-subtitle">Device: ${escapeHtml(input.deviceId)}</div>
+                                <div class="card-subtitle">Device: ${escapeHtml(deviceName)}</div>
                             </div>
                             <span class="badge badge-input">Input</span>
                         </div>
@@ -804,8 +813,9 @@
             });
 
             // Output controls
+            const isLoggedIn = !!state.token;
             state.outputs.forEach(output => {
-                const isOn = output.value?.__typename === 'Boolean' && output.value.value;
+                const isOn = output.value?.__typename === 'DimBool' && output.value.value;
                 html += `
                     <div class="card">
                         <div class="card-header">
@@ -817,11 +827,12 @@
                         </div>
                         <div class="switch-container">
                             <label class="switch">
-                                <input type="checkbox" ${isOn ? 'checked' : ''}
+                                <input type="checkbox" ${isOn ? 'checked' : ''} ${!isLoggedIn ? 'disabled' : ''}
                                     onchange="setOutput('${escapeHtml(output.name)}', this.checked)">
                                 <span class="slider"></span>
                             </label>
                             <span class="switch-label">${isOn ? 'ON' : 'OFF'}</span>
+                            ${!isLoggedIn ? '<span class="login-hint">(login to control)</span>' : ''}
                         </div>
                         ${output.automationScript ? `<div class="card-subtitle" style="margin-top: 10px;">Automation: ${escapeHtml(output.automationScript)}</div>` : ''}
                     </div>
@@ -871,10 +882,6 @@
                             <span class="info-label">Slots</span>
                             <span>${device.slots?.length || 0}</span>
                         </div>
-                        <div class="info-row">
-                            <span class="info-label">Created</span>
-                            <span>${formatDate(device.createdAt)}</span>
-                        </div>
                     </div>
                 `;
             });
@@ -893,20 +900,17 @@
             let html = '';
             state.inputs.forEach(input => {
                 const value = formatValue(input.value);
+                const deviceName = input.device?.name || 'Unknown';
                 html += `
                     <div class="card">
                         <div class="card-header">
                             <div>
                                 <div class="card-title">${escapeHtml(input.name)}</div>
-                                <div class="card-subtitle">Pin ${input.deviceInputId} on ${escapeHtml(input.deviceId)}</div>
+                                <div class="card-subtitle">Device: ${escapeHtml(deviceName)}</div>
                             </div>
                             <span class="badge badge-input">${value.type}</span>
                         </div>
                         <div class="value-display">${value.display} <span class="value-unit">${value.unit}</span></div>
-                        <div class="info-row">
-                            <span class="info-label">Created</span>
-                            <span>${formatDate(input.createdAt)}</span>
-                        </div>
                     </div>
                 `;
             });
@@ -923,8 +927,9 @@
             }
 
             let html = '';
+            const isLoggedIn = !!state.token;
             state.outputs.forEach(output => {
-                const isOn = output.value?.__typename === 'Boolean' && output.value.value;
+                const isOn = output.value?.__typename === 'DimBool' && output.value.value;
                 html += `
                     <div class="card">
                         <div class="card-header">
@@ -932,25 +937,22 @@
                                 <div class="card-title">${escapeHtml(output.name)}</div>
                                 <div class="card-subtitle">Pin ${output.deviceOutputId} on ${escapeHtml(output.deviceId)}</div>
                             </div>
-                            <span class="badge badge-output">Boolean</span>
+                            <span class="badge badge-output">Output</span>
                         </div>
                         <div class="switch-container">
                             <label class="switch">
-                                <input type="checkbox" ${isOn ? 'checked' : ''}
+                                <input type="checkbox" ${isOn ? 'checked' : ''} ${!isLoggedIn ? 'disabled' : ''}
                                     onchange="setOutput('${escapeHtml(output.name)}', this.checked)">
                                 <span class="slider"></span>
                             </label>
                             <span class="switch-label">${isOn ? 'ON' : 'OFF'}</span>
+                            ${!isLoggedIn ? '<span class="login-hint">(login to control)</span>' : ''}
                         </div>
                         <div class="info-row" style="margin-top: 15px;">
                             <span class="info-label">Active Low</span>
                             <span>${output.activeLow ? 'Yes' : 'No'}</span>
                         </div>
                         ${output.automationScript ? `<div class="info-row"><span class="info-label">Automation</span><span style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(output.automationScript)}</span></div>` : ''}
-                        <div class="info-row">
-                            <span class="info-label">Created</span>
-                            <span>${formatDate(output.createdAt)}</span>
-                        </div>
                     </div>
                 `;
             });
@@ -995,14 +997,13 @@
             allInputs: `{
   inputs {
     name
-    deviceId
-    deviceInputId
+    device { name }
     value {
       __typename
-      ... on DegC { value }
-      ... on KPa { value }
-      ... on Boolean { value }
-      ... on Error { message }
+      ... on DimDegC { value }
+      ... on DimKPa { value }
+      ... on DimBool { value }
+      ... on DimMessage { message }
     }
   }
 }`,
@@ -1015,8 +1016,8 @@
     automationScript
     value {
       __typename
-      ... on Boolean { value }
-      ... on Error { message }
+      ... on DimBool { value }
+      ... on DimMessage { message }
     }
   }
 }`,
@@ -1087,13 +1088,13 @@
             if (!value) return { display: '--', unit: '', type: 'Unknown' };
 
             switch (value.__typename) {
-                case 'DegC':
+                case 'DimDegC':
                     return { display: value.value.toFixed(1), unit: '°C', type: 'Temperature' };
-                case 'KPa':
+                case 'DimKPa':
                     return { display: value.value.toFixed(2), unit: 'kPa', type: 'Pressure' };
-                case 'Boolean':
+                case 'DimBool':
                     return { display: value.value ? 'ON' : 'OFF', unit: '', type: 'Boolean' };
-                case 'Error':
+                case 'DimMessage':
                     return { display: 'Error', unit: value.message, type: 'Error' };
                 default:
                     return { display: '--', unit: '', type: value.__typename || 'Unknown' };
