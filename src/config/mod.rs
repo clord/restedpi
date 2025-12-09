@@ -86,7 +86,7 @@ impl Config {
     /// - `RESTEDPI_APP_SECRET_PATH=/etc/restedpi/secret`
     /// - `RESTEDPI_TLS_KEY_PATH=/etc/restedpi/key.pem`
     /// - `RESTEDPI_TLS_CERT_PATH=/etc/restedpi/cert.pem`
-    pub fn load(config_file: Option<&Path>) -> Result<Self, figment::Error> {
+    pub fn load(config_file: Option<&Path>) -> Result<Self, Box<figment::Error>> {
         let mut figment = Figment::from(Serialized::defaults(Config::default()));
 
         // Add config file if it exists
@@ -99,7 +99,7 @@ impl Config {
         // Environment variables override everything (RESTEDPI_ prefix)
         figment = figment.merge(Env::prefixed("RESTEDPI_").split("__"));
 
-        figment.extract()
+        figment.extract().map_err(Box::new)
     }
 
     pub fn here(&self) -> LocationValue {
