@@ -711,9 +711,9 @@
                         device { name }
                         value {
                             __typename
-                            ... on DimDegC { value }
-                            ... on DimKPa { value }
-                            ... on DimBool { value }
+                            ... on DimDegC { floatValue: value }
+                            ... on DimKPa { floatValue: value }
+                            ... on DimBool { boolValue: value }
                             ... on DimMessage { message }
                         }
                     }
@@ -737,7 +737,7 @@
                         automationScript
                         value {
                             __typename
-                            ... on DimBool { value }
+                            ... on DimBool { boolValue: value }
                             ... on DimMessage { message }
                         }
                     }
@@ -815,7 +815,7 @@
             // Output controls
             const isLoggedIn = !!state.token;
             state.outputs.forEach(output => {
-                const isOn = output.value?.__typename === 'DimBool' && output.value.value;
+                const isOn = output.value?.__typename === 'DimBool' && output.value.boolValue;
                 html += `
                     <div class="card">
                         <div class="card-header">
@@ -929,7 +929,7 @@
             let html = '';
             const isLoggedIn = !!state.token;
             state.outputs.forEach(output => {
-                const isOn = output.value?.__typename === 'DimBool' && output.value.value;
+                const isOn = output.value?.__typename === 'DimBool' && output.value.boolValue;
                 html += `
                     <div class="card">
                         <div class="card-header">
@@ -1000,9 +1000,9 @@
     device { name }
     value {
       __typename
-      ... on DimDegC { value }
-      ... on DimKPa { value }
-      ... on DimBool { value }
+      ... on DimDegC { floatValue: value }
+      ... on DimKPa { floatValue: value }
+      ... on DimBool { boolValue: value }
       ... on DimMessage { message }
     }
   }
@@ -1016,7 +1016,7 @@
     automationScript
     value {
       __typename
-      ... on DimBool { value }
+      ... on DimBool { boolValue: value }
       ... on DimMessage { message }
     }
   }
@@ -1089,11 +1089,11 @@
 
             switch (value.__typename) {
                 case 'DimDegC':
-                    return { display: value.value.toFixed(1), unit: '°C', type: 'Temperature' };
+                    return { display: value.floatValue.toFixed(1), unit: '°C', type: 'Temperature' };
                 case 'DimKPa':
-                    return { display: value.value.toFixed(2), unit: 'kPa', type: 'Pressure' };
+                    return { display: value.floatValue.toFixed(2), unit: 'kPa', type: 'Pressure' };
                 case 'DimBool':
-                    return { display: value.value ? 'ON' : 'OFF', unit: '', type: 'Boolean' };
+                    return { display: value.boolValue ? 'ON' : 'OFF', unit: '', type: 'Boolean' };
                 case 'DimMessage':
                     return { display: 'Error', unit: value.message, type: 'Error' };
                 default:
