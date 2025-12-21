@@ -1,7 +1,7 @@
 use crate::app;
 use crate::error::Error;
 use serde_json::json;
-use tracing::error;
+use tracing::warn;
 use warp::{Rejection, Reply, http::Response, http::StatusCode, reject, reply};
 
 pub mod filters;
@@ -52,7 +52,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
         };
 
         let message = err.to_string();
-        error!("Error code {}: {}", code, message);
+        warn!("Client request failed (code {}): {}", code, message);
         let json = json!({ "type": "error", "code": code, "message": message });
         Ok(reply::with_status(
             json.to_string(),

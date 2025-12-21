@@ -68,6 +68,15 @@ Core principle: Make implicit invariants explicit and compiler-checked.
 - Always clean all warnings and errors including clippy output
 - Use `unreachable!()` for mathematically impossible branches (e.g., `n % 8` matching 8+)
 
+**Error Logging Philosophy**
+- **If it's not something that has to be fixed, it's not an error** - use `warn!` at most
+- **Error means something is wrong with the program** - not with external systems or user input
+- **Distinguish operation-level from program-level errors**:
+  - *Program-level* (`error!`): config file errors, hardware init failures, internal bugs, crypto failures
+  - *Operation-level* (`warn!` or `info!`): invalid user input, failed auth attempts, client request errors, remote system failures
+- **A properly working program shouldn't log errors** - error messages should be a reliable signal that something needs fixing
+- **Errors must be fixable by the operator** - if they can't fix it, it's either not an error or the program is unsuitable for their environment
+
 ### Recommended Clippy Lints
 
 Consider enabling in `lib.rs`:

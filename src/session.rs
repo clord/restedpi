@@ -5,7 +5,7 @@ use crate::webapp::SharedAppState;
 use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::error;
+use tracing::{error, warn};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct WebSession {
@@ -82,7 +82,7 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
                 }
             },
             Err(e) => {
-                error!("Password issue: {}", e);
+                warn!("Password verification failed: {}", e);
                 Err(Error::PasswordIssue)
             }
         },
