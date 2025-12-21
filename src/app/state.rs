@@ -9,7 +9,7 @@ use crate::rpi::device::Device;
 use chrono::prelude::*;
 use db::models;
 use std::collections::HashMap;
-use tracing::{error, info, instrument};
+use tracing::{error, info, instrument, warn};
 
 use super::dimensioned::Dimensioned;
 
@@ -292,7 +292,9 @@ impl State {
                                 error!("failed to write: {}", e);
                             }
                         }
-                        Err(e) => error!("{:?} has an error: {}", expr, e),
+                        Err(e) => {
+                            warn!("Automation expression {:?} evaluation failed: {}", expr, e)
+                        }
                     }
                 }
             }
