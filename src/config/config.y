@@ -15,6 +15,9 @@ OrTerm -> Result<BoolExpr, ()>:
       OrTerm 'or' AndTerm {
         Ok(BoolExpr::Or($span, Box::new($1?), Box::new($3?)))
       }
+    | OrTerm 'xor' AndTerm {
+        Ok(BoolExpr::Xor($span, Box::new($1?), Box::new($3?)))
+      }
     | AndTerm { $1 }
     ;
 
@@ -117,6 +120,15 @@ Factor -> Result<Value, ()>:
       }
     | 'lerp' '(' Value ',' Value ',' Value ')' {
         Ok(Value::Lerp(Box::new($3?), Box::new($5?), Box::new($7?)))
+      }
+    | 'linear' '(' Value ',' Value ',' Value ')' {
+        Ok(Value::Linear(Box::new($3?), Box::new($5?), Box::new($7?)))
+      }
+    | 'trunc' '(' Value ')' {
+        Ok(Value::Trunc(Box::new($3?)))
+      }
+    | 'inverse' '(' Value ')' {
+        Ok(Value::Inverse(Box::new($3?)))
       }
     ;
 
