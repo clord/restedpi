@@ -27,7 +27,6 @@ juniper_graphql_ws = "0.4.0"
 futures = "0.3.16"
 rppal = { version = "0.22.1", optional = true } 
 structopt = "0.3.22"
-prometheus = "0.13.0"
 warp = { version = "0.3.1", features = ["tls"] }
 toml = "0.8.10"
 rand = "0.8.4"

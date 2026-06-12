@@ -100,15 +100,17 @@ impl State {
         description: String,
         disabled: Option<bool>,
     ) -> Result<AppID> {
-        let new_device = models::NewDevice::new(model, name, description, disabled);
-        let db_device = self.db.add_device(&new_device)?;
-        let model = serde_json::from_str(db_device.model.as_str())?;
-        let id = db_device.name;
+        // Verify the hardware actually works before persisting anything: a
+        // device that fails reset must not be stored, or it would haunt every
+        // subsequent boot and leave the DB and in-memory state out of sync.
         let mut device = Device::new(model, self.i2c.clone());
         device.reset().await?;
+        let new_device = models::NewDevice::new(model, name, description, disabled);
+        let db_device = self.db.add_device(&new_device)?;
+        let id = db_device.name;
         info!("Adding device id: {}", id);
         self.devices.insert(id.clone(), device);
-        Ok(id.clone())
+        Ok(id)
     }
 
     pub async fn add_input(&mut self, config: &models::NewInput) -> Result<AppID> {
@@ -363,13 +365,34 @@ pub async fn new_state(bus: u8, here: (f64, f64), db: crate::app::db::Db) -> Res
 
     let mut device_instances: HashMap<AppID, Device> = HashMap::new();
 
+    // A single broken device (corrupt model JSON, unplugged sensor, wrong I2C
+    // address, ...) must not prevent the server from booting: log it, skip it,
+    // and keep going. Reads of a skipped device return NonExistant errors.
     let devices = db.devices()?;
     for db_device in &devices {
-        let model = serde_json::from_str(&db_device.model)?;
+        let model: device::Type = match serde_json::from_str(&db_device.model) {
+            Ok(model) => model,
+            Err(e) => {
+                error!(
+                    "Skipping device '{}': stored model is not valid JSON: {}",
+                    db_device.name, e
+                );
+                continue;
+            }
+        };
         info!("Adding device {:?} named '{}'", model, db_device.name);
         let mut new_device = Device::new(model, i2c.clone());
-        new_device.reset().await?;
-        device_instances.insert(db_device.name.clone(), new_device);
+        match new_device.reset().await {
+            Ok(()) => {
+                device_instances.insert(db_device.name.clone(), new_device);
+            }
+            Err(e) => {
+                error!(
+                    "Skipping device '{}': hardware reset failed: {}",
+                    db_device.name, e
+                );
+            }
+        }
     }
 
     let mut state = State {
@@ -387,7 +410,7 @@ pub async fn new_state(bus: u8, here: (f64, f64), db: crate::app::db::Db) -> Res
 }
 
 #[cfg(all(test, feature = "mock-gpio"))]
-mod tests {
+mod mock_gpio_tests {
     use super::*;
     use crate::app::device::{Directions, MCP23017, Type};
 
@@ -522,5 +545,162 @@ mod tests {
             state.read_input_value(&in_id).await,
             Err(Error::DeviceDisabled(_))
         ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::db::Db;
+    use std::path::PathBuf;
+
+    /// Unique temporary directory for an isolated test database.
+    fn temp_db_dir(tag: &str) -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock is before the unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "restedpi-state-test-{}-{}-{}",
+            tag,
+            std::process::id(),
+            nanos
+        ))
+    }
+
+    fn mcp9808_model() -> device::Type {
+        device::Type::MCP9808(device::MCP9808 { address: 0x18 })
+    }
+
+    /// A device row with invalid model JSON must not prevent boot: the device
+    /// is skipped (reads return NonExistant) while valid devices still load.
+    #[tokio::test]
+    async fn new_state_skips_device_with_invalid_model_json() {
+        let dir = temp_db_dir("invalid-model");
+        let db = Db::start_db(&dir).expect("create test db");
+
+        db.execute_sql_for_tests(
+            "INSERT INTO devices (name, model, notes) VALUES ('broken', 'not valid json', '')",
+        )
+        .expect("insert corrupt device row");
+        let good = models::NewDevice::new(
+            mcp9808_model(),
+            "good".to_string(),
+            "a working sensor".to_string(),
+            None,
+        );
+        db.add_device(&good).expect("insert valid device row");
+
+        let state = new_state(1, (0.0, 0.0), db)
+            .await
+            .expect("boot must succeed despite the corrupt device row");
+
+        // Both rows are still in the DB...
+        let db_devices = state.devices().expect("list devices");
+        assert_eq!(db_devices.len(), 2);
+
+        // ...but only the valid device made it into memory.
+        assert!(state.device_slots(&"good".to_string()).is_ok());
+        match state.device_slots(&"broken".to_string()) {
+            Err(Error::NonExistant(_)) => (),
+            other => panic!("expected NonExistant for skipped device, got {:?}", other),
+        }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A device whose hardware reset fails must be skipped at boot, not abort
+    /// startup. Only meaningful in the stub build, where I2C access errors.
+    #[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+    #[tokio::test]
+    async fn new_state_skips_device_whose_reset_fails() {
+        let dir = temp_db_dir("reset-fails");
+        let db = Db::start_db(&dir).expect("create test db");
+
+        // BMP085 reset reads calibration data over I2C, which fails in the
+        // stub build; MCP9808 reset is a no-op and succeeds.
+        let bmp = models::NewDevice::new(
+            device::Type::BMP085(device::BMP085 {
+                address: 0x77,
+                mode: device::SamplingMode::Standard,
+            }),
+            "unreachable".to_string(),
+            "sensor that fails reset".to_string(),
+            None,
+        );
+        db.add_device(&bmp).expect("insert bmp085 row");
+        let good = models::NewDevice::new(
+            mcp9808_model(),
+            "good".to_string(),
+            "a working sensor".to_string(),
+            None,
+        );
+        db.add_device(&good).expect("insert valid device row");
+
+        let state = new_state(1, (0.0, 0.0), db)
+            .await
+            .expect("boot must succeed despite the failing device");
+
+        assert!(state.device_slots(&"good".to_string()).is_ok());
+        match state.device_slots(&"unreachable".to_string()) {
+            Err(Error::NonExistant(_)) => (),
+            other => panic!("expected NonExistant for skipped device, got {:?}", other),
+        }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// add_device must not persist a device whose hardware reset fails.
+    /// Only meaningful in the stub build, where I2C access errors.
+    #[cfg(not(any(feature = "raspberrypi", feature = "mock-gpio")))]
+    #[tokio::test]
+    async fn add_device_does_not_persist_when_reset_fails() {
+        let dir = temp_db_dir("add-reset-fails");
+        let db = Db::start_db(&dir).expect("create test db");
+        let mut state = new_state(1, (0.0, 0.0), db).await.expect("boot empty db");
+
+        let result = state
+            .add_device(
+                device::Type::BMP085(device::BMP085 {
+                    address: 0x77,
+                    mode: device::SamplingMode::Standard,
+                }),
+                "unreachable".to_string(),
+                "sensor that fails reset".to_string(),
+                None,
+            )
+            .await;
+        assert!(result.is_err(), "reset failure must propagate to caller");
+
+        // Nothing was persisted, so the next boot is unaffected.
+        let db_devices = state.devices().expect("list devices");
+        assert!(db_devices.is_empty(), "failed device must not be stored");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// add_device persists and registers the device once reset succeeds.
+    #[tokio::test]
+    async fn add_device_persists_after_successful_reset() {
+        let dir = temp_db_dir("add-ok");
+        let db = Db::start_db(&dir).expect("create test db");
+        let mut state = new_state(1, (0.0, 0.0), db).await.expect("boot empty db");
+
+        let id = state
+            .add_device(
+                mcp9808_model(),
+                "temp1".to_string(),
+                "a temperature sensor".to_string(),
+                None,
+            )
+            .await
+            .expect("adding a healthy device succeeds");
+
+        assert_eq!(id, "temp1");
+        assert!(state.device_slots(&id).is_ok());
+        let db_devices = state.devices().expect("list devices");
+        assert_eq!(db_devices.len(), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

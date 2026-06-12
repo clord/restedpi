@@ -134,6 +134,14 @@ impl Db {
         Ok(Db { db: pool })
     }
 
+    /// Execute a raw SQL statement. Test-only: lets tests construct corrupt
+    /// rows (e.g. invalid model JSON) that the typed API cannot produce.
+    #[cfg(test)]
+    pub(crate) fn execute_sql_for_tests(&self, sql: &str) -> Result<usize> {
+        let mut db = self.db.get()?;
+        Ok(diesel::sql_query(sql).execute(&mut db)?)
+    }
+
     pub fn add_device(&self, new_device: &models::NewDevice) -> Result<models::Device> {
         use crate::schema::devices::dsl::*;
         use crate::schema::devices::table;
