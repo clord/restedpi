@@ -3,7 +3,6 @@ use super::I2cAddress;
 use super::util::{iv2be, uv2be};
 use crate::app::device::SamplingMode;
 use crate::error::Result;
-use std::thread;
 use std::time::Duration;
 
 /// How long should we accumulate before returning a result?
@@ -36,6 +35,16 @@ enum Register {
     Md = 0xBE,  // Calibration
     Control = 0xF4,
     Data = 0xF6, // Pressure & Temp
+}
+
+/// Extract the single byte of a one-byte pressure register read
+fn single_pressure_byte(buf: &[u8], which: &str) -> Result<u32> {
+    match buf {
+        [byte] => Ok(*byte as u32),
+        [] | [_, _, ..] => Err(crate::error::Error::DeviceReadError(format!(
+            "expected 1 byte reading BMP085 pressure {which}"
+        ))),
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -147,7 +156,7 @@ impl Bmp085State {
             vec![Control::ReadTemp as u8],
         )
         .await?;
-        thread::sleep(Duration::from_millis(5)); // sleep for 4.5 ms
+        tokio::time::sleep(Duration::from_millis(5)).await; // wait for the ~4.5 ms conversion
         let data = rapi.read_i2c(address, Register::Data as u8, 2).await?;
 
         let ut: i32 = iv2be(&data) as i32;
@@ -193,14 +202,14 @@ impl Bmp085State {
             SamplingMode::UltraHighRes => Duration::from_millis(26),
         };
 
-        thread::sleep(duration);
+        tokio::time::sleep(duration).await;
 
         let msbv = rapi.read_i2c(address, Register::Data as u8, 1).await?;
         let lsbv = rapi.read_i2c(address, Register::Data as u8 + 1, 1).await?;
         let xlsbv = rapi.read_i2c(address, Register::Data as u8 + 2, 1).await?;
-        let msb = msbv[0] as u32;
-        let lsb = lsbv[0] as u32;
-        let xlsb = xlsbv[0] as u32;
+        let msb = single_pressure_byte(&msbv, "MSB")?;
+        let lsb = single_pressure_byte(&lsbv, "LSB")?;
+        let xlsb = single_pressure_byte(&xlsbv, "XLSB")?;
 
         let up: i32 = (((msb << 16) + (lsb << 8) + xlsb) >> (8 - sampling)) as i32;
 

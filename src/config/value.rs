@@ -21,6 +21,10 @@ fn doy_for_dt(dt: DateTime<Local>) -> f64 {
         + ((dt.second() as f64 / 24.0f64) / 3600.0f64)
 }
 
+fn fractional_minute_of_hour(dt: DateTime<Local>) -> f64 {
+    dt.minute() as f64 + (dt.second() as f64 / 60.0f64)
+}
+
 fn lat_for_loc(app: &State, location: &LocationValue) -> f64 {
     match location {
         LocationValue::Here => app.lat(),
@@ -108,7 +112,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
         Value::HourOffset(location) => Ok(sched::exact_offset_hrs(long_for_loc(app, location))),
 
         Value::HourAngleSunrise(location, datetime) => Ok(sched::hour_angle_sunrise(
-            lat_for_loc(app, location),
+            lat_for_loc(app, location).to_radians(),
             sched::noon_decl_sun(doy_for_dt(dt_for_datetime(app, datetime)?)),
         )
         .to_degrees()),
@@ -199,7 +203,7 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
 
         Value::MinuteOfHour(vdt) => {
             let dt = dt_for_datetime(app, vdt)?;
-            Ok(dt.minute() as f64 + (dt.second() as f64 / 3600.0f64))
+            Ok(fractional_minute_of_hour(dt))
         }
         Value::HourOfDay(vdt) => {
             let dt = dt_for_datetime(app, vdt)?;
@@ -257,5 +261,50 @@ pub async fn evaluate(app: &State, expr: &Value) -> Result<f64> {
                 Ok(1.0f64 / divisor)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{doy_for_dt, fractional_minute_of_hour};
+    use chrono::prelude::*;
+
+    fn local_dt(
+        year: i32,
+        month: u32,
+        day: u32,
+        hour: u32,
+        minute: u32,
+        second: u32,
+    ) -> DateTime<Local> {
+        match Local.with_ymd_and_hms(year, month, day, hour, minute, second) {
+            chrono::offset::LocalResult::Single(dt) => dt,
+            other => panic!("expected unambiguous local datetime, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn fractional_minute_of_hour_uses_sixtieths() {
+        // 30 seconds is half a minute, not 30/3600 of one.
+        assert_eq!(
+            fractional_minute_of_hour(local_dt(2024, 6, 1, 10, 30, 30)),
+            30.5
+        );
+        assert_eq!(
+            fractional_minute_of_hour(local_dt(2024, 6, 1, 0, 15, 45)),
+            15.75
+        );
+        assert_eq!(
+            fractional_minute_of_hour(local_dt(2024, 6, 1, 23, 0, 0)),
+            0.0
+        );
+    }
+
+    #[test]
+    fn doy_for_dt_fractional_days() {
+        // Jan 1 at midnight is day 0.0 (zero-based ordinal).
+        assert_eq!(doy_for_dt(local_dt(2023, 1, 1, 0, 0, 0)), 0.0);
+        // Jan 2 at noon is day 1.5.
+        assert_eq!(doy_for_dt(local_dt(2023, 1, 2, 12, 0, 0)), 1.5);
     }
 }
