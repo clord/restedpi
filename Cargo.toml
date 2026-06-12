@@ -22,7 +22,6 @@ path = "src/lib.rs"
 [dependencies]
 juniper = "0.16.1"
 juniper_warp = { version = "0.8.0", features = ["subscriptions"] }
-juniper_subscriptions = "0.17.0"
 juniper_graphql_ws = "0.4.0"
 futures = "0.3.16"
 rppal = { version = "0.22.1", optional = true } 
@@ -30,7 +29,6 @@ structopt = "0.3.22"
 prometheus = "0.13.0"
 warp = { version = "0.3.1", features = ["tls"] }
 toml = "0.8.10"
-rand = "0.8.4"
 regex = "1.5.4"
 lazy_static = "1.4.0"
 chrono = "0.4.31"
@@ -60,7 +58,9 @@ lrpar = "0.13.4"
 color-eyre = "0.6.2"
 hmac = { version = "0.12.1", features = ["std"] }
 sha2 = "0.10.8"
-hex-literal = "0.4.1"
 password-hash = "0.5.0"
 argon2 = { version = "0.5.2", features = ["std", "alloc"] }
 figment = { version = "0.10", features = ["toml", "env"] }
+
+[dev-dependencies]
+tempfile = "3"

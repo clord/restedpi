@@ -89,3 +89,67 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
         None => Err(Error::UserNotFound),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Once;
+
+    /// Hex-encoded secret used by the session tests.
+    const TEST_SECRET: &str = "0123456789abcdef0123456789abcdef";
+
+    static INIT_SECRET: Once = Once::new();
+
+    /// Set APP_SECRET exactly once for the whole test process.
+    /// All tests in this module share the same value, so concurrent readers
+    /// always observe a consistent secret.
+    fn ensure_app_secret() {
+        INIT_SECRET.call_once(|| {
+            // SAFETY: called exactly once; no other test in this crate mutates
+            // the process environment.
+            unsafe { std::env::set_var("APP_SECRET", TEST_SECRET) };
+        });
+    }
+
+    fn now_secs() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_secs()
+    }
+
+    #[test]
+    fn expired_session_token_is_rejected() {
+        ensure_app_secret();
+        let expired = WebSession {
+            user: "tester".to_string(),
+            expires: now_secs() - 3600,
+        };
+        let token = token::make_token(expired, TEST_SECRET).expect("make token");
+        let res = WebSession::from_str(&token);
+        assert!(
+            matches!(res, Err(token::SessionError::Expired)),
+            "expected Expired, got {:?}",
+            res
+        );
+    }
+
+    #[test]
+    fn unexpired_session_token_is_accepted() {
+        ensure_app_secret();
+        let valid = WebSession {
+            user: "tester".to_string(),
+            expires: now_secs() + 3600,
+        };
+        let token = token::make_token(valid, TEST_SECRET).expect("make token");
+        let session = WebSession::from_str(&token).expect("valid session");
+        assert_eq!(session.user, "tester");
+    }
+
+    #[test]
+    fn garbage_token_is_rejected() {
+        ensure_app_secret();
+        let res = WebSession::from_str("not-a-token");
+        assert!(res.is_err(), "garbage tokens must not produce a session");
+    }
+}

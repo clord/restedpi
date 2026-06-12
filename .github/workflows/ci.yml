@@ -48,6 +48,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: armv7-unknown-linux-gnueabihf
+          components: clippy
 
       - name: Install cross-compilation tools
         run: |
@@ -67,6 +68,9 @@ jobs:
 
       - name: Check for Raspberry Pi (type-check only, no linking)
         run: cargo check --features raspberrypi --target armv7-unknown-linux-gnueabihf
+
+      - name: Run clippy (raspberrypi)
+        run: cargo clippy --features raspberrypi --target armv7-unknown-linux-gnueabihf -- -D warnings
 
   # Lint and format checks
   lint:
