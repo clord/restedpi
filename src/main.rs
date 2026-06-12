@@ -1,5 +1,6 @@
+use color_eyre::Help;
 use color_eyre::eyre;
-use color_eyre::owo_colors::OwoColorize;
+use color_eyre::eyre::WrapErr;
 use librpi::app;
 use librpi::auth::password;
 use librpi::config::Config;
@@ -81,22 +82,21 @@ fn get_config_path(maybe_override: Option<PathBuf>) -> Option<PathBuf> {
 }
 
 fn get_config(config_file: Option<&PathBuf>) -> Result<Config, color_eyre::Report> {
-    Config::load(config_file.map(|p| p.as_path())).map_err(|e| {
-        eyre::eyre!(
-            "Failed to load configuration: {}\n\n\
-             Configuration can be provided via:\n\
-             - Config file: ~/.config/restedpi/config.toml or /etc/restedpi/config.toml\n\
-             - Environment variables with RESTEDPI_ prefix (e.g., RESTEDPI_PORT=8080)\n\
-             - CLI option: --config-file <path>",
-            e
+    Config::load(config_file.map(|p| p.as_path()))
+        .wrap_err("Failed to load configuration")
+        .suggestion(
+            "create a config file at ~/.config/restedpi/config.toml or /etc/restedpi/config.toml",
         )
-    })
+        .suggestion("or pass --config-file <path> to use a config file at another location")
+        .note(
+            "settings can also be provided via environment variables \
+             with the RESTEDPI_ prefix (e.g. RESTEDPI_PORT=8080)",
+        )
 }
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
     let (command, config_file) = setup();
-    let _ = command.bright_white();
     match command {
         Command::AddUser { username, password } => {
             add_user(config_file.as_ref(), password, username)
@@ -114,11 +114,12 @@ async fn server(config_file: Option<PathBuf>) -> Result<(), color_eyre::Report> 
     let app_secret = match &config.app_secret_path {
         Some(app_secret_path) => Some(
             fs::read_to_string(app_secret_path)
-                .map_err(|e| {
-                    eyre::eyre!(
-                        "Failed to read app secret from {:?}: {}",
-                        app_secret_path,
-                        e
+                .wrap_err_with(|| format!("Failed to read app secret from {:?}", app_secret_path))
+                .with_suggestion(|| {
+                    format!(
+                        "check that {:?} exists and is readable, \
+                         or update 'app_secret_path' in config.toml",
+                        app_secret_path
                     )
                 })?
                 .trim()
@@ -155,20 +156,19 @@ async fn server(config_file: Option<PathBuf>) -> Result<(), color_eyre::Report> 
 
     let app = app::channel::start_app(bus, here, &db_path, users)
         .await
-        .map_err(|e| {
-            eyre::eyre!(
-                "Failed to start app: {}\n\n\
-                 Hint: Check that the database path is accessible.\n\
-                 You can set 'db_path' in your config.toml or use --config-file.",
-                e
-            )
-        })?;
+        .wrap_err("Failed to start app")
+        .with_suggestion(|| format!("check that the database path {:?} is accessible", db_path))
+        .suggestion("set 'db_path' in your config.toml or use --config-file")?;
 
     let api = webapp::filters::graphql_api(app);
 
     let addr: SocketAddr = format!("{}:{}", listen, port)
         .parse()
-        .map_err(|e| eyre::eyre!("Invalid listen address '{}:{}': {}", listen, port, e))?;
+        .wrap_err_with(|| format!("Invalid listen address '{}:{}'", listen, port))
+        .suggestion(
+            "set 'listen' to an IP address (e.g. 0.0.0.0) and 'port' to a port number \
+             in config.toml, or via RESTEDPI_LISTEN and RESTEDPI_PORT",
+        )?;
     let serve = warp::serve((api.with(warp::log("web"))).recover(webapp::handle_rejection));
     match (tls_key_path, tls_cert_path) {
         (Some(key_path), Some(cert_path)) => {
@@ -185,14 +185,14 @@ async fn server(config_file: Option<PathBuf>) -> Result<(), color_eyre::Report> 
             serve.run(addr).await
         }
         (Some(_), None) => {
-            return Err(eyre::eyre!(
-                "TLS key provided but missing certificate (tls_cert_path)"
-            ));
+            return Err(eyre::eyre!("TLS key provided but missing certificate")
+                .suggestion("set 'tls_cert_path' in config.toml")
+                .suggestion("or remove 'tls_key_path' to serve plain HTTP"));
         }
         (None, Some(_)) => {
-            return Err(eyre::eyre!(
-                "TLS certificate provided but missing key (tls_key_path)"
-            ));
+            return Err(eyre::eyre!("TLS certificate provided but missing key")
+                .suggestion("set 'tls_key_path' in config.toml")
+                .suggestion("or remove 'tls_cert_path' to serve plain HTTP"));
         }
     }
     Ok(())
@@ -239,7 +239,9 @@ fn bool_repl(config_file: Option<&PathBuf>) -> Result<(), color_eyre::Report> {
             }
         }
     }
-    rl.save_history(&history_path).unwrap();
+    if let Err(e) = rl.save_history(&history_path) {
+        warn!("Unable to save REPL history to {:?}: {}", history_path, e);
+    }
     Ok(())
 }
 
@@ -249,54 +251,39 @@ fn add_user(
     username: String,
 ) -> Result<(), color_eyre::Report> {
     let config_file = config_file.ok_or_else(|| {
-        eyre::eyre!(
-            "Config file required for add-user command.\n\
-             Use --config-file to specify a config file, or create one at:\n\
-             - ~/.config/restedpi/config.toml\n\
-             - /etc/restedpi/config.toml"
-        )
+        eyre::eyre!("Config file required for add-user command")
+            .suggestion(
+                "create a config file at ~/.config/restedpi/config.toml \
+                 or /etc/restedpi/config.toml",
+            )
+            .suggestion("or pass --config-file <path> to use a config file at another location")
     })?;
     let mut config = get_config(Some(config_file))?;
     let password = match password {
         Some(p) => p,
         None => rpassword::read_password_from_tty(Some("User's Password: "))
-            .map_err(|e| eyre::eyre!("Failed to read password: {}", e))?,
+            .wrap_err("Failed to read password from terminal")
+            .suggestion("pass --password <password> if no interactive terminal is available")?,
     };
     if password.trim().len() < 8 {
-        error!("password too short");
-        return Err(librpi::error::Error::PasswordIssue.into());
+        return Err(eyre::eyre!("Password is too short")
+            .suggestion("use a password of at least 8 characters"));
     }
     info!(
         "Setting password for user '{}' in config file {:?}...",
         username, config_file
     );
-    match password::hash(&password) {
-        Ok(hashed) => {
-            let users = config.users.get_or_insert_with(HashMap::new);
-            users.insert(username, hashed);
-            // write config file back
-            match toml::to_string(&config) {
-                Ok(as_str) => {
-                    fs::write(config_file, as_str).map_err(|e| {
-                        eyre::eyre!("Failed to write config file {:?}: {}", config_file, e)
-                    })?;
-                    info!("Success");
-                    Ok(())
-                }
-                Err(e) => {
-                    error!("failed to save config: {}", e);
-                    Err(
-                        librpi::error::Error::Config(format!("failed to save config: {}", e))
-                            .into(),
-                    )
-                }
-            }
-        }
-        Err(e) => {
-            error!("failed to hash password: {}", e);
-            Err(librpi::error::Error::PasswordIssue.into())
-        }
-    }
+    let hashed = password::hash(&password).wrap_err("Failed to hash password")?;
+    let users = config.users.get_or_insert_with(HashMap::new);
+    users.insert(username, hashed);
+    // write config file back
+    let as_str =
+        toml::to_string(&config).wrap_err("Failed to serialize the updated configuration")?;
+    fs::write(config_file, as_str)
+        .wrap_err_with(|| format!("Failed to write config file {:?}", config_file))
+        .with_suggestion(|| format!("check that {:?} is writable", config_file))?;
+    info!("Success");
+    Ok(())
 }
 
 fn setup() -> (Command, Option<PathBuf>) {
