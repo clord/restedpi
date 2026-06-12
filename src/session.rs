@@ -97,22 +97,15 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Once;
 
     /// Hex-encoded secret used by the session tests.
     const TEST_SECRET: &str = "0123456789abcdef0123456789abcdef";
 
-    static INIT_SECRET: Once = Once::new();
-
-    /// Set APP_SECRET exactly once for the whole test process.
-    /// All tests in this module share the same value, so concurrent readers
-    /// always observe a consistent secret.
+    /// Initialize the process-global secret store with the test secret.
+    /// Every test in this module uses the same value, so losing the
+    /// `AlreadyInitialized` race to a sibling test is fine.
     fn ensure_app_secret() {
-        INIT_SECRET.call_once(|| {
-            // SAFETY: called exactly once; no other test in this crate mutates
-            // the process environment.
-            unsafe { std::env::set_var("APP_SECRET", TEST_SECRET) };
-        });
+        let _ = crate::auth::secret::init(TEST_SECRET.to_string());
     }
 
     fn now_secs() -> u64 {
