@@ -38,6 +38,7 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::NotUnique(_) => 0x1210,
             Error::OutOfBounds(_) => 0x0011,
             Error::DeviceReadError(_) => 0x0311,
+            Error::DeviceDisabled(_) => 0x0312,
             Error::RecvError(_) => 0x0100,
             Error::SendError(_) => 0x0101,
             Error::StorageError(_) => 0x0102,
