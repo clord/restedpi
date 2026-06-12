@@ -27,9 +27,12 @@ pub async fn evaluate(app: &State, expr: &BoolExpr) -> Result<bool> {
         BoolExpr::LessThan(_s, a, b) => {
             Ok(evaluate_value(app, a).await? < evaluate_value(app, b).await?)
         }
-        BoolExpr::Between(_s, a, b, c) => Ok(evaluate_value(app, a).await?
-            <= evaluate_value(app, b).await?
-            && evaluate_value(app, b).await? <= evaluate_value(app, c).await?),
+        BoolExpr::Between(_s, a, b, c) => {
+            let a_ev = evaluate_value(app, a).await?;
+            let b_ev = evaluate_value(app, b).await?;
+            let c_ev = evaluate_value(app, c).await?;
+            Ok(a_ev <= b_ev && b_ev <= c_ev)
+        }
         BoolExpr::Const(_s, a) => Ok(*a),
         BoolExpr::EqBool(_s, a, b) => Ok(evaluate(app, a).await? == evaluate(app, b).await?),
         BoolExpr::And(_s, a, b) => Ok(evaluate(app, a).await? && evaluate(app, b).await?),
