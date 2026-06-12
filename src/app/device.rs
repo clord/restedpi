@@ -147,10 +147,15 @@ pub enum Dir {
     /// Active Low output
     OutL,
 
-    /// Input without pulldown
+    /// Input without pull-up
     In,
 
-    /// Input with pulldown
+    /// Input with internal pull-up enabled (MCP23017 GPPU register).
+    ///
+    /// Note: the variant name is a historical misnomer ("PD" suggests
+    /// pulldown), but the MCP23017 only provides pull-up resistors; the
+    /// chip has no pulldowns. The name is kept as-is because it is
+    /// serialized into stored device JSON and exposed in the GraphQL schema.
     InWithPD,
 }
 

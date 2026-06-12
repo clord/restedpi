@@ -68,7 +68,7 @@ pub fn ordinal_to_pin(p: usize) -> Pin {
 pub fn bank_pin_to_index(bank: Bank, pin: Pin) -> usize {
     match bank {
         Bank::A => pin_to_ordinal(pin),
-        Bank::B => pin_to_ordinal(pin) * 2,
+        Bank::B => pin_to_ordinal(pin) + 8,
     }
 }
 
@@ -130,10 +130,10 @@ impl State {
 
     pub fn pullup_word(&self) -> u8 {
         let mut ba = Bits::new();
-        for (dex, pinord) in (0..7usize).enumerate() {
-            let dir = self.direction.get(pinord);
-            if let Dir::InWithPD = dir {
-                ba.set(7 - dex, true);
+        for pinord in 0..8usize {
+            match self.direction.get(pinord) {
+                Dir::InWithPD => ba.set(7 - pinord, true),
+                Dir::In | Dir::OutH | Dir::OutL => {}
             }
         }
         as_word(&ba)
@@ -147,14 +147,11 @@ impl State {
 
     pub fn inout_word(&self) -> u8 {
         let mut ba = Bits::new();
-        for (dex, pinord) in (0..7usize).enumerate() {
-            let dir = self.direction.get(pinord);
-            if let Dir::InWithPD = dir {
-                ba.set(7 - dex, true);
-            };
-            if let Dir::In = dir {
-                ba.set(7 - dex, true);
-            };
+        for pinord in 0..8usize {
+            match self.direction.get(pinord) {
+                Dir::In | Dir::InWithPD => ba.set(7 - pinord, true),
+                Dir::OutH | Dir::OutL => {}
+            }
         }
         as_word(&ba)
     }
@@ -269,9 +266,15 @@ impl Mcp23017State {
         let bank_state = self.mut_state_for_bank(bank);
         bank_state.direction = *directions;
         self.write_gpio_dir(address, bank, rapi).await?;
-        for p in 0..7 {
-            self.set_pin(address, bank, ordinal_to_pin(p), false, rapi)
-                .await?;
+        for p in 0..8 {
+            let pin = ordinal_to_pin(p);
+            // Only output pins can be written; input pins have no value to refresh.
+            match self.get_pin_direction(bank, pin) {
+                Dir::OutH | Dir::OutL => {
+                    self.set_pin(address, bank, pin, false, rapi).await?;
+                }
+                Dir::In | Dir::InWithPD => {}
+            }
         }
         Ok(())
     }
