@@ -329,39 +329,191 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::device::{Directions, MCP23017, Type};
+    use crate::app::device::{MCP9808, Type};
 
-    /// Create a fresh database in a unique temporary directory
-    fn fresh_db(tag: &str) -> Db {
-        let dir =
-            std::env::temp_dir().join(format!("restedpi-db-test-{}-{}", tag, std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        Db::start_db(&dir).expect("failed to create test database")
+    /// Create a fresh database in a temporary directory.
+    /// The TempDir must be kept alive for the duration of the test.
+    fn test_db() -> (tempfile::TempDir, Db) {
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let db = Db::start_db(dir.path()).expect("failed to start db");
+        (dir, db)
     }
 
-    fn test_device_type() -> Type {
-        Type::MCP23017(MCP23017 {
-            address: 0x20,
-            bank_a: Directions::new(),
-            bank_b: Directions::new(),
-        })
-    }
-
-    fn add_test_device(db: &Db, name: &str) -> models::Device {
-        let new_device = models::NewDevice::new(
-            test_device_type(),
+    fn sample_device(name: &str) -> models::NewDevice {
+        models::NewDevice::new(
+            Type::MCP9808(MCP9808 { address: 0x18 }),
             name.to_string(),
-            "test device".to_string(),
+            "test notes".to_string(),
+            Some(false),
+        )
+    }
+
+    #[test]
+    fn start_db_creates_database_file() {
+        let (dir, _db) = test_db();
+        assert!(dir.path().join("rpi.sql3").exists());
+    }
+
+    #[test]
+    fn add_and_fetch_device() {
+        let (_dir, db) = test_db();
+        let added = db.add_device(&sample_device("thermo")).expect("add");
+        assert_eq!(added.name, "thermo");
+        assert_eq!(added.notes, "test notes");
+        assert!(!added.disabled);
+
+        let fetched = db.device(&"thermo".to_string()).expect("fetch");
+        assert_eq!(fetched.name, "thermo");
+
+        let all = db.devices().expect("list");
+        assert_eq!(all.len(), 1);
+    }
+
+    #[test]
+    fn missing_device_is_non_existant() {
+        let (_dir, db) = test_db();
+        let err = db.device(&"nope".to_string()).expect_err("should miss");
+        assert!(matches!(err, Error::NonExistant(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn duplicate_device_name_is_not_unique() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dup")).expect("first add");
+        let err = db
+            .add_device(&sample_device("dup"))
+            .expect_err("duplicate insert must fail");
+        assert!(matches!(err, Error::NotUnique(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn remove_device_removes_device_and_io() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("gone")).expect("add device");
+        db.add_input(&models::NewInput::new(
+            "gone_in".to_string(),
+            "gone".to_string(),
+            0,
+        ))
+        .expect("add input");
+        db.add_output(&models::NewOutput::new(
+            "gone_out".to_string(),
+            "gone".to_string(),
+            1,
+            false,
             None,
+        ))
+        .expect("add output");
+
+        db.remove_device(&"gone".to_string()).expect("remove");
+
+        let err = db.device(&"gone".to_string()).expect_err("device removed");
+        assert!(matches!(err, Error::NonExistant(_)), "got {:?}", err);
+        assert!(db.inputs().expect("inputs").is_empty());
+        assert!(db.outputs().expect("outputs").is_empty());
+    }
+
+    #[test]
+    fn input_crud() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev")).expect("add device");
+
+        let added = db
+            .add_input(&models::NewInput::new(
+                "temp_in".to_string(),
+                "dev".to_string(),
+                3,
+            ))
+            .expect("add input");
+        assert_eq!(added.name, "temp_in");
+        assert_eq!(added.device_id, "dev");
+        assert_eq!(added.device_input_id, 3);
+
+        let fetched = db.input(&"temp_in".to_string()).expect("fetch input");
+        assert_eq!(fetched.name, "temp_in");
+
+        let for_device = db
+            .inputs_for_device(&"dev".to_string())
+            .expect("inputs for device");
+        assert_eq!(for_device.len(), 1);
+        assert!(
+            db.inputs_for_device(&"other".to_string())
+                .expect("inputs for other device")
+                .is_empty()
         );
-        db.add_device(&new_device).expect("failed to add device")
+
+        db.remove_input(&"temp_in".to_string()).expect("remove");
+        let err = db.input(&"temp_in".to_string()).expect_err("input removed");
+        assert!(matches!(err, Error::NonExistant(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn duplicate_input_name_is_not_unique() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev")).expect("add device");
+        let new_input = models::NewInput::new("in0".to_string(), "dev".to_string(), 0);
+        db.add_input(&new_input).expect("first add");
+        let err = db
+            .add_input(&new_input)
+            .expect_err("duplicate insert must fail");
+        assert!(matches!(err, Error::NotUnique(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn output_crud() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev")).expect("add device");
+
+        let added = db
+            .add_output(&models::NewOutput::new(
+                "relay".to_string(),
+                "dev".to_string(),
+                5,
+                true,
+                Some("true and false".to_string()),
+            ))
+            .expect("add output");
+        assert_eq!(added.name, "relay");
+        assert_eq!(added.device_id, "dev");
+        assert_eq!(added.device_output_id, 5);
+        assert!(added.active_low);
+        assert_eq!(added.automation_script.as_deref(), Some("true and false"));
+
+        let fetched = db.output(&"relay".to_string()).expect("fetch output");
+        assert_eq!(fetched.name, "relay");
+
+        let for_device = db
+            .outputs_for_device(&"dev".to_string())
+            .expect("outputs for device");
+        assert_eq!(for_device.len(), 1);
+        assert!(
+            db.outputs_for_device(&"other".to_string())
+                .expect("outputs for other device")
+                .is_empty()
+        );
+
+        db.remove_output(&"relay".to_string()).expect("remove");
+        let err = db.output(&"relay".to_string()).expect_err("output removed");
+        assert!(matches!(err, Error::NonExistant(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn duplicate_output_name_is_not_unique() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev")).expect("add device");
+        let new_output =
+            models::NewOutput::new("out0".to_string(), "dev".to_string(), 0, false, None);
+        db.add_output(&new_output).expect("first add");
+        let err = db
+            .add_output(&new_output)
+            .expect_err("duplicate insert must fail");
+        assert!(matches!(err, Error::NotUnique(_)), "got {:?}", err);
     }
 
     #[test]
     fn foreign_key_cascade_deletes_children_on_raw_device_delete() {
-        let db = fresh_db("fk-cascade");
-        add_test_device(&db, "dev1");
-
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev1")).expect("add device");
         db.add_input(&models::NewInput::new(
             "in1".to_string(),
             "dev1".to_string(),
@@ -400,8 +552,8 @@ mod tests {
 
     #[test]
     fn update_output_applies_all_fields() {
-        let db = fresh_db("update-output");
-        add_test_device(&db, "dev1");
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev1")).expect("add device");
 
         db.add_output(&models::NewOutput::new(
             "out1".to_string(),

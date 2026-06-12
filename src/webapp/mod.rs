@@ -5,7 +5,6 @@ use tracing::warn;
 use warp::{Rejection, Reply, http::Response, http::StatusCode, reject, reply};
 
 pub mod filters;
-mod handlers;
 pub mod slugify;
 
 // We have to share the app state since warp uses a thread pool

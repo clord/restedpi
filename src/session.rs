@@ -93,3 +93,60 @@ pub async fn authenticate(ctx: &AppContext, user: &str, pw: &str) -> Result<Stri
         None => Err(Error::UserNotFound),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Hex-encoded secret used by the session tests.
+    const TEST_SECRET: &str = "0123456789abcdef0123456789abcdef";
+
+    /// Initialize the process-global secret store with the test secret.
+    /// Every test in this module uses the same value, so losing the
+    /// `AlreadyInitialized` race to a sibling test is fine.
+    fn ensure_app_secret() {
+        let _ = crate::auth::secret::init(TEST_SECRET.to_string());
+    }
+
+    fn now_secs() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_secs()
+    }
+
+    #[test]
+    fn expired_session_token_is_rejected() {
+        ensure_app_secret();
+        let expired = WebSession {
+            user: "tester".to_string(),
+            expires: now_secs() - 3600,
+        };
+        let token = token::make_token(expired, TEST_SECRET).expect("make token");
+        let res = WebSession::from_str(&token);
+        assert!(
+            matches!(res, Err(token::SessionError::Expired)),
+            "expected Expired, got {:?}",
+            res
+        );
+    }
+
+    #[test]
+    fn unexpired_session_token_is_accepted() {
+        ensure_app_secret();
+        let valid = WebSession {
+            user: "tester".to_string(),
+            expires: now_secs() + 3600,
+        };
+        let token = token::make_token(valid, TEST_SECRET).expect("make token");
+        let session = WebSession::from_str(&token).expect("valid session");
+        assert_eq!(session.user, "tester");
+    }
+
+    #[test]
+    fn garbage_token_is_rejected() {
+        ensure_app_secret();
+        let res = WebSession::from_str("not-a-token");
+        assert!(res.is_err(), "garbage tokens must not produce a session");
+    }
+}
