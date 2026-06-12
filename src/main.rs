@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use warp::Filter;
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 // big picture:
 // read configuration and decide what sensors and switches are available. start up application, then
@@ -108,19 +108,30 @@ async fn main() -> Result<(), eyre::Error> {
 
 async fn server(config_file: Option<PathBuf>) -> Result<(), color_eyre::Report> {
     let config = get_config(config_file.as_ref())?;
-    if let Some(app_secret_path) = &config.app_secret_path {
-        let app_secret = fs::read_to_string(app_secret_path)
-            .map_err(|e| {
-                eyre::eyre!(
-                    "Failed to read app secret from {:?}: {}",
-                    app_secret_path,
-                    e
-                )
-            })?
-            .trim()
-            .to_string();
-        // SAFETY: This is called early in main() before other threads are spawned
-        unsafe { env::set_var("APP_SECRET", app_secret) };
+    // Resolve the app secret once at startup and store it in the process-global
+    // secret store. Mutating the environment here would be unsound: the tokio
+    // runtime's worker threads already exist by the time server() runs.
+    let app_secret = match &config.app_secret_path {
+        Some(app_secret_path) => Some(
+            fs::read_to_string(app_secret_path)
+                .map_err(|e| {
+                    eyre::eyre!(
+                        "Failed to read app secret from {:?}: {}",
+                        app_secret_path,
+                        e
+                    )
+                })?
+                .trim()
+                .to_string(),
+        ),
+        None => env::var("APP_SECRET").ok(),
+    };
+    match app_secret {
+        Some(app_secret) => librpi::auth::secret::init(app_secret)
+            .map_err(|_| eyre::eyre!("App secret was already initialized"))?,
+        None => warn!(
+            "No app secret configured (app_secret_path or APP_SECRET); authentication will be unavailable"
+        ),
     }
     let listen = config.listen.clone().unwrap_or("127.0.0.1".to_string());
     let port = config.port.unwrap_or(3030);
