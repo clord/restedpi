@@ -84,25 +84,6 @@ impl Device {
                 self.mcp23017_state
                     .set_pin_directions(addr, mcp23017::Bank::B, &bank_b, &self.rapi)
                     .await?;
-                // by writing false, we will update with correct state for all pins after dir change
-                self.mcp23017_state
-                    .set_pin(
-                        addr,
-                        mcp23017::Bank::A,
-                        mcp23017::Pin::Pin0,
-                        false,
-                        &self.rapi,
-                    )
-                    .await?;
-                self.mcp23017_state
-                    .set_pin(
-                        addr,
-                        mcp23017::Bank::B,
-                        mcp23017::Pin::Pin0,
-                        false,
-                        &self.rapi,
-                    )
-                    .await?;
                 Ok(())
             }
             device::Type::BMP085(device::BMP085 { address, .. }) => {
