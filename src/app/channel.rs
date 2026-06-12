@@ -808,10 +808,15 @@ pub async fn start_app(
             } else if last_emit.elapsed().as_millis() > 700 {
                 last_emit = Instant::now();
                 debug!("running automation...");
-                state
-                    .emit_automations()
-                    .await
-                    .expect("emit automations errors");
+                // A failed automation cycle (e.g. transient DB error) must not
+                // kill the actor task: the warp server would keep running but
+                // every subsequent request would hang. Log and retry next cycle.
+                match state.emit_automations().await {
+                    Ok(()) => (),
+                    Err(e) => {
+                        error!("automation cycle failed (will retry next cycle): {}", e);
+                    }
+                }
             }
 
             // TODO: Support sending real time change notification by allowing clients to send a sender to us,
