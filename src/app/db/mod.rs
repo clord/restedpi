@@ -12,7 +12,6 @@ pub type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
 /// SQL statements for bootstrapping a new database (executed in order)
 const SCHEMA_STATEMENTS: &[&str] = &[
-    "PRAGMA foreign_keys = ON",
     "CREATE TABLE IF NOT EXISTS devices(
         name TEXT NOT NULL PRIMARY KEY,
         model TEXT NOT NULL,
@@ -38,9 +37,37 @@ const SCHEMA_STATEMENTS: &[&str] = &[
     )",
 ];
 
+/// Per-connection SQLite setup for every connection handed out by the pool.
+///
+/// SQLite enforces `PRAGMA foreign_keys` per connection, so it must be enabled
+/// on each pooled connection or `ON DELETE CASCADE` is silently ignored.
+/// `busy_timeout` makes concurrent writers wait instead of failing immediately.
+#[derive(Debug, Clone, Copy)]
+struct SqliteConnectionCustomizer;
+
+impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
+    for SqliteConnectionCustomizer
+{
+    fn on_acquire(
+        &self,
+        conn: &mut SqliteConnection,
+    ) -> std::result::Result<(), diesel::r2d2::Error> {
+        diesel::sql_query("PRAGMA foreign_keys = ON;")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+        diesel::sql_query("PRAGMA busy_timeout = 5000;")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+        Ok(())
+    }
+}
+
 fn get_pool(db_url: &str) -> Result<DbPool> {
     let manager = ConnectionManager::<SqliteConnection>::new(db_url);
-    Pool::new(manager).map_err(|e| Error::DbError(format!("Failed to create DB pool: {}", e)))
+    Pool::builder()
+        .connection_customizer(Box::new(SqliteConnectionCustomizer))
+        .build(manager)
+        .map_err(|e| Error::DbError(format!("Failed to create DB pool: {}", e)))
 }
 
 pub struct Db {
@@ -230,44 +257,48 @@ impl Db {
         use crate::schema::outputs::table;
         let mut db = self.db.get()?;
 
-        if let models::UpdateOutput {
-            device_output_id: Some(f),
-            ..
-        } = fields
-        {
-            let ex = diesel::update(table)
-                .filter(name.eq(old_output_id))
-                .set(device_output_id.eq(f));
-            let res = ex.execute(&mut db)?;
-            info!("updated {} rows of output table", res);
-        }
+        // Apply all requested field updates atomically: either every provided
+        // field is updated, or none are.
+        db.transaction(|conn| {
+            if let models::UpdateOutput {
+                device_output_id: Some(f),
+                ..
+            } = fields
+            {
+                let ex = diesel::update(table)
+                    .filter(name.eq(old_output_id))
+                    .set(device_output_id.eq(f));
+                let res = ex.execute(conn)?;
+                info!("updated {} rows of output table", res);
+            }
 
-        if let models::UpdateOutput {
-            active_low: Some(f),
-            ..
-        } = fields
-        {
-            let ex = diesel::update(table)
-                .filter(name.eq(old_output_id))
-                .set(active_low.eq(*f));
-            let res = ex.execute(&mut db)?;
-            info!("updated {} rows of output table", res);
-        }
+            if let models::UpdateOutput {
+                active_low: Some(f),
+                ..
+            } = fields
+            {
+                let ex = diesel::update(table)
+                    .filter(name.eq(old_output_id))
+                    .set(active_low.eq(*f));
+                let res = ex.execute(conn)?;
+                info!("updated {} rows of output table", res);
+            }
 
-        if let models::UpdateOutput {
-            automation_script: Some(f),
-            ..
-        } = fields
-        {
-            let ex = diesel::update(table)
-                .filter(name.eq(old_output_id))
-                .set(automation_script.eq(f));
-            let res = ex.execute(&mut db)?;
-            info!("updated {} rows of output table", res);
-        }
+            if let models::UpdateOutput {
+                automation_script: Some(f),
+                ..
+            } = fields
+            {
+                let ex = diesel::update(table)
+                    .filter(name.eq(old_output_id))
+                    .set(automation_script.eq(f));
+                let res = ex.execute(conn)?;
+                info!("updated {} rows of output table", res);
+            }
 
-        let r: models::Output = outputs.find(old_output_id).first(&mut db)?;
-        Ok(r)
+            let r: models::Output = outputs.find(old_output_id).first(conn)?;
+            Ok(r)
+        })
     }
 
     pub fn add_output(&self, new_output: &models::NewOutput) -> Result<models::Output> {
@@ -477,5 +508,91 @@ mod tests {
             .add_output(&new_output)
             .expect_err("duplicate insert must fail");
         assert!(matches!(err, Error::NotUnique(_)), "got {:?}", err);
+    }
+
+    #[test]
+    fn foreign_key_cascade_deletes_children_on_raw_device_delete() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev1")).expect("add device");
+        db.add_input(&models::NewInput::new(
+            "in1".to_string(),
+            "dev1".to_string(),
+            0,
+        ))
+        .expect("failed to add input");
+        db.add_output(&models::NewOutput::new(
+            "out1".to_string(),
+            "dev1".to_string(),
+            1,
+            false,
+            None,
+        ))
+        .expect("failed to add output");
+
+        assert_eq!(db.inputs().unwrap().len(), 1);
+        assert_eq!(db.outputs().unwrap().len(), 1);
+
+        // Delete the device row directly via SQL, bypassing Db::remove_device,
+        // so only SQLite's ON DELETE CASCADE can clean up the children.
+        let mut conn = db.db.get().unwrap();
+        diesel::sql_query("DELETE FROM devices WHERE name = 'dev1'")
+            .execute(&mut conn)
+            .expect("raw delete failed");
+        drop(conn);
+
+        assert!(
+            db.inputs().unwrap().is_empty(),
+            "FK cascade should remove child inputs"
+        );
+        assert!(
+            db.outputs().unwrap().is_empty(),
+            "FK cascade should remove child outputs"
+        );
+    }
+
+    #[test]
+    fn update_output_applies_all_fields() {
+        let (_dir, db) = test_db();
+        db.add_device(&sample_device("dev1")).expect("add device");
+
+        db.add_output(&models::NewOutput::new(
+            "out1".to_string(),
+            "dev1".to_string(),
+            0,
+            false,
+            None,
+        ))
+        .expect("failed to add output");
+
+        let updated = db
+            .update_output(
+                &"out1".to_string(),
+                &models::UpdateOutput {
+                    device_output_id: Some(7),
+                    active_low: Some(true),
+                    automation_script: Some(Some("true".to_string())),
+                },
+            )
+            .expect("update_output failed");
+
+        assert_eq!(updated.device_output_id, 7);
+        assert!(updated.active_low);
+        assert_eq!(updated.automation_script, Some("true".to_string()));
+
+        // Clearing the automation script via Some(None) should also persist
+        let cleared = db
+            .update_output(
+                &"out1".to_string(),
+                &models::UpdateOutput {
+                    device_output_id: None,
+                    active_low: None,
+                    automation_script: Some(None),
+                },
+            )
+            .expect("update_output failed");
+
+        assert_eq!(cleared.device_output_id, 7);
+        assert!(cleared.active_low);
+        assert_eq!(cleared.automation_script, None);
     }
 }

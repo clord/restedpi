@@ -193,13 +193,30 @@ impl State {
     }
 
     /**
+     * Verify a device exists and is not disabled; error otherwise
+     */
+    fn ensure_device_enabled(&self, device_id: &AppID) -> Result<()> {
+        let device = self.db.device(device_id)?;
+        if device.disabled {
+            Err(Error::DeviceDisabled(device_id.clone()))
+        } else {
+            Ok(())
+        }
+    }
+
+    /**
      * read what is currently being outputed
+     *
+     * Applies `active_low` to the raw device value so the logical value written
+     * via `write_output_bool` round-trips.
      */
     pub async fn read_output_bool(&self, output_id: &AppID) -> Result<bool> {
         let output = self.db.output(output_id)?;
+        self.ensure_device_enabled(&output.device_id)?;
 
         if let Some(device) = self.devices.get(&output.device_id) {
-            Ok(device.read_boolean(output.device_output_id).await?)
+            let raw = device.read_boolean(output.device_output_id).await?;
+            Ok(output.active_low ^ raw)
         } else {
             Err(Error::NonExistant("can't find device".to_string()))
         }
@@ -210,6 +227,7 @@ impl State {
      */
     pub async fn read_input_bool(&self, input_id: &AppID) -> Result<bool> {
         let input = self.db.input(input_id)?;
+        self.ensure_device_enabled(&input.device_id)?;
 
         if let Some(device) = self.devices.get(&input.device_id) {
             Ok(device.read_boolean(input.device_input_id).await?)
@@ -223,6 +241,7 @@ impl State {
      */
     pub async fn write_output_bool(&mut self, output_id: &AppID, value: bool) -> Result<()> {
         let output = self.db.output(output_id)?;
+        self.ensure_device_enabled(&output.device_id)?;
 
         if let Some(device) = self.devices.get_mut(&output.device_id) {
             device
@@ -264,8 +283,19 @@ impl State {
             *mark = false
         }
 
+        let disabled_devices: std::collections::HashSet<AppID> = self
+            .db
+            .devices()?
+            .into_iter()
+            .filter(|d| d.disabled)
+            .map(|d| d.name)
+            .collect();
+
         let outputs = self.db.outputs()?;
         for output in outputs {
+            if disabled_devices.contains(&output.device_id) {
+                continue;
+            }
             if let Some(str_expr) = &output.automation_script {
                 // get or update the cached boolean expression
                 let expr: Option<BoolExpr> =
@@ -319,6 +349,7 @@ impl State {
 
     pub async fn read_input_value(&self, input_id: &AppID) -> Result<Dimensioned> {
         let input = self.db.input(input_id)?;
+        self.ensure_device_enabled(&input.device_id)?;
 
         if let Some(device) = self.devices.get(&input.device_id) {
             Ok(device.read_sensor(input.device_input_id).await?)
@@ -376,6 +407,145 @@ pub async fn new_state(bus: u8, here: (f64, f64), db: crate::app::db::Db) -> Res
     state.compile_automations().await?;
 
     Ok(state)
+}
+
+#[cfg(all(test, feature = "mock-gpio"))]
+mod mock_gpio_tests {
+    use super::*;
+    use crate::app::device::{Directions, MCP23017, Type};
+
+    async fn fresh_state(tag: &str) -> State {
+        let dir = std::env::temp_dir().join(format!(
+            "restedpi-state-test-{}-{}",
+            tag,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        let db = db::Db::start_db(&dir).expect("failed to create test database");
+        new_state(1, (0.0, 0.0), db)
+            .await
+            .expect("failed to create state")
+    }
+
+    fn gpio_expander() -> Type {
+        Type::MCP23017(MCP23017 {
+            address: 0x20,
+            bank_a: Directions::new(),
+            bank_b: Directions::new(),
+        })
+    }
+
+    #[tokio::test]
+    async fn active_low_output_round_trips_logical_value() {
+        let mut state = fresh_state("active-low").await;
+        state
+            .add_device(gpio_expander(), "dev".to_string(), String::new(), None)
+            .await
+            .expect("failed to add device");
+        state
+            .add_output(&models::NewOutput::new(
+                "out".to_string(),
+                "dev".to_string(),
+                0,
+                true, // active_low
+                None,
+            ))
+            .await
+            .expect("failed to add output");
+
+        let out_id = "out".to_string();
+
+        state.write_output_bool(&out_id, true).await.unwrap();
+        assert!(
+            state.read_output_bool(&out_id).await.unwrap(),
+            "logical true should read back as true on an active-low output"
+        );
+
+        state.write_output_bool(&out_id, false).await.unwrap();
+        assert!(
+            !state.read_output_bool(&out_id).await.unwrap(),
+            "logical false should read back as false on an active-low output"
+        );
+    }
+
+    #[tokio::test]
+    async fn active_high_output_round_trips_logical_value() {
+        let mut state = fresh_state("active-high").await;
+        state
+            .add_device(gpio_expander(), "dev".to_string(), String::new(), None)
+            .await
+            .expect("failed to add device");
+        state
+            .add_output(&models::NewOutput::new(
+                "out".to_string(),
+                "dev".to_string(),
+                0,
+                false, // active high
+                None,
+            ))
+            .await
+            .expect("failed to add output");
+
+        let out_id = "out".to_string();
+
+        state.write_output_bool(&out_id, true).await.unwrap();
+        assert!(state.read_output_bool(&out_id).await.unwrap());
+
+        state.write_output_bool(&out_id, false).await.unwrap();
+        assert!(!state.read_output_bool(&out_id).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn disabled_device_rejects_reads_and_writes() {
+        let mut state = fresh_state("disabled").await;
+        state
+            .add_device(
+                gpio_expander(),
+                "dev".to_string(),
+                String::new(),
+                Some(true),
+            )
+            .await
+            .expect("failed to add device");
+        state
+            .add_output(&models::NewOutput::new(
+                "out".to_string(),
+                "dev".to_string(),
+                0,
+                false,
+                None,
+            ))
+            .await
+            .expect("failed to add output");
+        state
+            .add_input(&models::NewInput::new(
+                "in".to_string(),
+                "dev".to_string(),
+                1,
+            ))
+            .await
+            .expect("failed to add input");
+
+        let out_id = "out".to_string();
+        let in_id = "in".to_string();
+
+        assert_eq!(
+            state.write_output_bool(&out_id, true).await,
+            Err(Error::DeviceDisabled("dev".to_string()))
+        );
+        assert_eq!(
+            state.read_output_bool(&out_id).await,
+            Err(Error::DeviceDisabled("dev".to_string()))
+        );
+        assert_eq!(
+            state.read_input_bool(&in_id).await,
+            Err(Error::DeviceDisabled("dev".to_string()))
+        );
+        assert!(matches!(
+            state.read_input_value(&in_id).await,
+            Err(Error::DeviceDisabled(_))
+        ));
+    }
 }
 
 #[cfg(test)]
