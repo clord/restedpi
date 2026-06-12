@@ -644,6 +644,103 @@ mod tests {
         assert_eq!(pin, Pin::Pin0);
     }
 
+    #[test]
+    fn test_bank_pin_index_round_trip_all_16() {
+        use mcp23017::{Bank, Pin, bank_pin_to_index, index_to_bank_pin};
+
+        for index in 0..16usize {
+            let (bank, pin) = index_to_bank_pin(index);
+            assert_eq!(
+                bank_pin_to_index(bank, pin),
+                index,
+                "index {} should round-trip through (bank, pin)",
+                index
+            );
+        }
+
+        // Bank B spot checks
+        assert_eq!(bank_pin_to_index(Bank::B, Pin::Pin0), 8);
+        assert_eq!(bank_pin_to_index(Bank::B, Pin::Pin7), 15);
+    }
+
+    #[tokio::test]
+    async fn test_mcp23017_pin7_direction_written() {
+        let rpi_api = create_mock_rpi();
+        let address: I2cAddress = 0x20;
+
+        let mut state = mcp23017::Mcp23017State::new();
+        state.reset(address, &rpi_api).await.unwrap();
+
+        // Pin 7 is an input with pull-up; all other pins are outputs
+        let mut directions = Directions::new();
+        directions.p7 = Dir::InWithPD;
+
+        state
+            .set_pin_directions(address, mcp23017::Bank::A, &directions, &rpi_api)
+            .await
+            .unwrap();
+
+        // Pin 7 maps to bit 7 (0x80) of IODIRA (0x00) and GPPUA (0x0C)
+        let iodir = rpi_api.read_i2c(address, 0x00, 1).await.unwrap();
+        assert_eq!(
+            iodir,
+            vec![0x80],
+            "pin 7 direction bit should be set in IODIRA"
+        );
+        let gppu = rpi_api.read_i2c(address, 0x0C, 1).await.unwrap();
+        assert_eq!(gppu, vec![0x80], "pin 7 pull-up bit should be set in GPPUA");
+    }
+
+    #[tokio::test]
+    async fn test_mcp23017_set_pin_directions_with_input_pins() {
+        let rpi_api = create_mock_rpi();
+        let address: I2cAddress = 0x20;
+
+        let mut state = mcp23017::Mcp23017State::new();
+        state.reset(address, &rpi_api).await.unwrap();
+
+        // Mixed configuration: inputs and outputs
+        let mut directions = Directions::new();
+        directions.p0 = Dir::In;
+        directions.p3 = Dir::InWithPD;
+        directions.p7 = Dir::In;
+
+        let result = state
+            .set_pin_directions(address, mcp23017::Bank::A, &directions, &rpi_api)
+            .await;
+        assert!(
+            result.is_ok(),
+            "set_pin_directions with input pins should succeed: {:?}",
+            result
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mcp23017_device_reset_with_input_pins() {
+        let rpi_api = create_mock_rpi();
+
+        // An MCP23017 with input pins (including pin 0) must reset successfully
+        let mut bank_a = Directions::new();
+        bank_a.p0 = Dir::In;
+        bank_a.p7 = Dir::InWithPD;
+        let mut bank_b = Directions::new();
+        bank_b.p0 = Dir::InWithPD;
+
+        let model = crate::app::device::Type::MCP23017(crate::app::device::MCP23017 {
+            address: 0x20,
+            bank_a,
+            bank_b,
+        });
+        let mut device = crate::rpi::device::Device::new(model, rpi_api);
+
+        let result = device.reset().await;
+        assert!(
+            result.is_ok(),
+            "MCP23017 with input pins should reset successfully: {:?}",
+            result
+        );
+    }
+
     // ==================== Mock GPIO State Tests ====================
 
     #[tokio::test]

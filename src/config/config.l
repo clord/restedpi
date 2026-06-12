@@ -73,6 +73,8 @@
 \bday_of_year\b "day_of_year"
 \blerp\b "lerp"
 \btrunc\b "trunc"
+\binverse\b "inverse"
+\blinear\b "linear"
 \bread\b "read"
 (\b([a-zA-Z_])([0-9]|[a-zA-Z_])*\b|'[^']+') "identifier"
 
