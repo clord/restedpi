@@ -5,14 +5,27 @@ use juniper_graphql_ws::ConnectionConfig;
 use juniper_warp::subscriptions::make_ws_filter;
 use juniper_warp::{make_graphql_filter, playground_filter};
 use std::sync::Arc;
+use tracing::warn;
 use warp::{Filter, Rejection, Reply, any, get, header, http::Response, post};
 
 fn with_app(
     app: SharedAppState,
 ) -> impl Filter<Extract = (AppContext,), Error = Rejection> + Clone {
+    // Parse the authorization header leniently: a missing, expired, or
+    // otherwise invalid token means an anonymous session, not a rejected
+    // request (which would surface as HTTP 400 on every route).
     any()
-        .and(header::optional::<WebSession>("authorization"))
-        .map(move |t| AppContext::new(app.clone(), t))
+        .and(header::optional::<String>("authorization"))
+        .map(move |raw: Option<String>| {
+            let session = raw.and_then(|header| match header.parse::<WebSession>() {
+                Ok(session) => Some(session),
+                Err(e) => {
+                    warn!("Ignoring invalid authorization header: {:?}", e);
+                    None
+                }
+            });
+            AppContext::new(app.clone(), session)
+        })
 }
 
 async fn metrics_handler(app: AppContext) -> Result<impl Reply, Rejection> {
